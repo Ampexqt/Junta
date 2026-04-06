@@ -1,0 +1,773 @@
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import {
+  Leaf,
+  Search,
+  Users,
+  Megaphone,
+  Bell,
+  MapPin,
+  Calendar,
+  ArrowRight,
+  CheckCircle,
+  TreePine,
+  Facebook,
+  Twitter,
+  Instagram,
+  Youtube,
+  Menu
+} from
+  'lucide-react';
+import { Sheet, SheetContent, SheetTrigger } from '../../components/ui/sheet';
+const fadeUp = {
+  hidden: {
+    opacity: 0,
+    y: 30
+  },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.1,
+      duration: 0.5,
+      ease: 'easeOut'
+    }
+  })
+};
+const stagger = {
+  visible: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+function Navbar() {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const links = ['Features', 'How It Works', 'Events', 'Map', 'Contact'];
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/[0.45] dark:bg-black/30 backdrop-blur-[12px] border-b border-white/20 shadow-[0_4px_30px_rgba(0,0,0,0.03)] supports-[backdrop-filter]:bg-white/[0.45]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <Leaf className="w-5 h-5 text-white" />
+          </div>
+          <span className="font-['Lora'] font-bold text-[22px] text-foreground tracking-tight whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
+            Junta
+          </span>
+        </Link>
+
+        <div className="hidden md:flex items-center gap-8">
+          {links.map((link) => (
+            <a
+              key={link}
+              href={`#${link.toLowerCase().replace(/\s/g, '-')}`}
+              className="text-sm font-medium text-foreground/70 hover:text-primary transition-all relative group py-2"
+            >
+              {link}
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
+            </a>
+          ))}
+        </div>
+
+        <div className="hidden md:flex items-center gap-3">
+          <Button variant="ghost" onClick={() => navigate('/login')}>
+            Log In
+          </Button>
+          <Button
+            onClick={() => navigate('/register')}
+            className="bg-primary hover:bg-primary/90">
+
+            Get Started
+          </Button>
+        </div>
+
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild className="md:hidden">
+            <Button variant="ghost" size="icon">
+              <Menu className="w-5 h-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-72 bg-white/70 backdrop-blur-xl border-l border-white/20">
+            <div className="flex flex-col gap-4 mt-8">
+              {links.map((link) =>
+                <a
+                  key={link}
+                  href={`#${link.toLowerCase().replace(/\s/g, '-')}`}
+                  onClick={() => setOpen(false)}
+                  className="text-base font-medium text-foreground/80 hover:text-primary transition-colors py-2 flex items-center justify-between"
+                >
+                  {link}
+                </a>
+              )}
+              <div className="border-t pt-4 flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate('/login');
+                  }}>
+
+                  Log In
+                </Button>
+                <Button
+                  onClick={() => {
+                    setOpen(false);
+                    navigate('/register');
+                  }}
+                  className="bg-primary hover:bg-primary/90">
+
+                  Get Started
+                </Button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+    </nav>);
+
+}
+function HeroSection() {
+  const navigate = useNavigate();
+  return (
+    <section className="relative flex min-h-[700px] w-full flex-col items-center justify-center overflow-hidden bg-background px-4 py-20 md:py-32">
+      {/* Background Pattern - Light Rings */}
+      <div
+        className="absolute inset-0 z-0 opacity-[0.15] pointer-events-none select-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='24' cy='24' r='10' stroke='%231F7A63' stroke-width='2' fill='none'/%3E%3C/svg%3E")`,
+          backgroundSize: '48px 48px',
+        }}
+      />
+
+      {/* Soft Center Glow for Premium Feel */}
+      <div className="absolute left-1/2 top-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[120px] pointer-events-none" />
+
+      <div className="container relative z-10 flex flex-col items-center text-center">
+        {/* Animated Badge Tagline */}
+        <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-semibold tracking-wide text-primary animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          <Leaf className="h-4 w-4" />
+          <span>Zamboanga City's Environmental Platform</span>
+        </div>
+
+        {/* Hero Title - Black font weight with tight tracking */}
+        <h1 className="max-w-4xl text-pretty text-5xl font-black leading-[1.1] tracking-tight text-foreground sm:text-7xl animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-150">
+          Join Environmental <br className="hidden sm:block" />
+          Activities in Your <br className="hidden sm:block" />
+          Community
+        </h1>
+
+        {/* Hero Subtitle / Description */}
+        <p className="mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+          Discover, join, and organize local initiatives to protect and preserve Zamboanga City's natural beauty. Together, we can make a difference.
+        </p>
+
+        {/* Action Buttons - Rounded-2xl and 14px height to match image exactly */}
+        <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row sm:gap-6 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
+          <Button
+            size="lg"
+            onClick={() => document.getElementById('events')?.scrollIntoView({ behavior: 'smooth' })}
+            className="h-14 min-w-[200px] rounded-2xl bg-primary px-10 text-lg font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl hover:translate-y-[-2px]"
+          >
+            Browse Events
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => navigate('/register')}
+            className="h-14 min-w-[200px] rounded-2xl border-2 border-border/60 bg-white px-10 text-lg font-bold transition-all hover:bg-muted/30 hover:translate-y-[-2px]"
+          >
+            Create an Event
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+function FeaturesSection() {
+  const features = [
+    {
+      icon: Search,
+      title: 'Discover Environmental Events',
+      desc: 'Browse and find cleanup drives, tree planting activities, and environmental workshops happening near you in Zamboanga.'
+    },
+    {
+      icon: Users,
+      title: 'Join Community Activities',
+      desc: "Connect with like-minded individuals and organizations dedicated to preserving Zamboanga's natural beauty."
+    },
+    {
+      icon: Megaphone,
+      title: 'Organize and Lead Events',
+      desc: 'Create and manage your own environmental events. Rally your community and lead the change you want to see.'
+    },
+    {
+      icon: Bell,
+      title: 'Real-Time Notifications',
+      desc: 'Stay updated with event reminders, community announcements, and environmental alerts in your area.'
+    }];
+
+  return (
+    <section
+      id="features"
+      className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{
+          once: true,
+          margin: '-100px'
+        }}
+        variants={stagger}
+        className="text-center mb-16">
+
+        <motion.p
+          variants={fadeUp}
+          custom={0}
+          className="text-sm font-medium text-primary mb-2">
+
+          Features
+        </motion.p>
+        <motion.h2
+          variants={fadeUp}
+          custom={1}
+          className="font-heading font-semibold text-3xl sm:text-4xl text-foreground">
+
+          Everything You Need to Make an Impact
+        </motion.h2>
+        <motion.p
+          variants={fadeUp}
+          custom={2}
+          className="mt-4 text-muted-foreground max-w-2xl mx-auto">
+
+          Our platform provides all the tools you need to discover, join, and
+          organize environmental events in Zamboanga.
+        </motion.p>
+      </motion.div>
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{
+          once: true,
+          margin: '-50px'
+        }}
+        variants={stagger}
+        className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        {features.map((f, i) =>
+          <motion.div key={f.title} variants={fadeUp} custom={i}>
+            <Card className="rounded-2xl shadow-sm border hover:shadow-md transition-shadow h-full">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+                  <f.icon className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="font-heading font-semibold text-foreground mb-2">
+                  {f.title}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {f.desc}
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </motion.div>
+    </section>);
+
+}
+function HowItWorksSection() {
+  const steps = [
+    {
+      num: 1,
+      icon: CheckCircle,
+      title: 'Register & Verify',
+      desc: 'Create your account and verify your identity to join the community.'
+    },
+    {
+      num: 2,
+      icon: Calendar,
+      title: 'Join or Create Events',
+      desc: 'Browse upcoming events or organize your own environmental activities.'
+    },
+    {
+      num: 3,
+      icon: TreePine,
+      title: 'Participate & Make Impact',
+      desc: 'Show up, contribute, and track your environmental impact over time.'
+    }];
+
+  return (
+    <section
+      id="how-it-works"
+      className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/50">
+
+      <div className="max-w-7xl mx-auto">
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{
+            once: true,
+            margin: '-100px'
+          }}
+          variants={stagger}
+          className="text-center mb-16">
+
+          <motion.p
+            variants={fadeUp}
+            custom={0}
+            className="text-sm font-medium text-primary mb-2">
+
+            How It Works
+          </motion.p>
+          <motion.h2
+            variants={fadeUp}
+            custom={1}
+            className="font-heading font-semibold text-3xl sm:text-4xl text-foreground">
+
+            Get Started in 3 Simple Steps
+          </motion.h2>
+        </motion.div>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{
+            once: true,
+            margin: '-50px'
+          }}
+          variants={stagger}
+          className="grid md:grid-cols-3 gap-8 relative">
+
+          <div className="hidden md:block absolute top-16 left-[20%] right-[20%] h-0.5 bg-border" />
+          {steps.map((s, i) =>
+            <motion.div
+              key={s.num}
+              variants={fadeUp}
+              custom={i}
+              className="text-center relative">
+
+              <div className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center mx-auto text-lg font-semibold relative z-10">
+                {s.num}
+              </div>
+              <h3 className="font-heading font-semibold text-foreground mt-6 mb-2">
+                {s.title}
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                {s.desc}
+              </p>
+            </motion.div>
+          )}
+        </motion.div>
+      </div>
+    </section>);
+
+}
+function FeaturedEventsSection() {
+  const navigate = useNavigate();
+  const events = [
+    {
+      title: 'Sta. Cruz Beach Cleanup Drive',
+      date: 'Jan 15, 2025',
+      location: 'Great Sta. Cruz Island',
+      category: 'Cleanup'
+    },
+    {
+      title: 'Mangrove Planting Initiative',
+      date: 'Jan 22, 2025',
+      location: 'Sinunuc Mangrove Area',
+      category: 'Planting'
+    },
+    {
+      title: 'Marine Biodiversity Workshop',
+      date: 'Feb 3, 2025',
+      location: 'Zamboanga City Hall',
+      category: 'Workshop'
+    },
+    {
+      title: 'Paseo del Mar Awareness Walk',
+      date: 'Feb 10, 2025',
+      location: 'Paseo del Mar',
+      category: 'Awareness'
+    }];
+
+  const categoryColors: Record<string, string> = {
+    Cleanup: 'bg-blue-50 text-blue-700',
+    Planting: 'bg-green-50 text-green-700',
+    Workshop: 'bg-purple-50 text-purple-700',
+    Awareness: 'bg-amber-50 text-amber-700'
+  };
+  return (
+    <section
+      id="events"
+      className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{
+          once: true,
+          margin: '-100px'
+        }}
+        variants={stagger}
+        className="text-center mb-16">
+
+        <motion.p
+          variants={fadeUp}
+          custom={0}
+          className="text-sm font-medium text-primary mb-2">
+
+          Featured Events
+        </motion.p>
+        <motion.h2
+          variants={fadeUp}
+          custom={1}
+          className="font-heading font-semibold text-3xl sm:text-4xl text-foreground">
+
+          Upcoming Environmental Events
+        </motion.h2>
+        <motion.p
+          variants={fadeUp}
+          custom={2}
+          className="mt-4 text-muted-foreground">
+
+          Join these community-driven events and help protect Zamboanga's
+          environment.
+        </motion.p>
+      </motion.div>
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{
+          once: true,
+          margin: '-50px'
+        }}
+        variants={stagger}
+        className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        {events.map((e, i) =>
+          <motion.div key={e.title} variants={fadeUp} custom={i}>
+            <Card
+              className="rounded-2xl shadow-sm border hover:shadow-md transition-all group cursor-pointer overflow-hidden"
+              onClick={() => navigate('/app/events/1')}>
+
+              <div className="h-36 bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 flex items-center justify-center">
+                <TreePine className="w-10 h-10 text-primary/30 group-hover:text-primary/50 transition-colors" />
+              </div>
+              <CardContent className="pt-4">
+                <Badge
+                  variant="outline"
+                  className={`text-xs mb-2 border-0 ${categoryColors[e.category]}`}>
+
+                  {e.category}
+                </Badge>
+                <h3 className="font-heading font-semibold text-sm text-foreground mb-2 line-clamp-2">
+                  {e.title}
+                </h3>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {e.date}
+                  </p>
+                  <p className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" />
+                    {e.location}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-3 w-full text-primary hover:text-primary hover:bg-primary/5 text-xs">
+
+                  View Details <ArrowRight className="ml-1 w-3 h-3" />
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </motion.div>
+    </section>);
+
+}
+function MapPreviewSection() {
+  const navigate = useNavigate();
+  return (
+    <section id="map" className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/50">
+      <div className="max-w-7xl mx-auto">
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{
+            once: true
+          }}
+          variants={stagger}
+          className="text-center mb-12">
+
+          <motion.p
+            variants={fadeUp}
+            custom={0}
+            className="text-sm font-medium text-primary mb-2">
+
+            Map View
+          </motion.p>
+          <motion.h2
+            variants={fadeUp}
+            custom={1}
+            className="font-heading font-semibold text-3xl sm:text-4xl text-foreground">
+
+            Find Events Near You
+          </motion.h2>
+        </motion.div>
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 20
+          }}
+          whileInView={{
+            opacity: 1,
+            y: 0
+          }}
+          viewport={{
+            once: true
+          }}
+          transition={{
+            duration: 0.6
+          }}>
+
+          <div className="relative rounded-2xl overflow-hidden border shadow-sm bg-gradient-to-br from-[#e8f4f0] via-[#d1e8df] to-[#b8dcc8] h-80 sm:h-96">
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage:
+                  'radial-gradient(circle at 1px 1px, #1F7A63 0.5px, transparent 0)',
+                backgroundSize: '24px 24px'
+              }} />
+
+            {[
+              {
+                top: '25%',
+                left: '35%',
+                label: 'Sta. Cruz Island'
+              },
+              {
+                top: '40%',
+                left: '55%',
+                label: 'City Center'
+              },
+              {
+                top: '60%',
+                left: '30%',
+                label: 'Sinunuc'
+              },
+              {
+                top: '35%',
+                left: '70%',
+                label: 'Paseo del Mar'
+              },
+              {
+                top: '55%',
+                left: '60%',
+                label: 'Pasonanca'
+              }].
+              map((pin, i) =>
+                <div
+                  key={i}
+                  className="absolute group"
+                  style={{
+                    top: pin.top,
+                    left: pin.left
+                  }}>
+
+                  <div className="w-4 h-4 bg-primary rounded-full border-2 border-white shadow-md animate-pulse" />
+                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white rounded-lg px-2 py-1 shadow-md text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                    {pin.label}
+                  </div>
+                </div>
+              )}
+            <div className="absolute bottom-4 right-4">
+              <Button
+                onClick={() => navigate('/app/map')}
+                className="bg-white text-foreground hover:bg-white/90 shadow-md">
+
+                <MapPin className="w-4 h-4 mr-2" /> View Full Map
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>);
+
+}
+function CTASection() {
+  const navigate = useNavigate();
+  return (
+    <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <motion.div
+        initial={{
+          opacity: 0,
+          y: 20
+        }}
+        whileInView={{
+          opacity: 1,
+          y: 0
+        }}
+        viewport={{
+          once: true
+        }}
+        transition={{
+          duration: 0.6
+        }}
+        className="max-w-4xl mx-auto text-center bg-primary rounded-3xl p-12 sm:p-16 relative overflow-hidden">
+
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative z-10">
+          <h2 className="font-heading text-3xl font-bold text-foreground">
+            Junta Comunidad
+          </h2>
+          <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
+            Join the Junta community and be part of the movement to protect
+            and preserve Zamboanga's environment for future generations.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Button
+              size="lg"
+              onClick={() => navigate('/register')}
+              className="bg-white text-primary hover:bg-white/90 h-12 px-8">
+
+              Register Now
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => navigate('/login')}
+              className="border-white/30 text-white hover:bg-white/10 h-12 px-8">
+
+              Log In
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </section>);
+
+}
+function Footer() {
+  return (
+    <footer
+      id="contact"
+      className="bg-foreground text-white py-16 px-4 sm:px-6 lg:px-8">
+
+      <div className="max-w-7xl mx-auto">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Leaf className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-['Lora'] font-bold text-2xl text-white tracking-tight">
+                Junta
+              </span>
+            </div>
+            <p className="text-sm text-white/60 leading-relaxed">
+              Connecting communities for environmental action in Zamboanga
+              Peninsula.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-heading font-semibold text-sm mb-4">
+              Platform
+            </h4>
+            <ul className="space-y-2 text-sm text-white/60">
+              <li>
+                <Link
+                  to="/app/events"
+                  className="hover:text-white transition-colors">
+
+                  Events
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/app/map"
+                  className="hover:text-white transition-colors">
+
+                  Map View
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/app/dashboard"
+                  className="hover:text-white transition-colors">
+
+                  Dashboard
+                </Link>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-heading font-semibold text-sm mb-4">Company</h4>
+            <ul className="space-y-2 text-sm text-white/60">
+              <li>
+                <a href="#" className="hover:text-white transition-colors">
+                  About
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#contact"
+                  className="hover:text-white transition-colors">
+
+                  Contact
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-white transition-colors">
+                  Privacy Policy
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-white transition-colors">
+                  Terms of Service
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-heading font-semibold text-sm mb-4">Connect</h4>
+            <div className="flex gap-3">
+              {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) =>
+                <a
+                  key={i}
+                  href="#"
+                  className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+
+                  <Icon className="w-4 h-4" />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-white/10 pt-8 text-center text-sm text-white/40">
+          &copy; 2024 Junta Zamboanga. All rights reserved.
+        </div>
+      </div>
+    </footer>);
+
+}
+export function LandingPage() {
+  return (
+    <div className="w-full min-h-screen bg-background">
+      <Navbar />
+      <HeroSection />
+      <FeaturesSection />
+      <HowItWorksSection />
+      <FeaturedEventsSection />
+      <MapPreviewSection />
+      <CTASection />
+      <Footer />
+    </div>);
+
+}
