@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -34,7 +34,11 @@ import {
   Info,
   Upload,
   Camera,
-  Building2
+  Building2,
+  RefreshCw,
+  X,
+  Check,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -64,6 +68,16 @@ export function RegisterPage() {
     password: '',
     orgName: ''
   });
+  const [idUploaded, setIdUploaded] = useState(false);
+  const [selfieUploaded, setSelfieUploaded] = useState(false);
+  const [kycMode, setKycMode] = useState<'none' | 'id' | 'selfie'>('none');
+  const [idPreview, setIdPreview] = useState<string | null>(null);
+  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const stepTitles = [
     'Choose Your Role',
@@ -108,6 +122,67 @@ export function RegisterPage() {
   };
 
   const inputClass = "h-9 rounded-lg border-gray-200 bg-white text-sm focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary";
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: kycMode === 'selfie' ? 'user' : 'environment' }
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+      }
+    } catch (err) {
+      console.error('Camera access denied:', err);
+      toast.error('Camera Access Error', {
+        description: 'Please enable camera permissions to continue verification.'
+      });
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        if (kycMode === 'id') setIdPreview(dataUrl);
+        else setSelfiePreview(dataUrl);
+        stopCamera();
+      }
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (kycMode === 'id') setIdPreview(result);
+        else setSelfiePreview(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  useEffect(() => {
+    if (kycMode !== 'none' && !idPreview && !selfiePreview) {
+      startCamera();
+    }
+    return () => stopCamera();
+  }, [kycMode]);
 
   return (
     <div className="min-h-screen w-full bg-[#f8f9fa] flex flex-col items-center justify-center px-4 py-6 relative">
@@ -478,63 +553,206 @@ export function RegisterPage() {
                   transition={{ duration: 0.25 }}
                   className="space-y-3"
                 >
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="border border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[110px]">
-                      <div className="w-9 h-9 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center mb-2 group-hover:border-primary/30 group-hover:bg-primary/10 transition-all">
-                        <Upload className="w-4 h-4 text-gray-400 group-hover:text-primary" />
-                      </div>
-                      <p className="text-sm font-semibold text-gray-700">Upload ID</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">Valid government ID up to 5MB</p>
-                    </div>
-                    <div className="border border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[110px]">
-                      <div className="w-9 h-9 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center mb-2 group-hover:border-primary/30 group-hover:bg-primary/10 transition-all">
-                        <Camera className="w-4 h-4 text-gray-400 group-hover:text-primary" />
-                      </div>
-                      <p className="text-sm font-semibold text-gray-700">Take Selfie</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">For face recognition checks</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        id="privacy"
-                        checked={agreedPrivacy}
-                        onCheckedChange={(checked) => setAgreedPrivacy(checked as boolean)}
-                        className="mt-0.5 size-4 border-gray-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                      />
-                      <Label htmlFor="privacy" className="text-[11px] text-gray-500 leading-relaxed cursor-pointer select-none">
-                        I recognize and agree to the <span className="text-primary font-semibold">Philippine Data Privacy Act of 2012</span>. Your information is encrypted and strictly used for identity verification purposes only.
-                      </Label>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2.5 pt-1">
+                  {kycMode === 'none' ? (
                     <div className="grid grid-cols-2 gap-2.5">
-                      <Button
-                        variant="outline"
-                        className="h-10 rounded-lg border-gray-200 text-sm font-medium shadow-none"
-                        onClick={() => setStep(3)}
+                      <div
+                        onClick={() => setKycMode('id')}
+                        className={`border border-dashed rounded-lg p-4 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[110px] ${idUploaded ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/40 hover:bg-primary/5'}`}
                       >
-                        <ArrowLeft className="mr-2 w-4 h-4" /> Back
-                      </Button>
-                      <Button
-                        className="h-10 rounded-lg bg-primary hover:bg-primary-hover text-white font-semibold shadow-none transition-colors"
-                        onClick={handleComplete}
+                        {idPreview ? (
+                          <div className="relative w-full h-full flex flex-col items-center">
+                            <img src={idPreview} alt="ID Preview" className="w-16 h-12 object-cover rounded border border-primary/20 mb-1" />
+                            <p className="text-[10px] font-bold text-primary">ID Captured</p>
+                          </div>
+                        ) : (
+                          <>
+                            <div className={`w-9 h-9 rounded-lg border flex items-center justify-center mb-2 transition-all ${idUploaded ? 'bg-primary border-primary' : 'bg-gray-50 border-gray-200 group-hover:border-primary/30 group-hover:bg-primary/10'}`}>
+                              <Upload className="w-4 h-4 text-gray-400 group-hover:text-primary" />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-700">Upload ID</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">Valid government ID</p>
+                          </>
+                        )}
+                      </div>
+
+                      <div
+                        onClick={() => setKycMode('selfie')}
+                        className={`border border-dashed rounded-lg p-4 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[110px] ${selfieUploaded ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/40 hover:bg-primary/5'}`}
                       >
-                        Finish
-                      </Button>
+                        {selfiePreview ? (
+                          <div className="relative w-full h-full flex flex-col items-center">
+                            <img src={selfiePreview} alt="Selfie Preview" className="w-12 h-12 rounded-full object-cover border-2 border-primary mb-1 shadow-sm" />
+                            <p className="text-[10px] font-bold text-primary">Selfie Taken</p>
+                          </div>
+                        ) : (
+                          <>
+                            <div className={`w-9 h-9 rounded-lg border flex items-center justify-center mb-2 transition-all ${selfieUploaded ? 'bg-primary border-primary' : 'bg-gray-50 border-gray-200 group-hover:border-primary/30 group-hover:bg-primary/10'}`}>
+                              <Camera className="w-4 h-4 text-gray-400 group-hover:text-primary" />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-700">Take Selfie</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">Face recognition</p>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-center">
-                      <button
-                        type="button"
-                        onClick={handleComplete}
-                        className="text-[11px] font-medium text-gray-400 hover:text-primary transition-colors underline underline-offset-4 decoration-gray-300 hover:decoration-primary/50"
-                      >
-                        Skip for now, I'll verify later in my profile settings
-                      </button>
-                    </p>
-                  </div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-gray-900 rounded-xl overflow-hidden relative"
+                    >
+                      <div className="aspect-video relative bg-black flex items-center justify-center min-h-[220px]">
+                        {!idPreview && !selfiePreview && kycMode === 'id' && (
+                          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                            <div className="w-[80%] h-[60%] border-2 border-dashed border-primary/60 rounded-lg flex items-center justify-center">
+                              <span className="bg-primary/80 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Align ID Here</span>
+                            </div>
+                          </div>
+                        )}
+                        {!idPreview && !selfiePreview && kycMode === 'selfie' && (
+                          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                            <div className="w-[180px] h-[180px] border-2 border-dashed border-primary/60 rounded-full flex flex-col items-center justify-center">
+                              <span className="bg-primary/80 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider mb-2">Align Face</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {((kycMode === 'id' && idPreview) || (kycMode === 'selfie' && selfiePreview)) ? (
+                          <img
+                            src={kycMode === 'id' ? idPreview! : selfiePreview!}
+                            className="w-full h-full object-contain"
+                            alt="Preview"
+                          />
+                        ) : (
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+
+                        <button
+                          onClick={() => {
+                            setKycMode('none');
+                            setIdPreview(null);
+                            setSelfiePreview(null);
+                          }}
+                          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors z-20"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+
+                        <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center gap-3 px-4">
+                          {!(idPreview || selfiePreview) ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="bg-white/10 hover:bg-white/20 text-white border-white/10 rounded-full"
+                              >
+                                <ImageIcon className="w-4 h-4 mr-2" /> Upload
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={capturePhoto}
+                                className="bg-primary hover:bg-primary-hover text-white rounded-full px-6"
+                              >
+                                <Camera className="w-4 h-4 mr-2" /> Capture
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  if (kycMode === 'id') setIdPreview(null);
+                                  else setSelfiePreview(null);
+                                  startCamera();
+                                }}
+                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-full"
+                              >
+                                <RefreshCw className="w-4 h-4 mr-2" /> Retake
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  if (kycMode === 'id') setIdUploaded(true);
+                                  else setSelfieUploaded(true);
+                                  setKycMode('none');
+                                }}
+                                className="bg-primary hover:bg-primary-hover text-white rounded-full px-8"
+                              >
+                                <Check className="w-4 h-4 mr-2" /> Confirm
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        accept="image/*"
+                      />
+                      <canvas ref={canvasRef} className="hidden" />
+                    </motion.div>
+                  )}
+
+                  {(idUploaded || selfieUploaded) && kycMode === 'none' && (
+                    <div className="flex items-center gap-2 px-1 text-[10px] text-gray-400 animate-in fade-in duration-500">
+                      <div className="w-1 h-1 rounded-full bg-primary" />
+                      <p>Admin will review your identity once documents are submitted.</p>
+                    </div>
+                  )}
+
+                  {kycMode === 'none' && (
+                    <>
+                      <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            id="privacy"
+                            checked={agreedPrivacy}
+                            onCheckedChange={(checked) => setAgreedPrivacy(checked as boolean)}
+                            className="mt-0.5 size-4 border-gray-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          />
+                          <Label htmlFor="privacy" className="text-[11px] text-gray-500 leading-relaxed cursor-pointer select-none">
+                            I recognize and agree to the <span className="text-primary font-semibold">Philippine Data Privacy Act of 2012</span>. Your information is encrypted and strictly used for identity verification purposes only.
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2.5 pt-1">
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <Button
+                            variant="outline"
+                            className="h-10 rounded-lg border-gray-200 text-sm font-medium shadow-none"
+                            onClick={() => setStep(3)}
+                          >
+                            <ArrowLeft className="mr-2 w-4 h-4" /> Back
+                          </Button>
+                          <Button
+                            className="h-10 rounded-lg bg-primary hover:bg-primary-hover text-white font-semibold shadow-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={handleComplete}
+                            disabled={!idUploaded || !selfieUploaded}
+                          >
+                            Finish
+                          </Button>
+                        </div>
+                        <p className="text-center">
+                          <button
+                            type="button"
+                            onClick={handleComplete}
+                            className="text-[11px] font-medium text-gray-400 hover:text-primary transition-colors underline underline-offset-4 decoration-gray-300 hover:decoration-primary/50"
+                          >
+                            Skip for now, I'll verify later in my profile settings
+                          </button>
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
