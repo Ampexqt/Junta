@@ -1,45 +1,46 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle } from
-'../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
-import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+  CardTitle
+} from
+  '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow } from
-'../../components/ui/table';
+  TableRow
+} from
+  '@/components/ui/table';
 const requests = [
-{
-  name: 'Roberto Lim',
-  email: 'roberto.lim@email.com',
-  reason: 'Leading local beach cleanup group for 3 years',
-  date: 'Jan 8, 2025',
-  initials: 'RL'
-},
-{
-  name: 'Elena Tan',
-  email: 'elena.tan@email.com',
-  reason:
-  'Environmental Science teacher, wants to organize student activities',
-  date: 'Jan 10, 2025',
-  initials: 'ET'
-},
-{
-  name: 'Marco Villanueva',
-  email: 'marco.v@email.com',
-  reason: 'Runs a community garden project in Barangay Tetuan',
-  date: 'Jan 13, 2025',
-  initials: 'MV'
-}];
+  {
+    name: 'Roberto Lim',
+    email: 'roberto.lim@email.com',
+    reason: 'Leading local beach cleanup group for 3 years',
+    date: 'Jan 8, 2025',
+    initials: 'RL'
+  },
+  {
+    name: 'Elena Tan',
+    email: 'elena.tan@email.com',
+    reason:
+      'Environmental Science teacher, wants to organize student activities',
+    date: 'Jan 10, 2025',
+    initials: 'ET'
+  },
+  {
+    name: 'Marco Villanueva',
+    email: 'marco.v@email.com',
+    reason: 'Runs a community garden project in Barangay Tetuan',
+    date: 'Jan 13, 2025',
+    initials: 'MV'
+  }];
 
 export function OrganizerRequestsPage() {
   return (
@@ -53,7 +54,7 @@ export function OrganizerRequestsPage() {
         y: 0
       }}
       className="space-y-6">
-      
+
       <div>
         <h1 className="font-heading font-semibold text-2xl text-foreground">
           Organizer Requests
@@ -72,7 +73,7 @@ export function OrganizerRequestsPage() {
             <Badge
               variant="outline"
               className="bg-purple-50 text-purple-700 border-0 text-xs">
-              
+
               {requests.length} pending
             </Badge>
           </div>
@@ -91,7 +92,7 @@ export function OrganizerRequestsPage() {
               </TableHeader>
               <TableBody>
                 {requests.map((r) =>
-                <TableRow key={r.email}>
+                  <TableRow key={r.email}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
@@ -119,17 +120,17 @@ export function OrganizerRequestsPage() {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-green-600 border-green-200 hover:bg-green-50 text-xs h-8">
-                        
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 border-green-200 hover:bg-green-50 text-xs h-8">
+
                           Approve
                         </Button>
                         <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-red-500 border-red-200 hover:bg-red-50 text-xs h-8">
-                        
+                          size="sm"
+                          variant="outline"
+                          className="text-red-500 border-red-200 hover:bg-red-50 text-xs h-8">
+
                           Reject
                         </Button>
                       </div>

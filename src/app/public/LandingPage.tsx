@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Leaf,
   Search,
@@ -22,7 +22,7 @@ import {
   Menu
 } from
   'lucide-react';
-import { Sheet, SheetContent, SheetTrigger } from '../../components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 const fadeUp = {
   hidden: {
     opacity: 0,
@@ -50,38 +50,42 @@ function Navbar() {
   const [open, setOpen] = useState(false);
   const links = ['Features', 'How It Works', 'Events', 'Map', 'Contact'];
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/[0.45] dark:bg-black/30 backdrop-blur-[12px] border-b border-white/20 shadow-[0_4px_30px_rgba(0,0,0,0.03)] supports-[backdrop-filter]:bg-white/[0.45]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-black/50 backdrop-blur-xl border-b border-primary/5 shadow-[0_10px_40px_rgba(31,122,99,0.06)] transition-all duration-500">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 h-18 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2 group">
+          <div className="w-9 h-9 bg-gradient-to-br from-primary to-[#06241d] rounded-xl flex items-center justify-center shadow-lg shadow-primary/25 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
             <Leaf className="w-5 h-5 text-white" />
           </div>
-          <span className="font-['Lora'] font-bold text-[22px] text-foreground tracking-tight whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
+          <span className="font-['Lora'] font-bold text-[22px] text-foreground tracking-tight whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-500">
             Junta
           </span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden lg:flex items-center gap-8">
           {links.map((link) => (
             <a
               key={link}
               href={`#${link.toLowerCase().replace(/\s/g, '-')}`}
-              className="text-sm font-medium text-foreground/70 hover:text-primary transition-all relative group py-2"
+              className="text-sm font-semibold text-foreground/60 hover:text-primary transition-all relative group py-2 px-1"
             >
               {link}
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-500 group-hover:w-full opacity-0 group-hover:opacity-100" />
             </a>
           ))}
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" onClick={() => navigate('/login')}>
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/login')}
+            className="font-bold text-sm hover:bg-primary/5 px-4 h-10 rounded-xl transition-all"
+          >
             Log In
           </Button>
           <Button
             onClick={() => navigate('/register')}
-            className="bg-primary hover:bg-primary/90">
-
+            className="bg-primary hover:bg-primary-hover text-white font-bold text-sm px-6 h-10 rounded-xl shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+          >
             Get Started
           </Button>
         </div>
@@ -134,18 +138,19 @@ function Navbar() {
 function HeroSection() {
   const navigate = useNavigate();
   return (
-    <section className="relative flex min-h-[700px] w-full flex-col items-center justify-center overflow-hidden bg-background px-4 py-20 md:py-32">
+    <section className="relative flex min-h-[750px] w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-primary/[0.03] via-background to-transparent px-4 py-20 md:py-32">
       {/* Background Pattern - Light Rings */}
       <div
-        className="absolute inset-0 z-0 opacity-[0.15] pointer-events-none select-none"
+        className="absolute inset-0 z-0 opacity-[0.1] pointer-events-none select-none"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='24' cy='24' r='10' stroke='%231F7A63' stroke-width='2' fill='none'/%3E%3C/svg%3E")`,
-          backgroundSize: '48px 48px',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='1' fill='%231F7A63'/%3E%3C/svg%3E")`,
+          backgroundSize: '40px 40px',
         }}
       />
 
-      {/* Soft Center Glow for Premium Feel */}
-      <div className="absolute left-1/2 top-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[120px] pointer-events-none" />
+      {/* Sophisticated Glow System */}
+      <div className="absolute left-1/4 top-1/4 -z-10 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[150px] pointer-events-none" />
+      <div className="absolute right-1/4 bottom-1/4 -z-10 h-[500px] w-[500px] translate-x-1/2 translate-y-1/2 rounded-full bg-secondary/10 blur-[130px] pointer-events-none" />
 
       <div className="container relative z-10 flex flex-col items-center text-center">
         {/* Animated Badge Tagline */}
@@ -261,15 +266,15 @@ function FeaturesSection() {
 
         {features.map((f, i) =>
           <motion.div key={f.title} variants={fadeUp} custom={i}>
-            <Card className="rounded-2xl shadow-sm border hover:shadow-md transition-shadow h-full">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                  <f.icon className="w-6 h-6 text-primary" />
+            <Card className="rounded-[2rem] shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] border-primary/5 hover:border-primary/20 hover:shadow-[0_20px_50px_-20px_rgba(31,122,99,0.1)] transition-all duration-500 h-full group bg-white/50 backdrop-blur-sm">
+              <CardContent className="pt-8 px-8">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
+                  <f.icon className="w-7 h-7 text-primary" />
                 </div>
-                <h3 className="font-heading font-semibold text-foreground mb-2">
+                <h3 className="font-heading font-bold text-[18px] text-foreground mb-3 leading-tight">
                   {f.title}
                 </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-[15px] text-muted-foreground leading-relaxed">
                   {f.desc}
                 </p>
               </CardContent>
@@ -304,7 +309,7 @@ function HowItWorksSection() {
   return (
     <section
       id="how-it-works"
-      className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/50">
+      className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background via-primary/[0.02] to-background">
 
       <div className="max-w-7xl mx-auto">
         <motion.div
@@ -395,10 +400,10 @@ function FeaturedEventsSection() {
     }];
 
   const categoryColors: Record<string, string> = {
-    Cleanup: 'bg-blue-50 text-blue-700',
-    Planting: 'bg-green-50 text-green-700',
-    Workshop: 'bg-purple-50 text-purple-700',
-    Awareness: 'bg-amber-50 text-amber-700'
+    Cleanup: 'bg-primary/10 text-primary border-primary/20',
+    Planting: 'bg-primary/10 text-primary border-primary/20',
+    Workshop: 'bg-primary/10 text-primary border-primary/20',
+    Awareness: 'bg-primary/10 text-primary border-primary/20'
   };
   return (
     <section
@@ -451,17 +456,17 @@ function FeaturedEventsSection() {
         {events.map((e, i) =>
           <motion.div key={e.title} variants={fadeUp} custom={i}>
             <Card
-              className="rounded-2xl shadow-sm border hover:shadow-md transition-all group cursor-pointer overflow-hidden"
+              className="rounded-3xl shadow-[0_10px_40px_-15px_rgba(31,122,99,0.08)] border-primary/5 hover:border-primary/20 hover:shadow-[0_20px_50px_-20px_rgba(31,122,99,0.15)] transition-all duration-500 group cursor-pointer overflow-hidden"
               onClick={() => navigate('/app/events/1')}>
 
-              <div className="h-36 bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 flex items-center justify-center">
-                <TreePine className="w-10 h-10 text-primary/30 group-hover:text-primary/50 transition-colors" />
+              <div className="h-44 bg-gradient-to-br from-primary/20 via-primary/5 to-secondary/10 flex items-center justify-center relative">
+                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[length:12px_12px]" />
+                <TreePine className="w-12 h-12 text-primary/40 group-hover:text-primary/60 transition-all duration-500 group-hover:scale-110" />
               </div>
               <CardContent className="pt-4">
                 <Badge
                   variant="outline"
-                  className={`text-xs mb-2 border-0 ${categoryColors[e.category]}`}>
-
+                  className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 mb-3 border ${categoryColors[e.category]}`}>
                   {e.category}
                 </Badge>
                 <h3 className="font-heading font-semibold text-sm text-foreground mb-2 line-clamp-2">
@@ -480,9 +485,9 @@ function FeaturedEventsSection() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mt-3 w-full text-primary hover:text-primary hover:bg-primary/5 text-xs">
+                  className="mt-4 w-full text-primary hover:text-white hover:bg-primary rounded-xl transition-all duration-300 text-xs font-bold border border-primary/10">
 
-                  View Details <ArrowRight className="ml-1 w-3 h-3" />
+                  View Details <ArrowRight className="ml-2 w-3.5 h-3.5" />
                 </Button>
               </CardContent>
             </Card>
@@ -537,7 +542,7 @@ function MapPreviewSection() {
             duration: 0.6
           }}>
 
-          <div className="relative rounded-2xl overflow-hidden border shadow-sm bg-gradient-to-br from-[#e8f4f0] via-[#d1e8df] to-[#b8dcc8] h-80 sm:h-96">
+          <div className="relative rounded-3xl overflow-hidden border border-primary/10 shadow-2xl bg-gradient-to-br from-primary/5 via-background to-secondary/5 h-80 sm:h-[450px]">
             <div
               className="absolute inset-0 opacity-20"
               style={{
@@ -581,7 +586,10 @@ function MapPreviewSection() {
                     left: pin.left
                   }}>
 
-                  <div className="w-4 h-4 bg-primary rounded-full border-2 border-white shadow-md animate-pulse" />
+                  <div className="relative">
+                    <div className="absolute -inset-2 bg-primary/30 rounded-full animate-ping" />
+                    <div className="w-5 h-5 bg-primary rounded-full border-2 border-white shadow-xl relative z-10" />
+                  </div>
                   <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white rounded-lg px-2 py-1 shadow-md text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
                     {pin.label}
                   </div>
@@ -604,7 +612,7 @@ function MapPreviewSection() {
 function CTASection() {
   const navigate = useNavigate();
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8">
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-transparent to-primary/[0.03]">
       <motion.div
         initial={{
           opacity: 0,
@@ -618,34 +626,33 @@ function CTASection() {
           once: true
         }}
         transition={{
-          duration: 0.6
+          duration: 0.8,
+          ease: "easeOut"
         }}
-        className="max-w-4xl mx-auto text-center bg-primary rounded-3xl p-12 sm:p-16 relative overflow-hidden">
+        className="max-w-5xl mx-auto text-center bg-gradient-to-br from-primary via-primary to-[#06241d] rounded-[2.5rem] p-12 sm:p-20 relative overflow-hidden shadow-2xl shadow-primary/20">
 
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
         <div className="relative z-10">
-          <h2 className="font-heading text-3xl font-bold text-foreground">
-            Junta Comunidad
+          <h2 className="font-heading text-4xl sm:text-5xl font-bold text-white leading-tight">
+            Ready to make a <br className="hidden sm:block" /> difference?
           </h2>
-          <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
-            Join the Junta community and be part of the movement to protect
-            and preserve Zamboanga's environment for future generations.
+          <p className="text-white/80 mt-8 text-lg sm:text-xl max-w-2xl mx-auto mb-12 leading-relaxed">
+            Join the Junta community today and be part of the movement to protect
+            and preserve Zamboanga's natural beauty for future generations.
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex flex-wrap justify-center gap-6">
             <Button
               size="lg"
               onClick={() => navigate('/register')}
-              className="bg-white text-primary hover:bg-white/90 h-12 px-8">
-
+              className="bg-white text-primary hover:bg-white/90 h-16 px-12 rounded-2xl font-bold shadow-xl shadow-black/10 transition-all hover:translate-y-[-2px]">
               Register Now
             </Button>
             <Button
               size="lg"
               variant="outline"
               onClick={() => navigate('/login')}
-              className="border-white/30 text-white hover:bg-white/10 h-12 px-8">
-
+              className="border-white/30 text-white hover:bg-white/10 h-16 px-12 rounded-2xl font-bold transition-all hover:translate-y-[-2px]">
               Log In
             </Button>
           </div>
@@ -658,104 +665,121 @@ function Footer() {
   return (
     <footer
       id="contact"
-      className="bg-foreground text-white py-16 px-4 sm:px-6 lg:px-8">
+      className="bg-[#0b241e] text-white py-16 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
 
       <div className="max-w-7xl mx-auto">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
                 <Leaf className="w-5 h-5 text-white" />
               </div>
-              <span className="font-['Lora'] font-bold text-2xl text-white tracking-tight">
+              <span className="font-['Lora'] font-bold text-[24px] text-white tracking-tight">
                 Junta
               </span>
             </div>
-            <p className="text-sm text-white/60 leading-relaxed">
-              Connecting communities for environmental action in Zamboanga
-              Peninsula.
+            <p className="text-sm text-white/50 leading-relaxed max-w-xs">
+              Connecting communities for environmental action in Zamboanga Peninsula. Building a sustainable future, one event at a time.
             </p>
           </div>
+
           <div>
-            <h4 className="font-heading font-semibold text-sm mb-4">
+            <h4 className="font-heading font-semibold text-sm mb-6 text-primary uppercase tracking-wider">
               Platform
             </h4>
-            <ul className="space-y-2 text-sm text-white/60">
+            <ul className="space-y-3 text-sm text-white/50">
               <li>
                 <Link
                   to="/app/events"
-                  className="hover:text-white transition-colors">
-
+                  className="hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-0 group-hover:w-1.5 h-[1px] bg-primary transition-all" />
                   Events
                 </Link>
               </li>
               <li>
                 <Link
                   to="/app/map"
-                  className="hover:text-white transition-colors">
-
+                  className="hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-0 group-hover:w-1.5 h-[1px] bg-primary transition-all" />
                   Map View
                 </Link>
               </li>
               <li>
                 <Link
                   to="/app/dashboard"
-                  className="hover:text-white transition-colors">
-
+                  className="hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-0 group-hover:w-1.5 h-[1px] bg-primary transition-all" />
                   Dashboard
                 </Link>
               </li>
             </ul>
           </div>
+
           <div>
-            <h4 className="font-heading font-semibold text-sm mb-4">Company</h4>
-            <ul className="space-y-2 text-sm text-white/60">
+            <h4 className="font-heading font-semibold text-sm mb-6 text-primary uppercase tracking-wider">
+              Company
+            </h4>
+            <ul className="space-y-3 text-sm text-white/50">
               <li>
-                <a href="#" className="hover:text-white transition-colors">
+                <a href="#" className="hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-0 group-hover:w-1.5 h-[1px] bg-primary transition-all" />
                   About
                 </a>
               </li>
               <li>
                 <a
                   href="#contact"
-                  className="hover:text-white transition-colors">
-
+                  className="hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-0 group-hover:w-1.5 h-[1px] bg-primary transition-all" />
                   Contact
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-white transition-colors">
+                <a href="#" className="hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-0 group-hover:w-1.5 h-[1px] bg-primary transition-all" />
                   Privacy Policy
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-white transition-colors">
+                <a href="#" className="hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-0 group-hover:w-1.5 h-[1px] bg-primary transition-all" />
                   Terms of Service
                 </a>
               </li>
             </ul>
           </div>
+
           <div>
-            <h4 className="font-heading font-semibold text-sm mb-4">Connect</h4>
-            <div className="flex gap-3">
+            <h4 className="font-heading font-semibold text-sm mb-6 text-primary uppercase tracking-wider">
+              Connect
+            </h4>
+            <div className="flex gap-4">
               {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) =>
                 <a
                   key={i}
                   href="#"
-                  className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                  className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-all hover:translate-y-[-2px] border border-white/5">
 
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-5 h-5" />
                 </a>
               )}
             </div>
+            <p className="mt-8 text-xs text-white/30 italic">
+              Follow our journey on social media.
+            </p>
           </div>
         </div>
-        <div className="border-t border-white/10 pt-8 text-center text-sm text-white/40">
-          &copy; 2024 Junta Zamboanga. All rights reserved.
+
+        <div className="border-t border-white/5 pt-10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/30">
+          <p>&copy; {new Date().getFullYear()} Junta Zamboanga. All rights reserved.</p>
+          <div className="flex gap-6">
+            <a href="#" className="hover:text-white transition-colors">Accessibility</a>
+            <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
+            <a href="#" className="hover:text-white transition-colors">Security</a>
+          </div>
         </div>
       </div>
     </footer>);
-
 }
 export function LandingPage() {
   return (

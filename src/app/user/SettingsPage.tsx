@@ -7,14 +7,14 @@ import {
   CardTitle,
   CardDescription
 } from
-  '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Switch } from '../../components/ui/switch';
-import { Separator } from '../../components/ui/separator';
-import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+  '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Camera,
   Upload,
@@ -35,21 +35,22 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue
-} from
-  '../../components/ui/select/Select';
+} from '@/components/ui/select';
+
 export function SettingsPage() {
-  const [firstName, setFirstName] = useState('Juan');
-  const [lastName, setLastName] = useState('Dela Cruz');
-  const [suffix, setSuffix] = useState('');
-  const [email] = useState('juan.delacruz@email.com');
+  const [firstName, setFirstName] = useState('Eco');
+  const [lastName, setLastName] = useState('Hero');
+  const [suffix, setSuffix] = useState(' ');
+  const [email] = useState('eco.hero@envirolink.com');
   const [prefs, setPrefs] = useState({
     eventReminders: true,
     systemUpdates: true,
     newsletter: false,
     organizerNotifs: true
   });
+
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <div>
         <h1 className="font-heading font-semibold text-2xl text-foreground">
           Settings
@@ -92,7 +93,7 @@ export function SettingsPage() {
                 </button>
               </div>
               <div>
-                <p className="font-medium text-foreground">{firstName} {lastName} {suffix}</p>
+                <p className="font-medium text-foreground">{firstName} {lastName} {suffix && suffix !== 'none' ? suffix : ''}</p>
                 <p className="text-sm text-muted-foreground">
                   {email}
                 </p>
@@ -130,7 +131,7 @@ export function SettingsPage() {
                       <SelectValue placeholder="None" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value=" ">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       <SelectItem value="Jr.">Jr.</SelectItem>
                       <SelectItem value="Sr.">Sr.</SelectItem>
                       <SelectItem value="II">II</SelectItem>

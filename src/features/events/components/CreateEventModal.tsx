@@ -5,21 +5,21 @@ import {
     DialogTitle,
     DialogDescription,
     DialogTrigger,
-} from '../../../components/ui/dialog/Dialog';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
-import { Textarea } from '../../../components/ui/textarea';
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue
-} from '../../../components/ui/select';
+} from '@/components/ui/select';
 import { Plus, AlertCircle, ArrowRight, Upload, FileText, Image as ImageIcon, X, Calendar, Info, Settings, ShieldCheck, Tag, AlignLeft } from 'lucide-react';
 import { useState, useRef } from 'react';
-import { useAuth } from '../../../features/auth/AuthContext';
+import { useAuth } from '@/features/auth/AuthContext';
 
 interface CreateEventModalProps {
     trigger?: React.ReactNode;

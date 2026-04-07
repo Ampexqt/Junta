@@ -4,27 +4,30 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle } from
-'../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
-import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+  CardTitle
+} from
+  '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow } from
-'../../components/ui/table';
+  TableRow
+} from
+  '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter } from
-'../../components/ui/dialog';
+  DialogFooter
+} from
+  '@/components/ui/dialog';
 import {
   ClipboardCheck,
   CheckCircle,
@@ -33,8 +36,9 @@ import {
   CalendarDays,
   MapPin,
   Users,
-  Tag } from
-'lucide-react';
+  Tag
+} from
+  'lucide-react';
 type EventStatus = 'Pending' | 'Approved' | 'Rejected';
 type PendingEvent = {
   id: number;
@@ -49,71 +53,71 @@ type PendingEvent = {
   status: EventStatus;
 };
 const initialEvents: PendingEvent[] = [
-{
-  id: 1,
-  title: 'Coral Reef Survey 2025',
-  organizer: 'Roberto Lim',
-  initials: 'RL',
-  date: 'Feb 20, 2025',
-  location: 'Sta. Cruz Island Reef',
-  category: 'Research',
-  description:
-  'A comprehensive survey of coral reef health around Sta. Cruz Island. Volunteers will assist marine biologists in documenting coral species, measuring water quality, and identifying areas of concern.',
-  maxParticipants: 20,
-  status: 'Pending'
-},
-{
-  id: 2,
-  title: 'Wetland Bird Watching Day',
-  organizer: 'Elena Tan',
-  initials: 'ET',
-  date: 'Mar 5, 2025',
-  location: 'Zamboanga Wetlands',
-  category: 'Awareness',
-  description:
-  'An educational bird watching event at the Zamboanga wetlands. Participants will learn about local bird species, their habitats, and the importance of wetland conservation.',
-  maxParticipants: 30,
-  status: 'Pending'
-},
-{
-  id: 3,
-  title: 'School Recycling Drive',
-  organizer: 'Maria Santos',
-  initials: 'MS',
-  date: 'Mar 12, 2025',
-  location: 'Zamboanga National High School',
-  category: 'Cleanup',
-  description:
-  'A recycling awareness and collection drive targeting schools in the Zamboanga area. Students will learn about proper waste segregation and recycling practices.',
-  maxParticipants: 100,
-  status: 'Pending'
-},
-{
-  id: 4,
-  title: 'Mangrove Nursery Setup',
-  organizer: 'Pedro Reyes',
-  initials: 'PR',
-  date: 'Mar 18, 2025',
-  location: 'Sinunuc Coastal Area',
-  category: 'Planting',
-  description:
-  'Setting up a community mangrove nursery to propagate seedlings for future planting activities along the Sinunuc coastline.',
-  maxParticipants: 25,
-  status: 'Pending'
-},
-{
-  id: 5,
-  title: 'Eco-Art Workshop for Kids',
-  organizer: 'Ana Garcia',
-  initials: 'AG',
-  date: 'Mar 25, 2025',
-  location: 'Zamboanga City Library',
-  category: 'Workshop',
-  description:
-  'A creative workshop where children create art from recycled materials, learning about environmental conservation through creativity.',
-  maxParticipants: 40,
-  status: 'Pending'
-}];
+  {
+    id: 1,
+    title: 'Coral Reef Survey 2025',
+    organizer: 'Roberto Lim',
+    initials: 'RL',
+    date: 'Feb 20, 2025',
+    location: 'Sta. Cruz Island Reef',
+    category: 'Research',
+    description:
+      'A comprehensive survey of coral reef health around Sta. Cruz Island. Volunteers will assist marine biologists in documenting coral species, measuring water quality, and identifying areas of concern.',
+    maxParticipants: 20,
+    status: 'Pending'
+  },
+  {
+    id: 2,
+    title: 'Wetland Bird Watching Day',
+    organizer: 'Elena Tan',
+    initials: 'ET',
+    date: 'Mar 5, 2025',
+    location: 'Zamboanga Wetlands',
+    category: 'Awareness',
+    description:
+      'An educational bird watching event at the Zamboanga wetlands. Participants will learn about local bird species, their habitats, and the importance of wetland conservation.',
+    maxParticipants: 30,
+    status: 'Pending'
+  },
+  {
+    id: 3,
+    title: 'School Recycling Drive',
+    organizer: 'Maria Santos',
+    initials: 'MS',
+    date: 'Mar 12, 2025',
+    location: 'Zamboanga National High School',
+    category: 'Cleanup',
+    description:
+      'A recycling awareness and collection drive targeting schools in the Zamboanga area. Students will learn about proper waste segregation and recycling practices.',
+    maxParticipants: 100,
+    status: 'Pending'
+  },
+  {
+    id: 4,
+    title: 'Mangrove Nursery Setup',
+    organizer: 'Pedro Reyes',
+    initials: 'PR',
+    date: 'Mar 18, 2025',
+    location: 'Sinunuc Coastal Area',
+    category: 'Planting',
+    description:
+      'Setting up a community mangrove nursery to propagate seedlings for future planting activities along the Sinunuc coastline.',
+    maxParticipants: 25,
+    status: 'Pending'
+  },
+  {
+    id: 5,
+    title: 'Eco-Art Workshop for Kids',
+    organizer: 'Ana Garcia',
+    initials: 'AG',
+    date: 'Mar 25, 2025',
+    location: 'Zamboanga City Library',
+    category: 'Workshop',
+    description:
+      'A creative workshop where children create art from recycled materials, learning about environmental conservation through creativity.',
+    maxParticipants: 40,
+    status: 'Pending'
+  }];
 
 const categoryBadge: Record<string, string> = {
   Research: 'bg-cyan-50 text-cyan-700',
@@ -136,14 +140,14 @@ export function EventApprovalsPage() {
   const rejected = events.filter((e) => e.status === 'Rejected').length;
   const handleAction = (id: number, action: EventStatus) => {
     setEvents((prev) =>
-    prev.map((e) =>
-    e.id === id ?
-    {
-      ...e,
-      status: action
-    } :
-    e
-    )
+      prev.map((e) =>
+        e.id === id ?
+          {
+            ...e,
+            status: action
+          } :
+          e
+      )
     );
     setDialogOpen(false);
   };
@@ -158,55 +162,61 @@ export function EventApprovalsPage() {
         y: 0
       }}
       className="space-y-6">
-      
-      <div>
-        <h1 className="font-heading font-semibold text-2xl text-foreground">
-          Event Approvals
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Review and approve submitted events.
-        </p>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-heading font-bold text-2xl text-foreground tracking-tight">
+            Event Approvals
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 font-medium">
+            Review and manage submitted event requests.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 rounded-2xl border border-primary/10">
+          <ClipboardCheck className="w-5 h-5 text-primary" />
+          <span className="text-sm font-bold text-primary tracking-tight">{pending} Pending Requests</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         {[
-        {
-          label: 'Pending',
-          value: pending,
-          color: 'bg-amber-50 text-amber-600',
-          icon: ClipboardCheck
-        },
-        {
-          label: 'Approved Today',
-          value: approved,
-          color: 'bg-green-50 text-green-600',
-          icon: CheckCircle
-        },
-        {
-          label: 'Rejected',
-          value: rejected,
-          color: 'bg-red-50 text-red-600',
-          icon: XCircle
-        }].
-        map((s) =>
-        <Card key={s.label} className="rounded-2xl shadow-sm border">
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{s.label}</p>
-                  <p className="text-2xl font-heading font-semibold text-foreground mt-1">
-                    {s.value}
-                  </p>
+          {
+            label: 'Pending',
+            value: pending,
+            color: 'bg-amber-50 text-amber-600',
+            icon: ClipboardCheck
+          },
+          {
+            label: 'Approved Today',
+            value: approved,
+            color: 'bg-green-50 text-green-600',
+            icon: CheckCircle
+          },
+          {
+            label: 'Rejected',
+            value: rejected,
+            color: 'bg-red-50 text-red-600',
+            icon: XCircle
+          }].
+          map((s) =>
+            <Card key={s.label} className="rounded-2xl shadow-sm border">
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{s.label}</p>
+                    <p className="text-2xl font-heading font-semibold text-foreground mt-1">
+                      {s.value}
+                    </p>
+                  </div>
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.color}`}>
+
+                    <s.icon className="w-5 h-5" />
+                  </div>
                 </div>
-                <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.color}`}>
-                
-                  <s.icon className="w-5 h-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          )}
       </div>
 
       <Card className="rounded-2xl shadow-sm border">
@@ -231,7 +241,7 @@ export function EventApprovalsPage() {
               </TableHeader>
               <TableBody>
                 {events.map((e) =>
-                <TableRow key={e.id}>
+                  <TableRow key={e.id}>
                     <TableCell className="font-medium">{e.title}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -253,53 +263,53 @@ export function EventApprovalsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                      variant="outline"
-                      className={`text-xs border-0 ${categoryBadge[e.category] || ''}`}>
-                      
+                        variant="outline"
+                        className={`text-xs border-0 ${categoryBadge[e.category] || ''}`}>
+
                         {e.category}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
-                      variant="outline"
-                      className={`text-xs border-0 ${statusBadge[e.status]}`}>
-                      
+                        variant="outline"
+                        className={`text-xs border-0 ${statusBadge[e.status]}`}>
+
                         {e.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-8 h-8"
-                        onClick={() => {
-                          setSelectedEvent(e);
-                          setDialogOpen(true);
-                        }}>
-                        
+                          variant="ghost"
+                          size="icon"
+                          className="w-8 h-8"
+                          onClick={() => {
+                            setSelectedEvent(e);
+                            setDialogOpen(true);
+                          }}>
+
                           <Eye className="w-4 h-4" />
                         </Button>
                         {e.status === 'Pending' &&
-                      <>
+                          <>
                             <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-8 h-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={() => handleAction(e.id, 'Approved')}>
-                          
+                              variant="ghost"
+                              size="icon"
+                              className="w-8 h-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => handleAction(e.id, 'Approved')}>
+
                               <CheckCircle className="w-4 h-4" />
                             </Button>
                             <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-8 h-8 text-red-500 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => handleAction(e.id, 'Rejected')}>
-                          
+                              variant="ghost"
+                              size="icon"
+                              className="w-8 h-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => handleAction(e.id, 'Rejected')}>
+
                               <XCircle className="w-4 h-4" />
                             </Button>
                           </>
-                      }
+                        }
                       </div>
                     </TableCell>
                   </TableRow>
@@ -312,7 +322,7 @@ export function EventApprovalsPage() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         {selectedEvent &&
-        <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="font-heading">
                 {selectedEvent.title}
@@ -344,29 +354,29 @@ export function EventApprovalsPage() {
                 </div>
               </div>
               <Badge
-              variant="outline"
-              className={`text-xs border-0 ${statusBadge[selectedEvent.status]}`}>
-              
+                variant="outline"
+                className={`text-xs border-0 ${statusBadge[selectedEvent.status]}`}>
+
                 {selectedEvent.status}
               </Badge>
             </div>
             {selectedEvent.status === 'Pending' &&
-          <DialogFooter>
+              <DialogFooter>
                 <Button
-              variant="outline"
-              className="text-red-600 border-red-200 hover:bg-red-50"
-              onClick={() => handleAction(selectedEvent.id, 'Rejected')}>
-              
+                  variant="outline"
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => handleAction(selectedEvent.id, 'Rejected')}>
+
                   Reject
                 </Button>
                 <Button
-              className="bg-primary hover:bg-primary/90"
-              onClick={() => handleAction(selectedEvent.id, 'Approved')}>
-              
+                  className="bg-primary hover:bg-primary/90"
+                  onClick={() => handleAction(selectedEvent.id, 'Approved')}>
+
                   Approve Event
                 </Button>
               </DialogFooter>
-          }
+            }
           </DialogContent>
         }
       </Dialog>

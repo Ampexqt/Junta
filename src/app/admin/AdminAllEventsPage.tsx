@@ -5,17 +5,17 @@ import {
   CardContent,
   CardHeader,
   CardTitle } from
-'../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
-import { Input } from '../../components/ui/input';
+'@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue } from
-'../../components/ui/select';
+'@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -23,7 +23,7 @@ import {
   TableHead,
   TableHeader,
   TableRow } from
-'../../components/ui/table';
+'@/components/ui/table';
 import { Search } from 'lucide-react';
 const allEvents = [
 {

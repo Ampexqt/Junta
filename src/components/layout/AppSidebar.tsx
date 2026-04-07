@@ -233,7 +233,7 @@ export function AppSidebar() {
         .toUpperCase()
 
     return (
-        <Sidebar collapsible="icon" className="bg-white border-r !bg-white">
+        <Sidebar collapsible="icon" variant="inset" className="border-r-0">
             <SidebarHeader className="h-16 px-4 flex-row items-center border-b justify-between group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
                 <Link to="/" className="flex items-center gap-3 overflow-hidden">
                     <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-primary-foreground/10 group-data-[collapsible=icon]:mr-0">

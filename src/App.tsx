@@ -19,52 +19,57 @@ import { UserVerificationPage } from './app/admin/UserVerificationPage';
 import { OrganizerRequestsPage } from './app/admin/OrganizerRequestsPage';
 import { AdminAllEventsPage } from './app/admin/AdminAllEventsPage';
 import { AdminUsersPage } from './app/admin/AdminUsersPage';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { Toaster } from '@/components/ui/sonner';
 
 export function App() {
   return (
     <AuthProvider>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true
-        }}>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/app" element={<AppLayout />}>
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="events" element={<EventsPage />} />
-            <Route path="events/:id" element={<EventDetailsPage />} />
-            <Route path="map" element={<MapViewPage />} />
-            <Route path="schedule" element={<SchedulePage />} />
-            <Route path="participation" element={<MyParticipationPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            {/* Organizer routes */}
-            <Route
-              path="organizer/my-events"
-              element={<OrganizerMyEventsPage />} />
+      <TooltipProvider>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true
+          }}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/app" element={<AppLayout />}>
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="events" element={<EventsPage />} />
+              <Route path="events/:id" element={<EventDetailsPage />} />
+              <Route path="map" element={<MapViewPage />} />
+              <Route path="schedule" element={<SchedulePage />} />
+              <Route path="participation" element={<MyParticipationPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              {/* Organizer routes */}
+              <Route
+                path="organizer/my-events"
+                element={<OrganizerMyEventsPage />} />
 
-            <Route
-              path="organizer/submissions"
-              element={<EventSubmissionsPage />} />
+              <Route
+                path="organizer/submissions"
+                element={<EventSubmissionsPage />} />
 
-            {/* Admin routes */}
-            <Route path="admin/approvals" element={<EventApprovalsPage />} />
-            <Route
-              path="admin/verification"
-              element={<UserVerificationPage />} />
+              {/* Admin routes */}
+              <Route path="admin/approvals" element={<EventApprovalsPage />} />
+              <Route
+                path="admin/verification"
+                element={<UserVerificationPage />} />
 
-            <Route
-              path="admin/organizer-requests"
-              element={<OrganizerRequestsPage />} />
+              <Route
+                path="admin/organizer-requests"
+                element={<OrganizerRequestsPage />} />
 
-            <Route path="admin/all-events" element={<AdminAllEventsPage />} />
-            <Route path="admin/users" element={<AdminUsersPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+              <Route path="admin/all-events" element={<AdminAllEventsPage />} />
+              <Route path="admin/users" element={<AdminUsersPage />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+        <Toaster position="top-right" />
+      </TooltipProvider>
     </AuthProvider>);
 
 }

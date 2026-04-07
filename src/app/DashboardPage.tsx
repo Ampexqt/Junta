@@ -8,9 +8,9 @@ import {
   CardHeader,
   CardTitle
 } from
-  '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
+  '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow
 } from
-  '../components/ui/table';
+  '@/components/ui/table';
 import {
   CalendarDays,
   Users,
@@ -56,38 +56,35 @@ function StatCard({
   value,
   trend,
   color
-
-
-
-
-
-
 }: { icon: any; label: string; value: string; trend?: string; color: string; }) {
   return (
-    <Card className="rounded-2xl shadow-sm border">
+    <Card className="rounded-2xl shadow-sm border border-border/50 bg-white hover:shadow-md transition-all duration-300 group overflow-hidden relative">
+      <div className={`absolute top-0 left-0 w-1 h-full ${color.split(' ')[1]}`} />
       <CardContent className="pt-6">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="text-2xl font-heading font-semibold text-foreground mt-1">
+            <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider">{label}</p>
+            <p className="text-2xl font-heading font-bold text-foreground mt-1 group-hover:text-primary transition-colors">
               {value}
             </p>
             {trend &&
-              <p className="text-xs text-primary mt-1 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                {trend}
-              </p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <div className="flex items-center justify-center w-4 h-4 rounded-full bg-primary/10">
+                  <TrendingUp className="w-2.5 h-2.5 text-primary" />
+                </div>
+                <span className="text-[10px] font-bold text-primary tracking-tight">
+                  {trend}
+                </span>
+              </div>
             }
           </div>
           <div
-            className={`w-11 h-11 rounded-xl flex items-center justify-center ${color}`}>
-
-            <Icon className="w-5 h-5" />
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 duration-300 ${color}`}>
+            <Icon className="w-6 h-6" />
           </div>
         </div>
       </CardContent>
     </Card>);
-
 }
 function ParticipantDashboard() {
   const navigate = useNavigate();
@@ -497,24 +494,26 @@ function AdminDashboard() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <Card className="rounded-2xl shadow-sm border">
-          <CardHeader>
-            <CardTitle className="font-heading text-lg">
+        <Card className="rounded-2xl shadow-sm border border-border/50 bg-white">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-heading font-bold text-lg flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
               Recent Activity
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {activities.map((a, i) =>
               <div
                 key={i}
-                className="flex items-start gap-3 p-3 rounded-xl bg-muted/50">
+                className="flex items-start gap-4 p-4 rounded-2xl bg-muted/30 hover:bg-muted/50 transition-colors group">
 
-                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <a.icon className="w-4 h-4 text-primary" />
+                <div className="w-11 h-11 rounded-xl bg-white border border-border/50 flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-105">
+                  <a.icon className="w-5 h-5 text-primary" />
                 </div>
-                <div>
-                  <p className="text-sm text-foreground">{a.text}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground leading-tight">{a.text}</p>
+                  <p className="text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" />
                     {a.time}
                   </p>
                 </div>
@@ -523,40 +522,50 @@ function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl shadow-sm border">
-          <CardHeader>
-            <CardTitle className="font-heading text-lg">
+        <Card className="rounded-2xl shadow-sm border border-border/50 bg-white">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-heading font-bold text-lg flex items-center gap-2">
+              <Plus className="w-5 h-5 text-primary" />
               Quick Actions
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button
               variant="outline"
-              className="w-full justify-start h-12"
+              className="w-full justify-start h-14 rounded-2xl border-border/50 hover:bg-primary/5 hover:border-primary/20 transition-all hover:translate-x-1 group"
               onClick={() => navigate('/app/admin/verification')}>
 
-              <UserCheck className="w-4 h-4 mr-3" /> Review User Verifications{' '}
-              <Badge className="ml-auto bg-amber-100 text-amber-700 border-0">
+              <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center mr-3 group-hover:bg-amber-100 transition-colors">
+                <UserCheck className="w-4 h-4 text-amber-600" />
+              </div>
+              <span className="font-semibold text-sm">Review User Verifications</span>
+              <Badge className="ml-auto bg-amber-500 text-white border-0 font-bold shadow-sm shadow-amber-200">
                 5
               </Badge>
             </Button>
             <Button
               variant="outline"
-              className="w-full justify-start h-12"
+              className="w-full justify-start h-14 rounded-2xl border-border/50 hover:bg-primary/5 hover:border-primary/20 transition-all hover:translate-x-1 group"
               onClick={() => navigate('/app/admin/approvals')}>
 
-              <CalendarDays className="w-4 h-4 mr-3" /> Approve Pending Events{' '}
-              <Badge className="ml-auto bg-blue-100 text-blue-700 border-0">
+              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center mr-3 group-hover:bg-blue-100 transition-colors">
+                <CalendarDays className="w-4 h-4 text-blue-600" />
+              </div>
+              <span className="font-semibold text-sm">Approve Pending Events</span>
+              <Badge className="ml-auto bg-blue-500 text-white border-0 font-bold shadow-sm shadow-blue-200">
                 3
               </Badge>
             </Button>
             <Button
               variant="outline"
-              className="w-full justify-start h-12"
+              className="w-full justify-start h-14 rounded-2xl border-border/50 hover:bg-primary/5 hover:border-primary/20 transition-all hover:translate-x-1 group"
               onClick={() => navigate('/app/admin/organizer-requests')}>
 
-              <Shield className="w-4 h-4 mr-3" /> Review Organizer Requests{' '}
-              <Badge className="ml-auto bg-purple-100 text-purple-700 border-0">
+              <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center mr-3 group-hover:bg-purple-100 transition-colors">
+                <Shield className="w-4 h-4 text-purple-600" />
+              </div>
+              <span className="font-semibold text-sm">Review Organizer Requests</span>
+              <Badge className="ml-auto bg-purple-500 text-white border-0 font-bold shadow-sm shadow-purple-200">
                 2
               </Badge>
             </Button>

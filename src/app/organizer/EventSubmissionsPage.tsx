@@ -7,9 +7,9 @@ import {
   CardHeader,
   CardTitle
 } from
-  '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
+  '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow
 } from
-  '../../components/ui/table';
+  '@/components/ui/table';
 import { FileCheck, CheckCircle, Clock, XCircle, Eye, Edit } from 'lucide-react';
 type SubmissionStatus = 'Pending' | 'Approved' | 'Rejected';
 const submissions = [
