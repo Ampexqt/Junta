@@ -82,8 +82,8 @@ export function RegisterPage() {
 
   const handleComplete = () => {
     if (!agreedPrivacy) {
-      toast('Agreement Required', {
-        description: 'You must agree to the Data Privacy Act to proceed.',
+      toast('Agree to the Data Privacy Act to proceed.', {
+        icon: <Info className="w-4 h-4 text-primary" />,
         duration: 3000,
         id: "privacy-agreement-toast"
       });
