@@ -51,7 +51,7 @@ function Navbar() {
   const links = ['Features', 'How It Works', 'Events', 'Map', 'Contact'];
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-black/50 backdrop-blur-xl border-b border-primary/5 shadow-[0_10px_40px_rgba(31,122,99,0.06)] transition-all duration-500">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 h-18 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 h-20 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 group">
           <div className="w-9 h-9 bg-gradient-to-br from-primary to-[#06241d] rounded-xl flex items-center justify-center shadow-lg shadow-primary/25 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
             <Leaf className="w-5 h-5 text-white" />
@@ -138,7 +138,7 @@ function Navbar() {
 function HeroSection() {
   const navigate = useNavigate();
   return (
-    <section className="relative flex min-h-[750px] w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-primary/[0.03] via-background to-transparent px-4 py-20 md:py-32">
+    <section className="relative flex min-h-[750px] w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-primary/[0.03] via-background to-transparent px-4 pt-32 pb-24 md:pt-30 md:pb-40">
       {/* Background Pattern - Light Rings */}
       <div
         className="absolute inset-0 z-0 opacity-[0.1] pointer-events-none select-none"
