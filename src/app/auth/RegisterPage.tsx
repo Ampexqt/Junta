@@ -38,7 +38,9 @@ import {
   RefreshCw,
   X,
   Check,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ChevronDown,
+  Search
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -48,6 +50,20 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandItem,
+  CommandEmpty,
+  CommandGroup
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
+import { cn } from '@/components/ui/utils';
 import { useAuth } from '../../features/auth/AuthContext';
 import type { UserRole } from '../../features/auth/AuthContext';
 
@@ -59,18 +75,20 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole>('participant');
-  const [form, setForm] = useState({
+  const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     suffix: '',
     phone: '+63',
     email: '',
     password: '',
-    orgName: ''
+    orgName: '',
+    barangay: ''
   });
   const [idUploaded, setIdUploaded] = useState(false);
   const [selfieUploaded, setSelfieUploaded] = useState(false);
   const [kycMode, setKycMode] = useState<'none' | 'id' | 'selfie'>('none');
+  const [openBarangay, setOpenBarangay] = useState(false);
   const [idPreview, setIdPreview] = useState<string | null>(null);
   const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
 
@@ -104,8 +122,8 @@ export function RegisterPage() {
       return;
     }
     setRole(selectedRole);
-    const suffixValue = form.suffix && form.suffix !== 'none' ? ` ${form.suffix}` : '';
-    const fullName = `${form.firstName} ${form.lastName}${suffixValue}`;
+    const suffixValue = formData.suffix && formData.suffix !== 'none' ? ` ${formData.suffix}` : '';
+    const fullName = `${formData.firstName} ${formData.lastName}${suffixValue}`;
     if (fullName.trim()) setUserName(fullName.trim());
     navigate('/app/dashboard');
   };
@@ -122,6 +140,66 @@ export function RegisterPage() {
   };
 
   const inputClass = "h-9 rounded-lg border-gray-200 bg-white text-sm focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary";
+
+  const barangays = [
+    "Arena Blanco", "Ayala", "Baliwasan", "Baluno", "Boalan", "Bolong", "Buenavista", "Bunguiao", "Busay", "Cabaluay", "Cabatangan", "Cacao", "Calabasa", "Calarian", "Camino Nuevo", "Campo Islam", "Canelar", "Capisan", "Cawit", "Culianan", "Curuan", "Dita", "Divisoria", "Dulian (Upper Bunguiao)", "Guisao", "Guiwan", "Kasanyangan", "La Paz", "Labuan", "Lamisahan", "Landang Gua", "Landang Laum", "Lanzones", "Lapakan", "Latuan", "Licomo", "Limaong", "Limpapa", "Lubigan", "Lumayang", "Lumbangan", "Lunzuran", "Maasin", "Malagutay", "Mampang", "Manalipa", "Mangusu", "Manicahan", "Mariki", "Mercedes", "Muti", "Pamucutan", "Pangapuyan", "Panubigan", "Pasilmanta", "Pasobolong", "Pasonanca", "Patalon", "Putik", "Quiniput", "Recodo", "Rio Hondo", "Salaan", "San Jose Cawa‑Cawa", "San Jose Gusu", "San Ramon", "San Roque", "Sangali", "Santa Barbara", "Santa Catalina", "Santa Maria", "Santo Niño", "Tagasilay", "Taguiti", "Talabaan", "Talisayan", "Talon‑Talon", "Taluksangay", "Tetuan", "Tictapul", "Tigbalabag", "Tigtabon", "Tolosa", "Tugbungan", "Tulungatung", "Tumaga", "Tumalutab", "Tumitus", "Victoria", "Vitali", "Zambowood", "Zone I", "Zone II", "Zone III", "Zone IV"
+  ];
+
+  const handleStep2Continue = () => {
+    const { firstName, lastName, email, password, phone, barangay, orgName } = formData;
+
+    if (!firstName.trim() || !lastName.trim()) {
+      toast('Name Required', {
+        description: 'Please enter your first and last name.',
+        icon: <Info className="size-4 text-primary" />
+      });
+      return;
+    }
+
+    if (!barangay) {
+      toast('Barangay Required', {
+        description: 'Please select your barangay.',
+        icon: <Info className="size-4 text-primary" />
+      });
+      return;
+    }
+
+    if (phone.length < 16) {
+      toast('Invalid Phone', {
+        description: 'Please enter a valid 10-digit phone number.',
+        icon: <Info className="size-4 text-primary" />
+      });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim() || !emailRegex.test(email)) {
+      toast('Invalid Email', {
+        description: 'Please enter a valid email address.',
+        icon: <Info className="size-4 text-primary" />
+      });
+      return;
+    }
+
+    const isPassValid = password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
+    if (!isPassValid) {
+      toast('Weak Password', {
+        description: 'Password must meet all security requirements.',
+        icon: <Info className="size-4 text-primary" />
+      });
+      return;
+    }
+
+    if (selectedRole === 'organizer' && !orgName.trim()) {
+      toast('Organization Required', {
+        description: 'Please enter your organization name.',
+        icon: <Info className="size-4 text-primary" />
+      });
+      return;
+    }
+
+    setStep(3);
+  };
 
   const startCamera = async () => {
     try {
@@ -178,7 +256,8 @@ export function RegisterPage() {
   };
 
   useEffect(() => {
-    if (kycMode !== 'none' && !idPreview && !selfiePreview) {
+    const currentPreview = kycMode === 'id' ? idPreview : selfiePreview;
+    if (kycMode !== 'none' && !currentPreview) {
       startCamera();
     }
     return () => stopCamera();
@@ -326,29 +405,29 @@ export function RegisterPage() {
                   className="space-y-2.5"
                 >
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-gray-600">Full Name</Label>
+                    <Label className="text-xs font-semibold text-gray-600">Full Name <span className="text-red-500">*</span></Label>
                     <div className="grid grid-cols-12 gap-1.5">
                       <div className="col-span-5 relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                         <Input
                           placeholder="First Name"
-                          value={form.firstName}
+                          value={formData.firstName}
                           maxLength={30}
-                          onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                          onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                           className={`pl-9 ${inputClass}`}
                         />
                       </div>
                       <div className="col-span-4">
                         <Input
                           placeholder="Last Name"
-                          value={form.lastName}
+                          value={formData.lastName}
                           maxLength={30}
-                          onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                          onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                           className={inputClass}
                         />
                       </div>
                       <div className="col-span-3">
-                        <Select value={form.suffix} onValueChange={(val) => setForm({ ...form, suffix: val })}>
+                        <Select value={formData.suffix} onValueChange={(val) => setFormData({ ...formData, suffix: val })}>
                           <SelectTrigger className="w-full h-9 rounded-lg border-gray-200 text-sm">
                             <SelectValue placeholder="Suffix" />
                           </SelectTrigger>
@@ -365,33 +444,95 @@ export function RegisterPage() {
                     </div>
                   </div>
 
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-gray-500 ml-1">Barangay <span className="text-red-500">*</span></Label>
+                    <Popover open={openBarangay} onOpenChange={setOpenBarangay}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={openBarangay}
+                          className={cn(
+                            "w-full justify-between h-9 rounded-lg border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-none hover:bg-white focus:ring-1 focus:ring-primary/30",
+                            !formData.barangay && "text-gray-400"
+                          )}
+                        >
+                          <span className="truncate">
+                            {formData.barangay || "Select barangay..."}
+                          </span>
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-xl overflow-hidden border-gray-200/50 shadow-2xl backdrop-blur-md" align="start">
+                        <Command className="w-full border-none">
+                          <div className="flex items-center border-b border-gray-100 px-3">
+                            <Search className="w-3.5 h-3.5 text-gray-400 mr-2" />
+                            <CommandInput
+                              placeholder="Search barangay..."
+                              className="h-10 w-full bg-transparent border-none focus:ring-0 text-sm py-3 outline-none"
+                            />
+                          </div>
+                          <CommandList className="max-h-[240px] w-full p-1 overflow-y-auto no-scrollbar">
+                            <CommandEmpty className="py-6 text-sm text-gray-400">No barangay found.</CommandEmpty>
+                            <CommandGroup>
+                              {barangays.map((b) => (
+                                <CommandItem
+                                  key={b}
+                                  value={b}
+                                  onSelect={(val) => {
+                                    setFormData({ ...formData, barangay: val });
+                                    setOpenBarangay(false);
+                                  }}
+                                  className="text-sm py-2 px-3 rounded-md transition-all aria-selected:bg-primary/5 aria-selected:text-primary flex items-center justify-between cursor-pointer hover:bg-gray-50 group"
+                                >
+                                  <span className="flex items-center">
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-3.5 w-3.5 text-primary transition-all",
+                                        formData.barangay === b ? "opacity-100 scale-100" : "opacity-0 scale-50"
+                                      )}
+                                    />
+                                    {b}
+                                  </span>
+                                  {formData.barangay === b && (
+                                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                  )}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2.5">
                     <div className="space-y-1">
-                      <Label htmlFor="reg-phone" className="text-xs font-semibold text-gray-600">Phone Number</Label>
+                      <Label htmlFor="reg-phone" className="text-xs font-semibold text-gray-600">Phone Number <span className="text-red-500">*</span></Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                         <Input
                           id="reg-phone"
                           type="tel"
                           placeholder="+63 9XX XXX XXXX"
-                          value={form.phone}
-                          onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })}
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })}
                           className={`pl-9 ${inputClass}`}
                           maxLength={16}
                         />
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="reg-email" className="text-xs font-semibold text-gray-600">Email</Label>
+                      <Label htmlFor="reg-email" className="text-xs font-semibold text-gray-600">Email <span className="text-red-500">*</span></Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                         <Input
                           id="reg-email"
                           type="email"
                           placeholder="you@example.com"
-                          value={form.email}
+                          value={formData.email}
                           maxLength={50}
-                          onChange={(e) => setForm({ ...form, email: e.target.value })}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           className={`pl-9 ${inputClass}`}
                         />
                       </div>
@@ -399,18 +540,18 @@ export function RegisterPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="reg-pass" className="text-xs font-semibold text-gray-600">Password</Label>
+                    <Label htmlFor="reg-pass" className="text-xs font-semibold text-gray-600">Password <span className="text-red-500">*</span></Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                       <Input
                         id="reg-pass"
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Create a password"
-                        value={form.password}
+                        value={formData.password}
                         maxLength={32}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
-                          setForm({ ...form, password: val });
+                          setFormData({ ...formData, password: val });
                         }}
                         className={`pl-9 pr-9 ${inputClass}`}
                       />
@@ -430,13 +571,13 @@ export function RegisterPage() {
                       animate={{ opacity: 1, height: 'auto' }}
                       className="space-y-1"
                     >
-                      <Label className="text-xs font-semibold text-gray-600">Organization</Label>
+                      <Label className="text-xs font-semibold text-gray-600">Organization <span className="text-red-500">*</span></Label>
                       <div className="relative">
                         <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                         <Input
                           placeholder="Organization Name"
-                          value={form.orgName}
-                          onChange={(e) => setForm({ ...form, orgName: e.target.value })}
+                          value={formData.orgName}
+                          onChange={(e) => setFormData({ ...formData, orgName: e.target.value })}
                           className={`pl-9 ${inputClass}`}
                         />
                       </div>
@@ -453,9 +594,9 @@ export function RegisterPage() {
                     </div>
                     <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide">
                       {[
-                        { label: '8+ chars', met: form.password.length >= 8 },
-                        { label: '1 Uppercase', met: /[A-Z]/.test(form.password) },
-                        { label: 'Numbers', met: /[0-9]/.test(form.password) },
+                        { label: '8+ chars', met: formData.password.length >= 8 },
+                        { label: '1 Uppercase', met: /[A-Z]/.test(formData.password) },
+                        { label: 'Numbers', met: /[0-9]/.test(formData.password) },
                       ].map((req, i) => (
                         <div key={i} className="flex items-center gap-1 whitespace-nowrap">
                           <div className={`w-1.5 h-1.5 rounded-full transition-colors ${req.met ? 'bg-primary' : 'bg-gray-200'}`} />
@@ -477,7 +618,7 @@ export function RegisterPage() {
                     </Button>
                     <Button
                       className="flex-1 bg-primary hover:bg-primary-hover h-9 rounded-lg text-sm font-semibold shadow-none"
-                      onClick={() => setStep(3)}
+                      onClick={handleStep2Continue}
                     >
                       Continue <ArrowRight className="ml-2 w-4 h-4" />
                     </Button>
@@ -503,7 +644,7 @@ export function RegisterPage() {
                   </div>
                   <p className="text-center text-sm text-gray-500">
                     We sent a 6-digit code to{' '}
-                    <span className="font-semibold text-gray-700">{form.email || 'your email'}</span>
+                    <span className="font-semibold text-gray-700">{formData.email || 'your email'}</span>
                   </p>
                   <div className="flex justify-center">
                     <InputOTP maxLength={6} value={otp} onChange={setOtp}>
@@ -602,14 +743,14 @@ export function RegisterPage() {
                       className="bg-gray-900 rounded-xl overflow-hidden relative"
                     >
                       <div className="aspect-video relative bg-black flex items-center justify-center min-h-[220px]">
-                        {!idPreview && !selfiePreview && kycMode === 'id' && (
+                        {!idPreview && kycMode === 'id' && (
                           <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
                             <div className="w-[80%] h-[60%] border-2 border-dashed border-primary/60 rounded-lg flex items-center justify-center">
                               <span className="bg-primary/80 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Align ID Here</span>
                             </div>
                           </div>
                         )}
-                        {!idPreview && !selfiePreview && kycMode === 'selfie' && (
+                        {!selfiePreview && kycMode === 'selfie' && (
                           <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
                             <div className="w-[180px] h-[180px] border-2 border-dashed border-primary/60 rounded-full flex flex-col items-center justify-center">
                               <span className="bg-primary/80 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider mb-2">Align Face</span>
@@ -635,8 +776,7 @@ export function RegisterPage() {
                         <button
                           onClick={() => {
                             setKycMode('none');
-                            setIdPreview(null);
-                            setSelfiePreview(null);
+                            stopCamera();
                           }}
                           className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors z-20"
                         >
@@ -644,7 +784,7 @@ export function RegisterPage() {
                         </button>
 
                         <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center gap-3 px-4">
-                          {!(idPreview || selfiePreview) ? (
+                          {!((kycMode === 'id' && idPreview) || (kycMode === 'selfie' && selfiePreview)) ? (
                             <>
                               <Button
                                 size="sm"
