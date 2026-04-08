@@ -20,7 +20,7 @@ import { OrganizerRequestsPage } from './app/admin/OrganizerRequestsPage';
 import { AdminAllEventsPage } from './app/admin/AdminAllEventsPage';
 import { AdminUsersPage } from './app/admin/AdminUsersPage';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Toaster } from '@/components/ui/sonner';
+import { Toaster } from 'sileo';
 
 export function App() {
   return (
@@ -71,5 +71,4 @@ export function App() {
         <Toaster position="top-right" />
       </TooltipProvider>
     </AuthProvider>);
-
 }
