@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
+import { sileo } from 'sileo';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -114,10 +114,10 @@ export function RegisterPage() {
 
   const handleComplete = () => {
     if (!agreedPrivacy) {
-      toast('Agree to the Data Privacy Act to proceed.', {
-        icon: <Info className="w-4 h-4 text-primary" />,
-        duration: 3000,
-        id: "privacy-agreement-toast"
+      sileo.info({
+        title: 'Agreement Required',
+        description: 'Agree to the Data Privacy Act to proceed.',
+        duration: 3000
       });
       return;
     }
@@ -149,51 +149,51 @@ export function RegisterPage() {
     const { firstName, lastName, email, password, phone, barangay, orgName } = formData;
 
     if (!firstName.trim() || !lastName.trim()) {
-      toast('Name Required', {
-        description: 'Please enter your first and last name.',
-        icon: <Info className="size-4 text-primary" />
+      sileo.error({
+        title: 'Name Required',
+        description: 'Please enter your first and last name.'
       });
       return;
     }
 
     if (!barangay) {
-      toast('Barangay Required', {
-        description: 'Please select your barangay.',
-        icon: <Info className="size-4 text-primary" />
+      sileo.error({
+        title: 'Barangay Required',
+        description: 'Please select your barangay.'
       });
       return;
     }
 
     if (phone.length < 16) {
-      toast('Invalid Phone', {
-        description: 'Please enter a valid 10-digit phone number.',
-        icon: <Info className="size-4 text-primary" />
+      sileo.error({
+        title: 'Invalid Phone',
+        description: 'Please enter a valid 10-digit phone number.'
       });
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim() || !emailRegex.test(email)) {
-      toast('Invalid Email', {
-        description: 'Please enter a valid email address.',
-        icon: <Info className="size-4 text-primary" />
+      sileo.error({
+        title: 'Invalid Email',
+        description: 'Please enter a valid email address.'
       });
       return;
     }
 
     const isPassValid = password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
     if (!isPassValid) {
-      toast('Weak Password', {
-        description: 'Password must meet all security requirements.',
-        icon: <Info className="size-4 text-primary" />
+      sileo.error({
+        title: 'Weak Password',
+        description: 'Password must meet all security requirements.'
       });
       return;
     }
 
     if (selectedRole === 'organizer' && !orgName.trim()) {
-      toast('Organization Required', {
-        description: 'Please enter your organization name.',
-        icon: <Info className="size-4 text-primary" />
+      sileo.error({
+        title: 'Organization Required',
+        description: 'Please enter your organization name.'
       });
       return;
     }
@@ -212,7 +212,8 @@ export function RegisterPage() {
       }
     } catch (err) {
       console.error('Camera access denied:', err);
-      toast.error('Camera Access Error', {
+      sileo.error({
+        title: 'Camera Access Error',
         description: 'Please enable camera permissions to continue verification.'
       });
     }
