@@ -132,12 +132,38 @@
   }
 }
 
-/* --- SONNER FIX (Direct override for visibility) --- */
-[data-sonner-toast] [data-description] {
-  color: #4a5568 !important;
-  /* text-gray-700-ish */
-  opacity: 1 !important;
-  font-weight: 500 !important;
+/* --- SILEO TOAST SYSTEM CUSTOMIZATION --- */
+:root {
+  --sileo-state-success: var(--success);
+  --sileo-state-error: var(--destructive);
+  --sileo-state-warning: var(--warning);
+  --sileo-state-info: var(--info);
+  --sileo-state-action: var(--primary);
+  
+  /* Refined typography for toasts */
+  --sileo-font-heading: 'Montserrat', sans-serif;
+  --sileo-font-body: 'Open Sans', sans-serif;
+}
+
+[data-sileo-title] {
+  font-family: var(--sileo-font-heading);
+  letter-spacing: -0.01em;
+}
+
+[data-sileo-description] {
+  font-family: var(--sileo-font-body);
+  color: var(--text-secondary) !important;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Ensure contrast in light/dark transitions */
+[data-sileo-viewport][data-theme="dark"] [data-sileo-description] {
+  color: oklch(0.9 0.02 160 / 80%) !important;
+}
+
+[data-sileo-viewport][data-theme="light"] [data-sileo-description] {
+  color: var(--text-secondary) !important;
 }
 
 @layer utilities {
