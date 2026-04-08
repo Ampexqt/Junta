@@ -1,7 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-// import { authRoutes } from './routes/auth';
+import { db } from './config/firebase-admin';
+
+import { authenticateUser, AuthRequest } from './middleware/auth';
+import { authRoutes } from './routes/auth';
 
 dotenv.config();
 
@@ -13,11 +16,21 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use('/api/auth', authRoutes);
+
+// Public Routes
 app.get('/', (req, res) => {
     res.send('Junta Backend API is running...');
 });
 
-// app.use('/api/auth', authRoutes);
+// Protected Route Example
+app.get('/api/me', authenticateUser, (req: AuthRequest, res) => {
+    // This will only run if the token is valid
+    res.json({
+        message: 'This is a protected route',
+        user: req.user
+    });
+});
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
