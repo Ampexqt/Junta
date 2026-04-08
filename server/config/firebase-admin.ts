@@ -2,15 +2,25 @@ import admin from 'firebase-admin';
 import dotenv from 'dotenv';
 // Example path: var serviceAccount = require("../serviceAccountKey.json");
 
+import path from 'path';
+
 dotenv.config();
 
-// Usually, you should use FIREBASE_SERVICE_ACCOUNT environment variable 
-// Or a serviceAccountKey.json file
+const serviceAccountPath = path.join(process.cwd(), 'serviceAccountKey.json');
+
 if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.applicationDefault() // Or pass your serviceAccount directly
-        // Or: credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT!))
-    });
+    try {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccountPath)
+        });
+        console.log('Firebase Admin initialized with service account file.');
+    } catch (error) {
+        console.error('Failed to initialize Firebase Admin:', error);
+        // Fallback or exit
+        admin.initializeApp({
+            credential: admin.credential.applicationDefault()
+        });
+    }
 }
 
 export const db = admin.firestore();
