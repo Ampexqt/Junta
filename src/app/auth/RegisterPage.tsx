@@ -58,14 +58,12 @@ import {
   CommandEmpty,
   CommandGroup
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/components/ui/utils';
 import { useAuth } from '../../features/auth/AuthContext';
 import type { UserRole } from '../../features/auth/AuthContext';
+import { API_BASE_URL } from '@/lib/api';
+import { AuthNavigation } from '@/components/auth/AuthNavigation';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -91,6 +89,9 @@ export function RegisterPage() {
   const [openBarangay, setOpenBarangay] = useState(false);
   const [idPreview, setIdPreview] = useState<string | null>(null);
   const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
+  const [isSendingOTP, setIsSendingOTP] = useState(false);
+  const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -112,7 +113,7 @@ export function RegisterPage() {
     exit: { x: -20, opacity: 0 }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (!agreedPrivacy) {
       sileo.info({
         title: 'Agreement Required',
@@ -121,11 +122,44 @@ export function RegisterPage() {
       });
       return;
     }
-    setRole(selectedRole);
-    const suffixValue = formData.suffix && formData.suffix !== 'none' ? ` ${formData.suffix}` : '';
-    const fullName = `${formData.firstName} ${formData.lastName}${suffixValue}`;
-    if (fullName.trim()) setUserName(fullName.trim());
-    navigate('/app/dashboard');
+
+    setIsCompleting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          role: selectedRole,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
+      }
+
+      // Success logic
+      setRole(selectedRole);
+      const suffixValue = formData.suffix && formData.suffix !== 'none' ? ` ${formData.suffix}` : '';
+      const fullName = `${formData.firstName} ${formData.lastName}${suffixValue}`;
+      if (fullName.trim()) setUserName(fullName.trim());
+
+      sileo.success({
+        title: 'Welcome to Junta!',
+        description: 'Your account has been created successfully.',
+      });
+
+      navigate('/app/dashboard');
+    } catch (error: any) {
+      sileo.error({
+        title: 'Registration Error',
+        description: error.message || 'Could not create account. Please try again.'
+      });
+    } finally {
+      setIsCompleting(false);
+    }
   };
 
   const formatPhone = (value: string) => {
@@ -139,66 +173,152 @@ export function RegisterPage() {
     return formatted;
   };
 
-  const inputClass = "h-9 rounded-lg border-gray-200 bg-white text-sm focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary";
+  const inputClass = "h-10 rounded-[12px] border-slate-200 bg-slate-50/30 text-[14px] focus-visible:ring-2 focus-visible:ring-primary/10 focus-visible:border-primary transition-all placeholder:text-slate-400";
 
   const barangays = [
     "Arena Blanco", "Ayala", "Baliwasan", "Baluno", "Boalan", "Bolong", "Buenavista", "Bunguiao", "Busay", "Cabaluay", "Cabatangan", "Cacao", "Calabasa", "Calarian", "Camino Nuevo", "Campo Islam", "Canelar", "Capisan", "Cawit", "Culianan", "Curuan", "Dita", "Divisoria", "Dulian (Upper Bunguiao)", "Guisao", "Guiwan", "Kasanyangan", "La Paz", "Labuan", "Lamisahan", "Landang Gua", "Landang Laum", "Lanzones", "Lapakan", "Latuan", "Licomo", "Limaong", "Limpapa", "Lubigan", "Lumayang", "Lumbangan", "Lunzuran", "Maasin", "Malagutay", "Mampang", "Manalipa", "Mangusu", "Manicahan", "Mariki", "Mercedes", "Muti", "Pamucutan", "Pangapuyan", "Panubigan", "Pasilmanta", "Pasobolong", "Pasonanca", "Patalon", "Putik", "Quiniput", "Recodo", "Rio Hondo", "Salaan", "San Jose Cawa‑Cawa", "San Jose Gusu", "San Ramon", "San Roque", "Sangali", "Santa Barbara", "Santa Catalina", "Santa Maria", "Santo Niño", "Tagasilay", "Taguiti", "Talabaan", "Talisayan", "Talon‑Talon", "Taluksangay", "Tetuan", "Tictapul", "Tigbalabag", "Tigtabon", "Tolosa", "Tugbungan", "Tulungatung", "Tumaga", "Tumalutab", "Tumitus", "Victoria", "Vitali", "Zambowood", "Zone I", "Zone II", "Zone III", "Zone IV"
   ];
 
-  const handleStep2Continue = () => {
+  const handleStep2Continue = async () => {
     const { firstName, lastName, email, password, phone, barangay, orgName } = formData;
 
+    // ... existing validation ...
     if (!firstName.trim() || !lastName.trim()) {
-      sileo.error({
-        title: 'Name Required',
-        description: 'Please enter your first and last name.'
-      });
+      sileo.error({ title: 'Name Required', description: 'Please enter your first and last name.' });
       return;
     }
-
     if (!barangay) {
-      sileo.error({
-        title: 'Barangay Required',
-        description: 'Please select your barangay.'
-      });
+      sileo.error({ title: 'Barangay Required', description: 'Please select your barangay.' });
       return;
     }
-
     if (phone.length < 16) {
-      sileo.error({
-        title: 'Invalid Phone',
-        description: 'Please enter a valid 10-digit phone number.'
-      });
+      sileo.error({ title: 'Invalid Phone', description: 'Please enter a valid 10-digit phone number.' });
       return;
     }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim() || !emailRegex.test(email)) {
-      sileo.error({
-        title: 'Invalid Email',
-        description: 'Please enter a valid email address.'
-      });
+      sileo.error({ title: 'Invalid Email', description: 'Please enter a valid email address.' });
       return;
     }
-
     const isPassValid = password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
     if (!isPassValid) {
-      sileo.error({
-        title: 'Weak Password',
-        description: 'Password must meet all security requirements.'
-      });
+      sileo.error({ title: 'Weak Password', description: 'Password must meet all security requirements.' });
       return;
     }
-
     if (selectedRole === 'organizer' && !orgName.trim()) {
+      sileo.error({ title: 'Organization Required', description: 'Please enter your organization name.' });
+      return;
+    }
+
+    setIsSendingOTP(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorMessage = data.error || 'Failed to send verification code';
+        const hint = data.hint ? `\n\n💡 Dev Hint: ${data.hint}` : '';
+        
+        // If it's the Resend restriction error, we allow them to proceed to Step 3 anyway
+        if (errorMessage.includes('testing emails') || data.hint) {
+          sileo.warning({
+            title: 'OTP Bypass Active',
+            description: `We couldn't send the email, but we've logged your verification code to the terminal. Grab it from there to continue!`,
+          });
+          setStep(3);
+          return;
+        }
+        
+        throw new Error(`${errorMessage}${hint}`);
+      }
+
+      sileo.success({
+        title: 'OTP Sent',
+        description: `A verification code has been sent to ${email}`,
+      });
+      setStep(3);
+    } catch (error: any) {
       sileo.error({
-        title: 'Organization Required',
-        description: 'Please enter your organization name.'
+        title: 'Network Error',
+        description: error.message || 'Check your internet connection and try again.'
+      });
+    } finally {
+      setIsSendingOTP(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (isSendingOTP) return;
+    
+    setIsSendingOTP(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to resend code');
+      }
+
+      sileo.success({
+        title: 'Code Resent',
+        description: 'A new verification code has been sent.',
+      });
+    } catch (error: any) {
+      sileo.error({
+        title: 'Resend Failed',
+        description: error.message || 'Could not resend code. Please try again later.'
+      });
+    } finally {
+      setIsSendingOTP(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (otp.length < 6) {
+      sileo.error({
+        title: 'Incomplete Code',
+        description: 'Please enter all 6 digits of the verification code.'
       });
       return;
     }
 
-    setStep(3);
+    setIsVerifyingOTP(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, otp }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Invalid verification code');
+      }
+
+      sileo.success({
+        title: 'Email Verified',
+        description: 'Your email has been successfully verified.',
+      });
+      setStep(4);
+    } catch (error: any) {
+      sileo.error({
+        title: 'Verification Failed',
+        description: error.message || 'The code you entered is incorrect or has expired.'
+      });
+    } finally {
+      setIsVerifyingOTP(false);
+    }
   };
 
   const startCamera = async () => {
@@ -265,16 +385,8 @@ export function RegisterPage() {
   }, [kycMode]);
 
   return (
-    <div className="min-h-screen w-full bg-[#f8f9fa] flex flex-col items-center justify-center px-4 py-6 relative">
-      <Link
-        to="/"
-        className="absolute top-5 left-5 z-50 flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-primary transition-colors group"
-      >
-        <div className="w-8 h-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center group-hover:border-primary/40 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-        </div>
-        <span className="hidden sm:inline">Back to Home</span>
-      </Link>
+    <div className="min-h-screen w-full bg-slate-50/50 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
+      <AuthNavigation />
 
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -405,17 +517,17 @@ export function RegisterPage() {
                   transition={{ duration: 0.25 }}
                   className="space-y-2.5"
                 >
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-gray-600">Full Name <span className="text-red-500">*</span></Label>
-                    <div className="grid grid-cols-12 gap-1.5">
-                      <div className="col-span-5 relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <div className="space-y-1.5">
+                    <Label className="text-[12px] font-bold text-slate-700 ml-1">Full Name <span className="text-red-500">*</span></Label>
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-5 relative group">
+                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
                         <Input
                           placeholder="First Name"
                           value={formData.firstName}
                           maxLength={30}
                           onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                          className={`pl-9 ${inputClass}`}
+                          className={`pl-10.5 ${inputClass}`}
                         />
                       </div>
                       <div className="col-span-4">
@@ -429,10 +541,10 @@ export function RegisterPage() {
                       </div>
                       <div className="col-span-3">
                         <Select value={formData.suffix} onValueChange={(val) => setFormData({ ...formData, suffix: val })}>
-                          <SelectTrigger className="w-full h-9 rounded-lg border-gray-200 text-sm">
+                          <SelectTrigger className="w-full h-10 rounded-[12px] border-slate-200 bg-slate-50/30 text-[14px] focus:ring-2 focus:ring-primary/10">
                             <SelectValue placeholder="Suffix" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="rounded-xl border-slate-200 shadow-xl">
                             <SelectItem value="none">None</SelectItem>
                             <SelectItem value="Jr.">Jr.</SelectItem>
                             <SelectItem value="Sr.">Sr.</SelectItem>
@@ -446,7 +558,7 @@ export function RegisterPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-gray-500 ml-1">Barangay <span className="text-red-500">*</span></Label>
+                    <Label className="text-[12px] font-bold text-slate-700 ml-1">Barangay <span className="text-red-500">*</span></Label>
                     <Popover open={openBarangay} onOpenChange={setOpenBarangay}>
                       <PopoverTrigger asChild>
                         <Button
@@ -454,8 +566,8 @@ export function RegisterPage() {
                           role="combobox"
                           aria-expanded={openBarangay}
                           className={cn(
-                            "w-full justify-between h-9 rounded-lg border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-none hover:bg-white focus:ring-1 focus:ring-primary/30",
-                            !formData.barangay && "text-gray-400"
+                            "w-full justify-between h-10 rounded-[12px] border-slate-200 bg-slate-50/30 px-3.5 py-2 text-[14px] text-slate-900 shadow-none hover:bg-slate-50 focus:ring-2 focus:ring-primary/10",
+                            !formData.barangay && "text-slate-400"
                           )}
                         >
                           <span className="truncate">
@@ -464,7 +576,7 @@ export function RegisterPage() {
                           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-xl overflow-hidden border-gray-200/50 shadow-2xl backdrop-blur-md" align="start">
+                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-[20px] overflow-hidden border-slate-200/50 shadow-2xl backdrop-blur-md" align="start">
                         <Command className="w-full border-none">
                           <div className="flex items-center border-b border-gray-100 px-3">
                             <Search className="w-3.5 h-3.5 text-gray-400 mr-2" />
@@ -507,61 +619,51 @@ export function RegisterPage() {
                     </Popover>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="space-y-1">
-                      <Label htmlFor="reg-phone" className="text-xs font-semibold text-gray-600">Phone Number <span className="text-red-500">*</span></Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-[12px] font-bold text-slate-700 ml-1">Phone Number <span className="text-red-500">*</span></Label>
+                      <div className="relative group">
+                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
                         <Input
-                          id="reg-phone"
-                          type="tel"
-                          placeholder="+63 9XX XXX XXXX"
+                          placeholder="+63 000 000 0000"
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })}
-                          className={`pl-9 ${inputClass}`}
-                          maxLength={16}
+                          className={`pl-10 ${inputClass}`}
                         />
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="reg-email" className="text-xs font-semibold text-gray-600">Email <span className="text-red-500">*</span></Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                    <div className="space-y-2">
+                      <Label className="text-[12px] font-bold text-slate-700 ml-1">Email <span className="text-red-500">*</span></Label>
+                      <div className="relative group">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
                         <Input
-                          id="reg-email"
                           type="email"
-                          placeholder="you@example.com"
+                          placeholder="name@example.com"
                           value={formData.email}
-                          maxLength={50}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className={`pl-9 ${inputClass}`}
+                          className={`pl-10 ${inputClass}`}
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <Label htmlFor="reg-pass" className="text-xs font-semibold text-gray-600">Password <span className="text-red-500">*</span></Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <div className="space-y-2">
+                    <Label className="text-[12px] font-bold text-slate-700 ml-1">Password <span className="text-red-500">*</span></Label>
+                    <div className="relative group">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
                       <Input
-                        id="reg-pass"
                         type={showPassword ? 'text' : 'password'}
-                        placeholder="Create a password"
+                        placeholder="Create a strong password"
                         value={formData.password}
-                        maxLength={32}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
-                          setFormData({ ...formData, password: val });
-                        }}
-                        className={`pl-9 pr-9 ${inputClass}`}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className={`pl-10 pr-10 ${inputClass}`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                       >
-                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                       </button>
                     </div>
                   </div>
@@ -620,8 +722,18 @@ export function RegisterPage() {
                     <Button
                       className="flex-1 bg-primary hover:bg-primary-hover h-9 rounded-lg text-sm font-semibold shadow-none"
                       onClick={handleStep2Continue}
+                      disabled={isSendingOTP}
                     >
-                      Continue <ArrowRight className="ml-2 w-4 h-4" />
+                      {isSendingOTP ? (
+                        <>
+                          <RefreshCw className="mr-2 w-4 h-4 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          Continue <ArrowRight className="ml-2 w-4 h-4" />
+                        </>
+                      )}
                     </Button>
                   </div>
                 </motion.div>
@@ -664,7 +776,16 @@ export function RegisterPage() {
                   </div>
                   <p className="text-center text-xs text-gray-400">
                     Didn't receive the code?{' '}
-                    <button className="text-primary font-medium hover:underline">Resend</button>
+                    <button 
+                      className={cn(
+                        "text-primary font-medium hover:underline",
+                        isSendingOTP && "opacity-50 cursor-not-allowed no-underline"
+                      )}
+                      onClick={handleResendOTP}
+                      disabled={isSendingOTP}
+                    >
+                      {isSendingOTP ? 'Sending...' : 'Resend'}
+                    </button>
                   </p>
                   <div className="flex gap-2.5">
                     <Button
@@ -676,9 +797,19 @@ export function RegisterPage() {
                     </Button>
                     <Button
                       className="flex-1 bg-primary hover:bg-primary-hover h-10 rounded-lg text-sm font-semibold shadow-none"
-                      onClick={() => setStep(4)}
+                      onClick={handleVerifyOTP}
+                      disabled={isVerifyingOTP}
                     >
-                      Verify <ArrowRight className="ml-2 w-4 h-4" />
+                      {isVerifyingOTP ? (
+                        <>
+                          <RefreshCw className="mr-2 w-4 h-4 animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        <>
+                          Verify <ArrowRight className="ml-2 w-4 h-4" />
+                        </>
+                      )}
                     </Button>
                   </div>
                 </motion.div>
@@ -877,18 +1008,29 @@ export function RegisterPage() {
                           <Button
                             className="h-10 rounded-lg bg-primary hover:bg-primary-hover text-white font-semibold shadow-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             onClick={handleComplete}
-                            disabled={!idUploaded || !selfieUploaded}
+                            disabled={!idUploaded || !selfieUploaded || isCompleting}
                           >
-                            Finish
+                            {isCompleting ? (
+                              <>
+                                <RefreshCw className="mr-2 w-4 h-4 animate-spin" />
+                                Finishing...
+                              </>
+                            ) : (
+                              'Finish'
+                            )}
                           </Button>
                         </div>
                         <p className="text-center">
                           <button
                             type="button"
                             onClick={handleComplete}
-                            className="text-[11px] font-medium text-gray-400 hover:text-primary transition-colors underline underline-offset-4 decoration-gray-300 hover:decoration-primary/50"
+                            disabled={isCompleting}
+                            className={cn(
+                              "text-[11px] font-medium text-gray-400 hover:text-primary transition-colors underline underline-offset-4 decoration-gray-300 hover:decoration-primary/50",
+                              isCompleting && "opacity-50 cursor-not-allowed"
+                            )}
                           >
-                            Skip for now, I'll verify later in my profile settings
+                            {isCompleting ? 'Creating account...' : "Skip for now. I'll verify later in my profile settings"}
                           </button>
                         </p>
                       </div>
