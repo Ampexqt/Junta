@@ -1,0 +1,266 @@
+import { Router } from 'express';
+import { auth, db } from '../config/firebase-admin';
+import { resend } from '../config/resend';
+import { authenticateUser, AuthRequest } from '../middleware/auth';
+// No longer using local template - switched to Resend Managed Templates
+// import { otpEmailTemplate } from '../templates/otp-email';
+import crypto from 'crypto';
+
+const router = Router();
+
+// Helper to generate 6-digit OTP
+const generateOTP = () => crypto.randomInt(100000, 999999).toString();
+
+/**
+ * 1. Send OTP (For Registration/Login)
+ * Generates a 6-digit code, stores it in Firestore, and emails it to the user.
+ */
+router.post('/send-otp', async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+
+    try {
+        const otp = generateOTP();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+        // Store OTP in Firestore (doc ID is the email for easy lookup)
+        await db.collection('otps').doc(email).set({
+            otp,
+            expiresAt,
+            email,
+            createdAt: new Date(),
+        });
+
+        // DEBUG: Log OTP for development bypass
+        console.log('------------------------------------------');
+        console.log(`[AUTH] Verification Code for ${email}: ${otp}`);
+        console.log('------------------------------------------');
+
+        // Send Email via Resend using your published template
+        const { data, error } = await resend.emails.send({
+            from: 'Junta <onboarding@resend.dev>', // Use onboarding@resend.dev for testing unless you have a verified domain
+            to: email,
+            subject: `Your Verification Code: ${otp}`,
+            template: {
+                id: 'verification-code', // Published template identifier (slug)
+                variables: {
+                    otp_d1: otp[0],
+                    otp_d2: otp[1],
+                    otp_d3: otp[2],
+                    otp_d4: otp[3],
+                    otp_d5: otp[4],
+                    otp_d6: otp[5],
+                },
+            },
+        });
+
+        if (error) {
+            console.error('Resend Error:', error);
+            // If it's a restriction error, we still allow the flow to proceed for the developer (who can see the terminal logs)
+            return res.status(400).json({ 
+                error: error.message,
+                hint: 'Check your server terminal logs for the verification code if this is a testing email.'
+            });
+        }
+
+        res.json({ message: 'OTP sent successfully!', data });
+    } catch (error) {
+        console.error('Error in send-otp:', error);
+        res.status(500).json({ error: 'Failed to send verification code' });
+    }
+});
+
+/**
+ * 2. Verify OTP
+ * Checks if the provided OTP matches the one in Firestore and hasn't expired.
+ */
+router.post('/verify-otp', async (req, res) => {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+        return res.status(400).json({ error: 'Email and OTP are required' });
+    }
+
+    try {
+        const otpDoc = await db.collection('otps').doc(email).get();
+
+        if (!otpDoc.exists) {
+            return res.status(400).json({ error: 'No OTP found for this email' });
+        }
+
+        const data = otpDoc.data();
+        const now = new Date();
+
+        // Check if OTP matches
+        if (data?.otp !== otp) {
+            return res.status(400).json({ error: 'Invalid verification code' });
+        }
+
+        // Check expiration
+        const expiry = data?.expiresAt.toDate();
+        if (now > expiry) {
+            await db.collection('otps').doc(email).delete(); // Cleanup expired
+            return res.status(400).json({ error: 'Verification code has expired' });
+        }
+
+        // OTP is valid! Cleanup and return success
+        await db.collection('otps').doc(email).delete();
+
+        res.json({ success: true, message: 'OTP verified successfully' });
+    } catch (error) {
+        console.error('Error in verify-otp:', error);
+        res.status(500).json({ error: 'Failed to verify OTP' });
+    }
+});
+
+/**
+ * 3. Final Registration (Persistence)
+ * Creates the user in Firebase Auth and stores profile data in Firestore.
+ */
+router.post('/register', async (req, res) => {
+    const { 
+        email, 
+        password, 
+        firstName, 
+        lastName, 
+        phone, 
+        role, 
+        barangay, 
+        orgName,
+        suffix
+    } = req.body;
+
+    if (!email || !password || !firstName || !lastName) {
+        return res.status(400).json({ error: 'Missing required registration fields' });
+    }
+
+    try {
+        // 1. Create User in Firebase Authentication
+        const userRecord = await auth.createUser({
+            email,
+            password,
+            displayName: `${firstName} ${lastName}`,
+            phoneNumber: phone.startsWith('+') ? phone.replace(/\s/g, '') : undefined, // Firebase requires E.164 format
+        });
+
+        // 2. Store Profile details in Firestore
+        await db.collection('users').doc(userRecord.uid).set({
+            uid: userRecord.uid,
+            email,
+            firstName,
+            lastName,
+            suffix: suffix || '',
+            displayName: `${firstName} ${lastName}${suffix ? ' ' + suffix : ''}`,
+            phone,
+            role: role || 'participant',
+            barangay: barangay || '',
+            orgName: orgName || '',
+            kycVerified: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        });
+
+        console.log(`Successfully registered new user: ${email} (${userRecord.uid})`);
+
+        res.status(201).json({ 
+            success: true, 
+            message: 'User registered successfully',
+            uid: userRecord.uid 
+        });
+    } catch (error: any) {
+        console.error('Error in register:', error);
+        
+        // Handle common Firebase Auth errors
+        if (error.code === 'auth/email-already-exists') {
+            return res.status(400).json({ error: 'This email is already registered.' });
+        }
+        if (error.code === 'auth/invalid-phone-number') {
+            return res.status(400).json({ error: 'The phone number format is invalid.' });
+        }
+
+        res.status(500).json({ error: error.message || 'Failed to complete registration' });
+    }
+});
+
+/**
+ * 4. Send Login Link (Passwordless - Backup Method)
+ */
+router.post('/send-login-link', async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+
+    try {
+        const actionCodeSettings = {
+            url: process.env.FRONTEND_URL || 'http://localhost:5173/login/verify',
+            handleCodeInApp: true,
+        };
+
+        const link = await auth.generateSignInWithEmailLink(email, actionCodeSettings);
+
+        await resend.emails.send({
+            from: 'Junta <noreply@resend.dev>',
+            to: email,
+            subject: 'Login to Junta',
+            html: `
+                <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                    <h2>Welcome to Junta</h2>
+                    <p>Click the button below to sign in to your account.</p>
+                    <a href="${link}" style="display: inline-block; padding: 12px 24px; background-color: #064e3b; color: #fff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                        Sign In to Junta
+                    </a>
+                </div>
+            `,
+        });
+
+        res.json({ message: 'Login link sent successfully!' });
+    } catch (error) {
+        console.error('Error in send-login-link:', error);
+        res.status(500).json({ error: 'Failed to send login link' });
+    }
+});
+
+/**
+ * 4. Sync Profile / Registration (Protected)
+ * Call this after the user successfully logs in on the frontend.
+ */
+router.post('/sync-profile', authenticateUser, async (req: AuthRequest, res) => {
+    const { uid, email, name } = req.user!;
+    const { displayName, photoURL } = req.body;
+
+    try {
+        const userRef = db.collection('users').doc(uid);
+        const doc = await userRef.get();
+
+        const userData = {
+            email,
+            displayName: displayName || name || '',
+            photoURL: photoURL || '',
+            lastLogin: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        if (!doc.exists) {
+            await userRef.set({
+                ...userData,
+                createdAt: new Date().toISOString(),
+                role: 'user',
+            });
+            console.log(`New user registered: ${email}`);
+        } else {
+            await userRef.update(userData);
+        }
+
+        res.json({ message: 'Profile synced successfully', user: userData });
+    } catch (error) {
+        console.error('Error syncing profile:', error);
+        res.status(500).json({ error: 'Failed to sync user profile' });
+    }
+});
+
+export const authRoutes = router;
