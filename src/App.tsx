@@ -12,13 +12,15 @@ import { SchedulePage } from './app/events/SchedulePage';
 import { MyParticipationPage } from './app/user/MyParticipationPage';
 import { NotificationsPage } from './app/user/NotificationsPage';
 import { SettingsPage } from './app/user/SettingsPage';
+import { AdminUsersPage } from './app/admin/AdminUsersPage';
+import { CreateEventPage } from './app/organizer/CreateEventPage';
 import { OrganizerMyEventsPage } from './app/organizer/OrganizerMyEventsPage';
 import { EventSubmissionsPage } from './app/organizer/EventSubmissionsPage';
 import { EventApprovalsPage } from './app/admin/EventApprovalsPage';
 import { UserVerificationPage } from './app/admin/UserVerificationPage';
 import { OrganizerRequestsPage } from './app/admin/OrganizerRequestsPage';
 import { AdminAllEventsPage } from './app/admin/AdminAllEventsPage';
-import { AdminUsersPage } from './app/admin/AdminUsersPage';
+
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from 'sileo';
 
@@ -53,8 +55,12 @@ export function App() {
                 path="organizer/submissions"
                 element={<EventSubmissionsPage />} />
 
-              {/* Admin routes */}
+              <Route
+                path="organizer/create-event"
+                element={<CreateEventPage />} />
+
               <Route path="admin/approvals" element={<EventApprovalsPage />} />
+
               <Route
                 path="admin/verification"
                 element={<UserVerificationPage />} />
