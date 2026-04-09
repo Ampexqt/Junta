@@ -20,6 +20,7 @@ import {
   '@/components/ui/table';
 import { Eye, MapPin, Users, CalendarDays, Plus } from 'lucide-react';
 import { CreateEventModal } from '../../features/events/components/CreateEventModal';
+
 const approvedEvents = [
   {
     id: 1,
@@ -90,6 +91,8 @@ export function OrganizerMyEventsPage() {
             </Button>
           }
         />
+
+
       </div>
 
       <Card className="rounded-2xl shadow-sm border">
