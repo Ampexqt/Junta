@@ -172,11 +172,30 @@ router.post('/register', async (req, res) => {
 
         console.log(`Successfully registered new user: ${email} (${userRecord.uid})`);
 
+        // Generate JWT for auto-login after registration
+        const token = jwt.sign(
+            { 
+                uid: userRecord.uid, 
+                email: email, 
+                role: role || 'participant',
+                name: `${firstName} ${lastName}${suffix ? ' ' + suffix : ''}`
+            },
+            process.env.JWT_SECRET || 'junta_fallback_secret',
+            { expiresIn: '24h' }
+        );
+
         res.status(201).json({ 
             success: true, 
             message: 'User registered successfully',
-            uid: userRecord.uid 
+            token,
+            user: {
+                uid: userRecord.uid,
+                email,
+                displayName: `${firstName} ${lastName}${suffix ? ' ' + suffix : ''}`,
+                role: role || 'participant'
+            }
         });
+
     } catch (error: any) {
         console.error('Error in register:', error);
         
@@ -214,11 +233,18 @@ router.post('/login', async (req, res) => {
         const userDoc = userSnapshot.docs[0];
         const userData = userDoc.data();
 
+        // Check if user has a password stored in Firestore (custom logic requirement)
+        if (!userData.password) {
+            console.warn(`Login failed: User ${email} has no stored password in Firestore. This might be an old account.`);
+            return res.status(401).json({ error: 'Account needs update. Please register again.' });
+        }
+
         // Verify password
         const isMatch = await bcrypt.compare(password, userData.password);
         if (!isMatch) {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
+
 
         // Generate JWT
         const token = jwt.sign(
