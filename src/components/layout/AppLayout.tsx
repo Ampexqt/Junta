@@ -23,10 +23,6 @@ export function AppLayout() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/30 border border-border/40">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">System Online</span>
-            </div>
 
             <Button
               variant="ghost"
