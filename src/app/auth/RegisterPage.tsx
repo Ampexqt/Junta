@@ -118,7 +118,7 @@ export function RegisterPage() {
       sileo.info({
         title: 'Agreement Required',
         description: 'Agree to the Data Privacy Act to proceed.',
-        duration: 1500
+        duration: 2000
 
       });
       return;
@@ -153,7 +153,7 @@ export function RegisterPage() {
       sileo.success({
         title: 'Welcome to Junta!',
         description: 'Your account has been created successfully.',
-        duration: 1500
+        duration: 2000
       });
 
 
@@ -163,7 +163,7 @@ export function RegisterPage() {
       sileo.error({
         title: 'Registration Error',
         description: error.message || 'Could not create account. Please try again.',
-        duration: 1500
+        duration: 2000
       });
 
     } finally {
@@ -213,7 +213,7 @@ export function RegisterPage() {
       sileo.error({ 
         title: 'Invalid Phone Format', 
         description: 'Your phone number must start with 9 (e.g., +63 9XX XXX XXXX).',
-        duration: 1500
+        duration: 2000
       });
 
       return;
