@@ -5,10 +5,11 @@ export type { UserRole };
 
 const AuthContext = createContext<AuthContextType>({
     role: 'participant',
-    setRole: () => { },
+    setRole: () => { /* Default role setter */ },
     userName: 'Juan Dela Cruz',
-    setUserName: () => { }
+    setUserName: () => { /* Default userName setter */ }
 });
+
 
 export function AuthProvider({ children }: { children: React.ReactNode; }) {
     const [role, setRole] = useState<UserRole>('participant');
