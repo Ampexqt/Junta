@@ -118,7 +118,8 @@ export function RegisterPage() {
       sileo.info({
         title: 'Agreement Required',
         description: 'Agree to the Data Privacy Act to proceed.',
-        duration: 3000
+        duration: 1500
+
       });
       return;
     }
@@ -152,15 +153,19 @@ export function RegisterPage() {
       sileo.success({
         title: 'Welcome to Junta!',
         description: 'Your account has been created successfully.',
+        duration: 1500
       });
+
 
       navigate('/app/dashboard');
 
     } catch (error: any) {
       sileo.error({
         title: 'Registration Error',
-        description: error.message || 'Could not create account. Please try again.'
+        description: error.message || 'Could not create account. Please try again.',
+        duration: 1500
       });
+
     } finally {
       setIsCompleting(false);
     }
@@ -188,19 +193,29 @@ export function RegisterPage() {
 
     // ... existing validation ...
     if (!firstName.trim() || !lastName.trim()) {
-      sileo.error({ title: 'Name Required', description: 'Please enter your first and last name.' });
+      sileo.error({ 
+        title: 'Name Required', 
+        description: 'Please enter your first and last name.',
+        duration: 1500 
+      });
       return;
     }
     if (!barangay) {
-      sileo.error({ title: 'Barangay Required', description: 'Please select your barangay.' });
+      sileo.error({ 
+        title: 'Barangay Required', 
+        description: 'Please select your barangay.',
+        duration: 1500 
+      });
       return;
     }
     const phoneDigits = phone.slice(4).replace(/\s/g, '');
     if (phoneDigits.length > 0 && phoneDigits[0] !== '9') {
       sileo.error({ 
         title: 'Invalid Phone Format', 
-        description: 'Your phone number must start with 9 (e.g., +63 9XX XXX XXXX).' 
+        description: 'Your phone number must start with 9 (e.g., +63 9XX XXX XXXX).',
+        duration: 1500
       });
+
       return;
     }
     if (phoneDigits.length < 10) {
@@ -212,7 +227,11 @@ export function RegisterPage() {
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim() || !emailRegex.test(email)) {
-      sileo.error({ title: 'Invalid Email', description: 'Please enter a valid email address.' });
+      sileo.error({ 
+        title: 'Invalid Email', 
+        description: 'Please enter a valid email address.',
+        duration: 1500 
+      });
       return;
     }
     const isPassValid = password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
