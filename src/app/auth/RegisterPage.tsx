@@ -191,8 +191,19 @@ export function RegisterPage() {
       sileo.error({ title: 'Barangay Required', description: 'Please select your barangay.' });
       return;
     }
-    if (phone.length < 16) {
-      sileo.error({ title: 'Invalid Phone', description: 'Please enter a valid 10-digit phone number.' });
+    const phoneDigits = phone.slice(4).replace(/\s/g, '');
+    if (phoneDigits.length > 0 && phoneDigits[0] !== '9') {
+      sileo.error({ 
+        title: 'Invalid Phone Format', 
+        description: 'Your phone number must start with 9 (e.g., +63 9XX XXX XXXX).' 
+      });
+      return;
+    }
+    if (phoneDigits.length < 10) {
+      sileo.error({ 
+        title: 'Incomplete Phone', 
+        description: 'Please enter a complete 10-digit mobile number.' 
+      });
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -382,7 +393,8 @@ export function RegisterPage() {
       startCamera();
     }
     return () => stopCamera();
-  }, [kycMode]);
+  }, [kycMode, idPreview, selfiePreview, startCamera]);
+
 
   return (
     <div className="min-h-screen w-full bg-slate-50/50 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
@@ -527,7 +539,7 @@ export function RegisterPage() {
                           value={formData.firstName}
                           maxLength={30}
                           onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                          className={`pl-10.5 ${inputClass}`}
+                          className={`pl-10 ${inputClass}`}
                         />
                       </div>
                       <div className="col-span-4">
@@ -557,70 +569,67 @@ export function RegisterPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-[12px] font-bold text-slate-700 ml-1">Barangay <span className="text-red-500">*</span></Label>
-                    <Popover open={openBarangay} onOpenChange={setOpenBarangay}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={openBarangay}
-                          className={cn(
-                            "w-full justify-between h-10 rounded-[12px] border-slate-200 bg-slate-50/30 px-3.5 py-2 text-[14px] text-slate-900 shadow-none hover:bg-slate-50 focus:ring-2 focus:ring-primary/10",
-                            !formData.barangay && "text-slate-400"
-                          )}
-                        >
-                          <span className="truncate">
-                            {formData.barangay || "Select barangay..."}
-                          </span>
-                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-[20px] overflow-hidden border-slate-200/50 shadow-2xl backdrop-blur-md" align="start">
-                        <Command className="w-full border-none">
-                          <div className="flex items-center border-b border-gray-100 px-3">
-                            <Search className="w-3.5 h-3.5 text-gray-400 mr-2" />
-                            <CommandInput
-                              placeholder="Search barangay..."
-                              className="h-10 w-full bg-transparent border-none focus:ring-0 text-sm py-3 outline-none"
-                            />
-                          </div>
-                          <CommandList className="max-h-[240px] w-full p-1 overflow-y-auto no-scrollbar">
-                            <CommandEmpty className="py-6 text-sm text-gray-400">No barangay found.</CommandEmpty>
-                            <CommandGroup>
-                              {barangays.map((b) => (
-                                <CommandItem
-                                  key={b}
-                                  value={b}
-                                  onSelect={(val) => {
-                                    setFormData({ ...formData, barangay: val });
-                                    setOpenBarangay(false);
-                                  }}
-                                  className="text-sm py-2 px-3 rounded-md transition-all aria-selected:bg-primary/5 aria-selected:text-primary flex items-center justify-between cursor-pointer hover:bg-gray-50 group"
-                                >
-                                  <span className="flex items-center">
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-3.5 w-3.5 text-primary transition-all",
-                                        formData.barangay === b ? "opacity-100 scale-100" : "opacity-0 scale-50"
-                                      )}
-                                    />
-                                    {b}
-                                  </span>
-                                  {formData.barangay === b && (
-                                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                  )}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-[12px] font-bold text-slate-700 ml-1">Barangay <span className="text-red-500">*</span></Label>
+                      <Popover open={openBarangay} onOpenChange={setOpenBarangay}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={openBarangay}
+                            className={cn(
+                              "w-full justify-between h-10 rounded-[12px] border-slate-200 bg-slate-50/30 px-3.5 py-2 text-[14px] text-slate-900 shadow-none hover:bg-slate-50 focus:ring-2 focus:ring-primary/10",
+                              !formData.barangay && "text-slate-400"
+                            )}
+                          >
+                            <span className="truncate">
+                              {formData.barangay || "Select..."}
+                            </span>
+                            <ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-[20px] overflow-hidden border-slate-200/50 shadow-2xl backdrop-blur-md" align="start">
+                          <Command className="w-full border-none">
+                            <div className="flex items-center border-b border-gray-100 px-3">
+                              <Search className="w-3.5 h-3.5 text-gray-400 mr-2" />
+                              <CommandInput
+                                placeholder="Search..."
+                                className="h-10 w-full bg-transparent border-none focus:ring-0 text-sm py-3 outline-none"
+                              />
+                            </div>
+                            <CommandList className="max-h-[240px] w-full p-1 overflow-y-auto no-scrollbar">
+                              <CommandEmpty className="py-6 text-sm text-gray-400">No barangay found.</CommandEmpty>
+                              <CommandGroup>
+                                {barangays.map((b) => (
+                                  <CommandItem
+                                    key={b}
+                                    value={b}
+                                    onSelect={(val) => {
+                                      setFormData({ ...formData, barangay: val });
+                                      setOpenBarangay(false);
+                                    }}
+                                    className="text-sm py-2 px-3 rounded-md transition-all aria-selected:bg-primary/5 aria-selected:text-primary flex items-center justify-between cursor-pointer hover:bg-gray-50 group"
+                                  >
+                                    <span className="flex items-center">
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-3.5 w-3.5 text-primary transition-all",
+                                          formData.barangay === b ? "opacity-100 scale-100" : "opacity-0 scale-50"
+                                        )}
+                                      />
+                                      {b}
+                                    </span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-1.5">
                       <Label className="text-[12px] font-bold text-slate-700 ml-1">Phone Number <span className="text-red-500">*</span></Label>
                       <div className="relative group">
                         <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
@@ -632,20 +641,22 @@ export function RegisterPage() {
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[12px] font-bold text-slate-700 ml-1">Email <span className="text-red-500">*</span></Label>
-                      <div className="relative group">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-                        <Input
-                          type="email"
-                          placeholder="name@example.com"
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className={`pl-10 ${inputClass}`}
-                        />
-                      </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-[12px] font-bold text-slate-700 ml-1">Email <span className="text-red-500">*</span></Label>
+                    <div className="relative group">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+                      <Input
+                        type="email"
+                        placeholder="name@example.com"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className={`pl-10 ${inputClass}`}
+                      />
                     </div>
                   </div>
+
 
                   <div className="space-y-2">
                     <Label className="text-[12px] font-bold text-slate-700 ml-1">Password <span className="text-red-500">*</span></Label>
