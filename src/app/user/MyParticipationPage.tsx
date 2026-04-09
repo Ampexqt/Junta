@@ -1,5 +1,5 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,7 @@ import {
   CheckCircle,
   Clock,
   MapPin,
-  Trophy,
-  TrendingUp
+  Trophy
 } from
   'lucide-react';
 const participations = [
