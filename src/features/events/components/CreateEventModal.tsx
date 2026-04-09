@@ -27,8 +27,8 @@ interface CreateEventModalProps {
 
 export function CreateEventModal({ trigger }: CreateEventModalProps) {
     const navigate = useNavigate();
-    const { } = useAuth();
     const [file, setFile] = useState<File | null>(null);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
