@@ -1,4 +1,5 @@
 import { auth, db } from '../config/firebase-admin';
+import bcrypt from 'bcryptjs';
 
 async function seedAdmin() {
     const adminEmail = 'admin@junta.com';
@@ -26,16 +27,22 @@ async function seedAdmin() {
             }
         }
 
+        // Hash password for our custom login logic
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(adminPassword, salt);
+
         // Store/Update user details in Firestore
         await db.collection('users').doc(userRecord.uid).set({
             uid: userRecord.uid,
             email: adminEmail,
+            password: hashedPassword, // Store hashed password for login
             displayName: 'Junta Admin',
             role: 'admin',
             kycVerified: true, // Admin is auto-verified
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         }, { merge: true });
+
 
         console.log('✅ Admin profile saved to Firestore users collection.');
         console.log('\n--- SEEDING COMPLETE ---');
