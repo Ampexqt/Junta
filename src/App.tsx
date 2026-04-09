@@ -68,7 +68,8 @@ export function App() {
             </Route>
           </Routes>
         </BrowserRouter>
-        <Toaster position="top-right" duration={1500} />
+        <Toaster position="top-right" />
+
 
       </TooltipProvider>
     </AuthProvider>);
