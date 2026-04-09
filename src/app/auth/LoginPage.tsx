@@ -15,6 +15,9 @@ import { Separator } from '@/components/ui/separator';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { AuthNavigation } from '@/components/auth/AuthNavigation';
+import { sileo } from 'sileo';
+import { API_BASE_URL } from '@/lib/api';
+
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -23,20 +26,52 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.includes('admin')) {
-      setRole('admin');
-      setUserName('Admin User');
-    } else if (email.includes('organizer')) {
-      setRole('organizer');
-      setUserName('Juan Dela Cruz');
-    } else {
-      setRole('participant');
-      setUserName('Eco Hero');
+    
+    // Basic validation
+    if (!email || !password) {
+      sileo.error({ title: 'Missing Info', description: 'Please enter both email and password' });
+      return;
     }
-    navigate('/app/dashboard');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      // Success!
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Update Context
+      setRole(data.user.role);
+      setUserName(data.user.displayName);
+
+      sileo.success({
+        title: 'Welcome back!',
+        description: `Successfully signed in as ${data.user.displayName}`,
+      });
+
+      navigate('/app/dashboard');
+    } catch (error: any) {
+      sileo.error({
+        title: 'Login Failed',
+        description: error.message || 'Please check your credentials and try again.'
+      });
+    }
   };
+
 
 
 
