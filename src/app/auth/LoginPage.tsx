@@ -31,7 +31,11 @@ export function LoginPage() {
     
     // Basic validation
     if (!email || !password) {
-      sileo.error({ title: 'Missing Info', description: 'Please enter both email and password' });
+      sileo.error({ 
+        title: 'Missing Info', 
+        description: 'Please enter both email and password',
+        duration: 1500 
+      });
       return;
     }
 
@@ -61,14 +65,18 @@ export function LoginPage() {
       sileo.success({
         title: 'Welcome back!',
         description: `Successfully signed in as ${data.user.displayName}`,
+        duration: 1500
       });
+
 
       navigate('/app/dashboard');
     } catch (error: any) {
       sileo.error({
         title: 'Login Failed',
-        description: error.message || 'Please check your credentials and try again.'
+        description: error.message || 'Please check your credentials and try again.',
+        duration: 1500
       });
+
     }
   };
 
