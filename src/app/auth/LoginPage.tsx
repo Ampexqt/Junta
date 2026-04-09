@@ -34,7 +34,7 @@ export function LoginPage() {
       sileo.error({ 
         title: 'Missing Info', 
         description: 'Please enter both email and password',
-        duration: 1500 
+        duration: 2000 
       });
       return;
     }
@@ -65,7 +65,7 @@ export function LoginPage() {
       sileo.success({
         title: 'Welcome back!',
         description: `Successfully signed in as ${data.user.displayName}`,
-        duration: 1500
+        duration: 2000
       });
 
 
@@ -74,7 +74,7 @@ export function LoginPage() {
       sileo.error({
         title: 'Login Failed',
         description: error.message || 'Please check your credentials and try again.',
-        duration: 1500
+        duration: 2000
       });
 
     }
