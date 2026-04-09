@@ -140,7 +140,10 @@ export function RegisterPage() {
         throw new Error(data.error || 'Registration failed');
       }
 
-      // Success logic
+      // Success logic - Auto Login
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
       setRole(selectedRole);
       const suffixValue = formData.suffix && formData.suffix !== 'none' ? ` ${formData.suffix}` : '';
       const fullName = `${formData.firstName} ${formData.lastName}${suffixValue}`;
@@ -152,6 +155,7 @@ export function RegisterPage() {
       });
 
       navigate('/app/dashboard');
+
     } catch (error: any) {
       sileo.error({
         title: 'Registration Error',
