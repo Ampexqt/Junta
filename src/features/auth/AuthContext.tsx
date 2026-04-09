@@ -12,8 +12,49 @@ const AuthContext = createContext<AuthContextType>({
 
 
 export function AuthProvider({ children }: { children: React.ReactNode; }) {
-    const [role, setRole] = useState<UserRole>('participant');
-    const [userName, setUserName] = useState('Juan Dela Cruz');
+
+    const [role, setRoleState] = useState<UserRole>(() => {
+        const storedRole = localStorage.getItem('user_role');
+        if (storedRole) return storedRole as UserRole;
+        
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                const user = JSON.parse(storedUser);
+                return user.role || 'participant';
+            } catch (e) {
+                return 'participant';
+            }
+        }
+        return 'participant';
+    });
+
+    const [userName, setUserNameState] = useState(() => {
+        const storedName = localStorage.getItem('user_name');
+        if (storedName) return storedName;
+
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                const user = JSON.parse(storedUser);
+                return user.displayName || user.name || 'Juan Dela Cruz';
+            } catch (e) {
+                return 'Juan Dela Cruz';
+            }
+        }
+        return 'Juan Dela Cruz';
+    });
+
+
+    const setRole = (newRole: UserRole) => {
+        setRoleState(newRole);
+        localStorage.setItem('user_role', newRole);
+    };
+
+    const setUserName = (newName: string) => {
+        setUserNameState(newName);
+        localStorage.setItem('user_name', newName);
+    };
 
     return (
         <AuthContext.Provider
@@ -27,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
         </AuthContext.Provider>
     );
 }
+
 
 export function useAuth() {
     const context = useContext(AuthContext);
