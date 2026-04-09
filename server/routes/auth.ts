@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { auth, db } from '../config/firebase-admin';
 import { resend } from '../config/resend';
 import { authenticateUser, AuthRequest } from '../middleware/auth';
-// No longer using local template - switched to Resend Managed Templates
-// import { otpEmailTemplate } from '../templates/otp-email';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 const router = Router();
+
 
 // Helper to generate 6-digit OTP
 const generateOTP = () => crypto.randomInt(100000, 999999).toString();
@@ -146,10 +147,15 @@ router.post('/register', async (req, res) => {
             phoneNumber: phone.startsWith('+') ? phone.replace(/\s/g, '') : undefined, // Firebase requires E.164 format
         });
 
+        // 1.5 Hash password before storing in DB (for custom login logic)
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
         // 2. Store Profile details in Firestore
         await db.collection('users').doc(userRecord.uid).set({
             uid: userRecord.uid,
             email,
+            password: hashedPassword, // Storing hashed password for custom login
             firstName,
             lastName,
             suffix: suffix || '',
@@ -162,6 +168,7 @@ router.post('/register', async (req, res) => {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         });
+
 
         console.log(`Successfully registered new user: ${email} (${userRecord.uid})`);
 
@@ -186,7 +193,66 @@ router.post('/register', async (req, res) => {
 });
 
 /**
- * 4. Send Login Link (Passwordless - Backup Method)
+ * 4. Login with Email/Password
+ * Verifies credentials against Firestore and returns a JWT.
+ */
+router.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    try {
+        // Query user by email from Firestore
+        const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
+
+        if (userSnapshot.empty) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        const userDoc = userSnapshot.docs[0];
+        const userData = userDoc.data();
+
+        // Verify password
+        const isMatch = await bcrypt.compare(password, userData.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        // Generate JWT
+        const token = jwt.sign(
+            { 
+                uid: userData.uid, 
+                email: userData.email, 
+                role: userData.role,
+                name: userData.displayName
+            },
+            process.env.JWT_SECRET || 'junta_fallback_secret',
+            { expiresIn: '24h' }
+        );
+
+        console.log(`User logged in: ${email}`);
+
+        res.json({
+            success: true,
+            token,
+            user: {
+                uid: userData.uid,
+                email: userData.email,
+                displayName: userData.displayName,
+                role: userData.role
+            }
+        });
+    } catch (error: any) {
+        console.error('Error in login:', error);
+        res.status(500).json({ error: 'Authentication failed' });
+    }
+});
+
+/**
+ * 5. Send Login Link (Passwordless - Backup Method)
+
  */
 router.post('/send-login-link', async (req, res) => {
     const { email } = req.body;
