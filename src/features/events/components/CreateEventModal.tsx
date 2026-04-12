@@ -162,7 +162,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
   const renderStep1 = () => (
     <div className="space-y-4 py-2">
       <div className="grid gap-1.5">
-        <Label className="text-[12px] font-bold text-slate-700 ml-1">Event Title</Label>
+        <Label className="text-[12px] font-bold text-slate-700 ml-1">Event Title <span className="text-rose-500">*</span></Label>
         <Input 
           placeholder="e.g., Zamboanga Beach Cleanup 2025" 
           value={formData.title}
@@ -172,7 +172,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-1.5">
-          <Label className="text-[12px] font-bold text-slate-700 ml-1">Category</Label>
+          <Label className="text-[12px] font-bold text-slate-700 ml-1">Category <span className="text-rose-500">*</span></Label>
           <Select onValueChange={(v) => updateFormData('category', v)} value={formData.category}>
             <SelectTrigger className="h-10 rounded-xl bg-slate-50/50">
               <SelectValue placeholder="Select type" />
@@ -186,7 +186,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
           </Select>
         </div>
         <div className="grid gap-1.5">
-          <Label className="text-[12px] font-bold text-slate-700 ml-1">Visibility</Label>
+          <Label className="text-[12px] font-bold text-slate-700 ml-1">Visibility <span className="text-rose-500">*</span></Label>
           <Select onValueChange={(v) => updateFormData('visibility', v)} value={formData.visibility}>
             <SelectTrigger className="h-10 rounded-xl bg-slate-50/50">
               <SelectValue placeholder="Choose visibility" />
@@ -200,7 +200,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
         </div>
       </div>
       <div className="grid gap-1.5">
-        <Label className="text-[12px] font-bold text-slate-700 ml-1">Tagline</Label>
+        <Label className="text-[12px] font-bold text-slate-700 ml-1">Tagline <span className="text-rose-500">*</span></Label>
         <Textarea 
           placeholder="Brief summary..." 
           value={formData.shortDescription}
@@ -214,7 +214,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
   const renderStep2 = () => (
     <div className="space-y-4 py-2">
       <div className="grid gap-1.5">
-        <Label className="text-[12px] font-bold text-slate-700 ml-1">Location Name</Label>
+        <Label className="text-[12px] font-bold text-slate-700 ml-1">Location Name <span className="text-rose-500">*</span></Label>
         <Input 
           placeholder="e.g., Sta. Cruz Island" 
           value={formData.locationName}
@@ -228,11 +228,11 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-1.5">
-          <Label className="text-[12px] font-bold text-slate-700 ml-1">Date</Label>
+          <Label className="text-[12px] font-bold text-slate-700 ml-1">Date <span className="text-rose-500">*</span></Label>
           <Input type="date" value={formData.date} onChange={(e) => updateFormData('date', e.target.value)} className="h-10 rounded-xl bg-slate-50/50" />
         </div>
         <div className="grid gap-1.5">
-          <Label className="text-[12px] font-bold text-slate-700 ml-1">Capacity</Label>
+          <Label className="text-[12px] font-bold text-slate-700 ml-1">Capacity <span className="text-rose-500">*</span></Label>
           <Input type="number" placeholder="50" value={formData.capacity} onChange={(e) => updateFormData('capacity', e.target.value)} className="h-10 rounded-xl bg-slate-50/50" />
         </div>
       </div>
@@ -300,7 +300,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
   const renderStep5 = () => (
     <div className="space-y-5 py-2">
       <div className="space-y-3">
-        <Label className="text-[12px] font-bold text-slate-700 ml-1">Event Showcase</Label>
+        <Label className="text-[12px] font-bold text-slate-700 ml-1">Event Showcase <span className="text-rose-500">*</span></Label>
         <div className="aspect-[21/9] w-full bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:bg-white hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden">
           <div className="flex flex-col items-center group-hover:scale-110 transition-transform duration-500">
             <ImageIcon className="w-10 h-10 mb-2 opacity-20" />
