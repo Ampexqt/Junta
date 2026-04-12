@@ -180,7 +180,7 @@ export function CreateEventPage() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-500">
       <div className="space-y-4">
         <div className="grid gap-2">
-          <Label htmlFor="title" className="text-[13px] font-semibold text-slate-700">Event Title</Label>
+          <Label htmlFor="title" className="text-[13px] font-semibold text-slate-700">Event Title <span className="text-rose-500">*</span></Label>
           <Input 
             id="title" 
             placeholder="e.g., Zamboanga Beach Cleanup 2025" 
@@ -192,7 +192,7 @@ export function CreateEventPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label className="text-[13px] font-semibold text-slate-700">Category</Label>
+            <Label className="text-[13px] font-semibold text-slate-700">Category <span className="text-rose-500">*</span></Label>
             <Select onValueChange={(v) => updateFormData('category', v)} value={formData.category}>
               <SelectTrigger className="h-11 rounded-xl">
                 <SelectValue placeholder="Select type" />
@@ -207,7 +207,7 @@ export function CreateEventPage() {
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label className="text-[13px] font-semibold text-slate-700">Visibility</Label>
+            <Label className="text-[13px] font-semibold text-slate-700">Visibility <span className="text-rose-500">*</span></Label>
             <Select onValueChange={(v) => updateFormData('visibility', v)} value={formData.visibility}>
               <SelectTrigger className="h-11 rounded-xl">
                 <SelectValue placeholder="Choose visibility" />
@@ -238,7 +238,7 @@ export function CreateEventPage() {
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="tagline" className="text-[13px] font-semibold text-slate-700">Short Description / Tagline</Label>
+          <Label htmlFor="tagline" className="text-[13px] font-semibold text-slate-700">Short Description / Tagline <span className="text-rose-500">*</span></Label>
           <Textarea 
             id="tagline" 
             placeholder="A brief one-sentence hook for your event..." 
@@ -254,7 +254,7 @@ export function CreateEventPage() {
   const renderStep2 = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-3 duration-500">
       <div className="grid gap-2">
-        <Label htmlFor="location" className="text-[13px] font-semibold text-slate-700">Location Name</Label>
+        <Label htmlFor="location" className="text-[13px] font-semibold text-slate-700">Location Name <span className="text-rose-500">*</span></Label>
         <Input 
           id="location" 
           placeholder="e.g., Sta. Cruz Island Park" 
@@ -277,7 +277,7 @@ export function CreateEventPage() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="date" className="text-[13px] font-semibold text-slate-700">Event Date</Label>
+          <Label htmlFor="date" className="text-[13px] font-semibold text-slate-700">Event Date <span className="text-rose-500">*</span></Label>
           <div className="relative">
             <Input 
               id="date" 
@@ -290,7 +290,7 @@ export function CreateEventPage() {
           </div>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="capacity" className="text-[13px] font-semibold text-slate-700">Total Capacity</Label>
+          <Label htmlFor="capacity" className="text-[13px] font-semibold text-slate-700">Total Capacity <span className="text-rose-500">*</span></Label>
           <div className="relative">
             <Input 
               id="capacity" 
@@ -307,7 +307,7 @@ export function CreateEventPage() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="start" className="text-[13px] font-semibold text-slate-700">Start Time</Label>
+          <Label htmlFor="start" className="text-[13px] font-semibold text-slate-700">Start Time <span className="text-rose-500">*</span></Label>
           <div className="relative">
             <Input 
               id="start" 
@@ -320,7 +320,7 @@ export function CreateEventPage() {
           </div>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="end" className="text-[13px] font-semibold text-slate-700">End Time</Label>
+          <Label htmlFor="end" className="text-[13px] font-semibold text-slate-700">End Time <span className="text-rose-500">*</span></Label>
           <div className="relative">
             <Input 
               id="end" 
@@ -457,7 +457,7 @@ export function CreateEventPage() {
     <div className="space-y-8 animate-in fade-in slide-in-from-right-3 duration-500">
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Label className="text-[13px] font-semibold text-slate-700">Event Cover Image</Label>
+          <Label className="text-[13px] font-semibold text-slate-700">Event Cover Image <span className="text-rose-500">*</span></Label>
           <Badge variant="outline" className="text-[10px] text-primary border-primary/20 uppercase font-bold px-1.5 bg-primary/[0.02]">Required</Badge>
         </div>
         
