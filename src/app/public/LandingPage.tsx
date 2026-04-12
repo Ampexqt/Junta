@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import MapImage from '@/assets/zamboanga_city_forest_20260413_010218.webp';
+
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -135,59 +137,129 @@ function Navbar() {
     </nav>);
 
 }
+
 function HeroSection() {
   const navigate = useNavigate();
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.8,
+        ease: [0.16, 1, 0.3, 1]
+      }
+    }
+  };
+
   return (
-    <section className="relative flex min-h-[750px] w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-primary/[0.03] via-background to-transparent px-4 pt-32 pb-24 md:pt-30 md:pb-40">
-      {/* Background Pattern - Light Rings */}
-      <div
-        className="absolute inset-0 z-0 opacity-[0.1] pointer-events-none select-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='1' fill='%231F7A63'/%3E%3C/svg%3E")`,
-          backgroundSize: '40px 40px',
-        }}
-      />
+    <section className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#F0F5F2] pt-28 md:pt-36 lg:pt-40 pb-20">
+      {/* Background Soft Glow */}
+      <div className="absolute top-0 left-1/4 -z-0 h-[400px] w-[600px] rounded-full bg-white/40 blur-[120px] pointer-events-none" />
 
-      {/* Sophisticated Glow System */}
-      <div className="absolute left-1/4 top-1/4 -z-10 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[150px] pointer-events-none" />
-      <div className="absolute right-1/4 bottom-1/4 -z-10 h-[500px] w-[500px] translate-x-1/2 translate-y-1/2 rounded-full bg-secondary/10 blur-[130px] pointer-events-none" />
-
-      <div className="container relative z-10 flex flex-col items-center text-center">
-        {/* Animated Badge Tagline */}
-        <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-semibold tracking-wide text-primary animate-in fade-in slide-in-from-bottom-4 duration-1000">
-          <Leaf className="h-4 w-4" />
-          <span>Zamboanga City's Environmental Platform</span>
-        </div>
-
-        {/* Hero Title - Black font weight with tight tracking */}
-        <h1 className="max-w-4xl text-pretty text-5xl font-black leading-[1.1] tracking-tight text-foreground sm:text-7xl animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-150">
-          Join Environmental <br className="hidden sm:block" />
-          Activities in Your <br className="hidden sm:block" />
-          Community
-        </h1>
-
-        {/* Hero Subtitle / Description */}
-        <p className="mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
-          Discover, join, and organize local initiatives to protect and preserve Zamboanga City's natural beauty. Together, we can make a difference.
-        </p>
-
-        {/* Action Buttons - Rounded-2xl and 14px height to match image exactly */}
-        <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row sm:gap-6 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
-          <Button
-            size="lg"
-            onClick={() => document.getElementById('events')?.scrollIntoView({ behavior: 'smooth' })}
-            className="h-14 min-w-[200px] rounded-2xl bg-primary px-10 text-lg font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl hover:translate-y-[-2px]"
+      <div className="container relative z-10 max-w-[1400px] mx-auto px-6 md:px-12 lg:px-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 xl:gap-20 items-center">
+          
+          {/* Left Column - Content */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="flex flex-col items-start text-left"
           >
-            Browse Events
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => navigate('/register')}
-            className="h-14 min-w-[200px] rounded-2xl border-2 border-border/60 bg-white px-10 text-lg font-bold transition-all hover:bg-muted/30 hover:translate-y-[-2px]"
+            {/* Badge */}
+            <motion.div 
+              variants={itemVariants}
+              className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#1B6B4A]/10 bg-white/60 backdrop-blur-sm px-4 py-2 text-[10px] font-bold tracking-[0.15em] text-[#1B6B4A] shadow-sm uppercase"
+            >
+              <Leaf className="h-3.5 w-3.5" />
+              <span>Zamboanga City's Environmental Platform</span>
+            </motion.div>
+
+            {/* Heading */}
+            <motion.h1 
+              variants={itemVariants}
+              className="mb-6 max-w-2xl font-heading text-4xl font-bold leading-[1.08] tracking-tight text-[#1A1A1A] md:text-5xl lg:text-6xl xl:text-7xl"
+            >
+              Join Environmental <br />
+              Activities in <span className="relative inline-block">
+                Your Community
+                {/* SVG Underline Curve */}
+                <svg className="absolute -bottom-2 left-0 w-full h-3 text-[#1B6B4A]/20" viewBox="0 0 300 12" fill="none" preserveAspectRatio="none">
+                  <path d="M4 9C40 3 150 1.5 296 9" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
+                </svg>
+              </span>
+            </motion.h1>
+
+            {/* Subtitle */}
+            <motion.p 
+              variants={itemVariants}
+              className="mb-10 max-w-lg text-base font-medium leading-relaxed text-[#4A5A52] md:text-lg"
+            >
+              Discover, join, and organize local initiatives to protect and preserve Zamboanga City's natural beauty. Together, we can make a difference.
+            </motion.p>
+
+            {/* CTA Buttons */}
+            <motion.div 
+              variants={itemVariants}
+              className="flex flex-col gap-4 sm:flex-row sm:gap-6"
+            >
+              <Button
+                size="lg"
+                onClick={() => document.getElementById('events')?.scrollIntoView({ behavior: 'smooth' })}
+                className="h-14 min-w-[180px] rounded-full bg-[#1B6B4A] px-10 text-base font-bold text-white shadow-xl shadow-[#1B6B4A]/20 transition-all hover:bg-[#145339] hover:-translate-y-0.5"
+              >
+                Browse Events
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate('/register')}
+                className="h-14 min-w-[180px] rounded-full border-2 border-[#1B6B4A]/20 bg-white px-10 text-base font-bold text-[#1B6B4A] transition-all hover:border-[#1B6B4A]/40"
+              >
+                Create an Event
+              </Button>
+            </motion.div>
+          </motion.div>
+
+          {/* Right Column - Map Image Frame */}
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1.2, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="relative"
           >
-            Create an Event
-          </Button>
+            {/* Decorative Background Shapes */}
+            <div className="absolute -bottom-6 -left-6 -z-10 h-24 w-24 rounded-2xl bg-[#1B6B4A]/5" />
+            <div className="absolute -top-4 -right-4 -z-10 h-16 w-16 rounded-full bg-[#1B6B4A]/5" />
+
+            <div className="relative aspect-[4/3] lg:aspect-[3/4] xl:aspect-square overflow-hidden rounded-[2rem] border border-white/50 bg-white p-2 md:p-3 shadow-2xl shadow-[#1B6B4A]/10">
+              <div className="h-full w-full overflow-hidden rounded-2xl bg-[#E8F0EB] relative">
+                {/* Gradient Overlays */}
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#1B6B4A]/10 pointer-events-none z-10" />
+                <div className="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-white/20 pointer-events-none z-10" />
+                
+                <img 
+                  src={MapImage} 
+                  alt="Zamboanga Map" 
+                  className="h-full w-full object-cover object-center transition-transform duration-[2000ms] hover:scale-105"
+                />
+              </div>
+            </div>
+          </motion.div>
+
         </div>
       </div>
     </section>
@@ -783,7 +855,7 @@ function Footer() {
 }
 export function LandingPage() {
   return (
-    <div className="w-full min-h-screen bg-background">
+    <div className="w-full min-h-screen bg-[#F0F5F2]">
       <Navbar />
       <HeroSection />
       <FeaturesSection />
