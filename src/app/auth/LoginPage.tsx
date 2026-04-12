@@ -106,7 +106,7 @@ export function LoginPage() {
           <CardContent className="px-8 pb-8 pt-5">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-[12px] font-bold text-slate-700 ml-0.5">Email Address</Label>
+                <Label htmlFor="email" className="text-[12px] font-bold text-slate-700 ml-0.5">Email Address <span className="text-rose-500">*</span></Label>
                 <div className="relative group">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[16px] h-[16px] text-slate-400 group-focus-within:text-primary transition-colors" />
                   <Input
@@ -122,7 +122,7 @@ export function LoginPage() {
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between px-0.5">
-                  <Label htmlFor="password" className="text-[12px] font-bold text-slate-700">Password</Label>
+                  <Label htmlFor="password" className="text-[12px] font-bold text-slate-700">Password <span className="text-rose-500">*</span></Label>
                   <a href="#" className="text-[12px] font-bold text-primary/80 hover:text-primary transition-colors">
                     Forgot password?
                   </a>
