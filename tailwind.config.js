@@ -91,7 +91,7 @@ export default {
 					'serif'
 				],
 				heading: [
-					'Montserrat',
+					'Geist Variable',
 					'sans-serif'
 				],
 				body: [
