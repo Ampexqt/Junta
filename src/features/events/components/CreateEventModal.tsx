@@ -116,6 +116,14 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
+  const timeOptions = Array.from({ length: 48 }).map((_, i) => {
+    const hour = Math.floor(i / 2);
+    const min = i % 2 === 0 ? '00' : '30';
+    const ampm = hour < 12 ? 'AM' : 'PM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${displayHour.toString().padStart(2, '0')}:${min} ${ampm}`;
+  });
+
   const stepTitles = [
     'Base Identity',
     'Core Logistics',
@@ -231,7 +239,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
             <SelectTrigger className="h-10 rounded-xl bg-slate-50/50">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" align="start" sideOffset={4}>
               <SelectItem value="cleanup">Cleanup Drive</SelectItem>
               <SelectItem value="workshop">Workshop</SelectItem>
               <SelectItem value="seminar">Seminar</SelectItem>
@@ -245,7 +253,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
             <SelectTrigger className="h-10 rounded-xl bg-slate-50/50">
               <SelectValue placeholder="Choose visibility" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" align="start" sideOffset={4}>
               <SelectItem value="public">Public</SelectItem>
               <SelectItem value="private">Private</SelectItem>
               <SelectItem value="invite-only">Invite Only</SelectItem>
@@ -378,7 +386,16 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       {formData.timeline.map((item) => (
         <div key={item.id} className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 space-y-3 relative group transition-all hover:bg-white hover:shadow-md">
           <div className="flex gap-2">
-            <Input type="time" value={item.time} onChange={(e) => updateTimelineItem(item.id, 'time', e.target.value)} className="w-[110px] h-9 rounded-lg border-slate-200" />
+            <Select value={item.time} onValueChange={(val) => updateTimelineItem(item.id, 'time', val)}>
+              <SelectTrigger className="w-[120px] h-9 rounded-lg border-slate-200">
+                <SelectValue placeholder="Time" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[200px]" position="popper">
+                {timeOptions.map((time) => (
+                  <SelectItem key={time} value={time}>{time}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Input placeholder="What's happening?" value={item.activity} onChange={(e) => updateTimelineItem(item.id, 'activity', e.target.value)} className="flex-1 h-9 rounded-lg border-slate-200" />
             <Button variant="ghost" size="icon" onClick={() => removeTimelineItem(item.id)} className="h-9 w-9 text-slate-300 hover:text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
           </div>
@@ -507,7 +524,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       </div>
       <div className="grid grid-cols-2 gap-y-4 gap-x-6">
         <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Identity</p><p className="font-bold text-slate-800 truncate">{formData.title || 'Untitled Action'}</p></div>
-        <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Classification</p><Badge className="bg-slate-900 font-bold capitalize">{formData.category || 'N/A'}</Badge></div>
+        <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Classification</p><Badge className="bg-slate-900 text-white font-bold capitalize">{formData.category || 'N/A'}</Badge></div>
         <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Date</p><p className="font-bold text-primary">{formData.date ? format(new Date(formData.date), 'PPP') : 'To be set'}</p></div>
         <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Access</p><p className="font-bold text-slate-800 capitalize">{formData.visibility}</p></div>
       </div>
