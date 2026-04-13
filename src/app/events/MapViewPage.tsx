@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,35 +11,24 @@ import {
   Search,
   ArrowRight
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import Map, { Marker, Popup, MapRef } from 'react-map-gl/mapbox';
+import { useMapboxToken } from '@/hooks/useMapboxToken';
 
-// Fix Leaflet default marker icon missing in bundlers
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
-
-// Custom colored SVG marker creator
+// Custom colored SVG marker creator for Mapbox
 function createColoredIcon(color: string, isSelected = false) {
   const size = isSelected ? 14 : 11;
-  const ring = isSelected ? `<circle cx="12" cy="12" r="11" fill="${color}" opacity="0.25"/>` : '';
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-      ${ring}
-      <circle cx="12" cy="12" r="${size / 2 + 2}" fill="white" opacity="0.9"/>
-      <circle cx="12" cy="12" r="${size / 2}" fill="${color}"/>
-    </svg>`;
-  return L.divIcon({
-    html: svg,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -14],
-    className: '',
-  });
+  return (
+    <div style={{ pointerEvents: 'auto', cursor: 'pointer' }}>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+        {isSelected && <circle cx="12" cy="12" r="11" fill={color} opacity="0.25"/>}
+        <circle cx="12" cy="12" r={size / 2 + 2} fill="white" opacity="0.9"/>
+        <circle cx="12" cy="12" r={size / 2} fill={color}/>
+      </svg>
+    </div>
+  );
 }
+
+// No longer using L.divIcon
 
 const pins = [
   {
@@ -119,21 +108,14 @@ const categoryBadge: Record<string, string> = {
   Research: 'bg-cyan-50 text-cyan-700',
 };
 
-// Helper component that flies the map to the selected pin
-function FlyToPin({ lat, lng }: { lat: number; lng: number }) {
-  const map = useMap();
-  useEffect(() => {
-    map.flyTo([lat, lng], 14, { duration: 1 });
-  }, [lat, lng, map]);
-  return null;
-}
+// Helper components removed as they are integrated into the main component logic
 
 export function MapViewPage() {
   const navigate = useNavigate();
+  const { token } = useMapboxToken();
   const [selected, setSelected] = useState<number | null>(null);
   const [search, setSearch] = useState('');
-  const markerRefs = useRef<Record<number, L.Marker | null>>({});
-
+  const mapRef = useRef<MapRef>(null);
   const selectedPin = pins.find((p) => p.id === selected);
   const filtered = pins.filter(
     (p) =>
@@ -143,11 +125,14 @@ export function MapViewPage() {
 
   const handlePinSelect = (id: number) => {
     setSelected(id);
-    // Open the popup for the selected marker
-    setTimeout(() => {
-      const marker = markerRefs.current[id];
-      if (marker) marker.openPopup();
-    }, 1100); // after fly animation
+    const pin = pins.find(p => p.id === id);
+    if (pin && mapRef.current) {
+      mapRef.current.flyTo({
+        center: [pin.lng, pin.lat],
+        zoom: 14,
+        duration: 1500
+      });
+    }
   };
 
   return (
@@ -220,79 +205,90 @@ export function MapViewPage() {
         </Card>
 
         {/* Map */}
-        <Card className="rounded-2xl shadow-sm border flex-1 overflow-hidden relative">
-          <MapContainer
-            center={[6.9214, 122.0390]}
-            zoom={13}
-            style={{ height: '100%', width: '100%' }}
-            zoomControl={true}
-          >
-            {/* CartoDB Positron — clean, light, minimalist */}
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            />
-
-            {/* Fly to selected pin */}
-            {selectedPin && (
-              <FlyToPin lat={selectedPin.lat} lng={selectedPin.lng} />
-            )}
-
-            {/* Markers */}
-            {pins.map((pin) => (
-              <Marker
-                key={pin.id}
-                position={[pin.lat, pin.lng]}
-                icon={createColoredIcon(
-                  categoryColors[pin.category],
-                  selected === pin.id
-                )}
-                ref={(ref) => { markerRefs.current[pin.id] = ref; }}
-                eventHandlers={{
-                  click: () => setSelected(pin.id),
+        <Card className="rounded-2xl shadow-sm border flex-1 overflow-hidden relative bg-muted/20 flex items-center justify-center">
+          {token ? (
+            <Map
+              ref={mapRef}
+              initialViewState={{
+                latitude: 6.9214,
+                longitude: 122.0390,
+                zoom: 12
+              }}
+              mapStyle="mapbox://styles/mapbox/light-v11"
+              mapboxAccessToken={token}
+              style={{ height: '100%', width: '100%' }}
+            >
+              {/* Markers */}
+              {pins.map((pin) => (
+                <Marker
+                  key={pin.id}
+                  latitude={pin.lat}
+                  longitude={pin.lng}
+                  onClick={(e) => {
+                  e.originalEvent.stopPropagation();
+                  setSelected(pin.id);
                 }}
-              >
-                <Popup
-                  className="leaflet-popup-junta"
-                  minWidth={240}
-                  maxWidth={280}
                 >
-                  <div className="p-1">
+                  {createColoredIcon(
+                    categoryColors[pin.category],
+                    selected === pin.id
+                  )}
+                </Marker>
+              ))}
+
+              {/* Popup */}
+              {selectedPin && (
+                <Popup
+                  latitude={selectedPin.lat}
+                  longitude={selectedPin.lng}
+                  onClose={() => setSelected(null)}
+                  closeButton={true}
+                  closeOnClick={false}
+                  anchor="bottom"
+                  offset={15}
+                  className="junta-mapbox-popup"
+                >
+                  <div className="p-1 min-w-[200px]">
                     <div className="flex items-start justify-between mb-1.5">
                       <span
-                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${categoryBadge[pin.category]}`}
+                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${categoryBadge[selectedPin.category]}`}
                       >
-                        {pin.category}
+                        {selectedPin.category}
                       </span>
                     </div>
-                    <h3 className="font-semibold text-sm text-gray-900 leading-snug mb-2">
-                      {pin.title}
+                    <h3 className="font-semibold text-sm text-gray-900 leading-snug mb-2 font-heading">
+                      {selectedPin.title}
                     </h3>
                     <div className="space-y-1 text-xs text-gray-500">
                       <p className="flex items-center gap-1.5">
-                        <CalendarDays className="w-3 h-3" />
-                        {pin.date}
+                        <CalendarDays className="w-3 h-3 text-emerald-600" />
+                        {selectedPin.date}
                       </p>
                       <p className="flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3" />
-                        {pin.location}
+                        <MapPin className="w-3 h-3 text-emerald-600" />
+                        {selectedPin.location}
                       </p>
                       <p className="flex items-center gap-1.5">
-                        <Users className="w-3 h-3" />
-                        {pin.participants} participants
+                        <Users className="w-3 h-3 text-emerald-600" />
+                        {selectedPin.participants} participants
                       </p>
                     </div>
                     <button
-                      onClick={() => navigate(`/app/events/${pin.id}`)}
-                      className="mt-3 w-full flex items-center justify-center gap-1 text-xs font-medium bg-emerald-700 hover:bg-emerald-800 text-white py-1.5 rounded-lg transition-colors"
+                      onClick={() => navigate(`/app/events/${selectedPin.id}`)}
+                      className="mt-3 w-full flex items-center justify-center gap-1 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white py-2 rounded-lg transition-colors shadow-sm"
                     >
                       View Details <ArrowRight className="w-3 h-3" />
                     </button>
                   </div>
                 </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
+              )}
+            </Map>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+              <p className="text-sm text-muted-foreground font-medium">Initializing Map Engine...</p>
+            </div>
+          )}
 
           {/* City label overlay */}
           <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm pointer-events-none">

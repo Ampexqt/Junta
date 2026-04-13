@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import Map, { Marker } from 'react-map-gl/mapbox';
+import { useMapboxToken } from '@/hooks/useMapboxToken';
 
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -76,6 +78,7 @@ interface EventFormData {
   documents: DocumentItem[];
   coverImage: File | null;
   gallery: File[];
+  coordinates: { lat: number; lng: number } | null;
 }
 
 export function CreateEventPage() {
@@ -95,8 +98,10 @@ export function CreateEventPage() {
     requirements: [],
     documents: [],
     coverImage: null,
-    gallery: []
+    gallery: [],
+    coordinates: null
   });
+  const { token } = useMapboxToken();
 
   const [newRequirement, setNewRequirement] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -264,15 +269,58 @@ export function CreateEventPage() {
         />
       </div>
 
-      <div className="relative group">
-        <div className="w-full h-40 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 group-hover:border-primary/30 transition-colors cursor-pointer">
-          <MapPin className="w-8 h-8 mb-2 opacity-50 transition-transform group-hover:scale-110" />
-          <span className="text-[13px] font-medium">Click to select location on Map</span>
-          <span className="text-[10px] uppercase tracking-wider mt-1 opacity-60">(Integrated Map Mockup)</span>
+      <div className="grid gap-2">
+        <Label className="text-[13px] font-semibold text-slate-700">Pin Location <span className="text-rose-500">*</span></Label>
+        <div className="relative group overflow-hidden rounded-2xl border-2 border-slate-100 shadow-sm transition-all hover:border-primary/20 bg-slate-50">
+          <div className="w-full h-48 sm:h-64">
+            {token ? (
+              <Map
+                initialViewState={{
+                  latitude: formData.coordinates?.lat || 6.9214,
+                  longitude: formData.coordinates?.lng || 122.039,
+                  zoom: 12
+                }}
+                style={{ width: '100%', height: '100%' }}
+                mapStyle="mapbox://styles/mapbox/streets-v12"
+                mapboxAccessToken={token}
+                onClick={(e) => {
+                  updateFormData('coordinates', { lat: e.lngLat.lat, lng: e.lngLat.lng });
+                }}
+              >
+                {formData.coordinates && (
+                  <Marker 
+                    latitude={formData.coordinates.lat} 
+                    longitude={formData.coordinates.lng}
+                    anchor="bottom"
+                  >
+                    <div className="relative flex flex-col items-center">
+                      <div className="absolute -top-1 w-2 h-2 bg-black/20 rounded-full blur-[1px]" />
+                      <MapPin className="w-8 h-8 text-primary fill-primary/20 stroke-[3px] drop-shadow-md animate-bounce" />
+                    </div>
+                  </Marker>
+                )}
+              </Map>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                <div className="w-6 h-6 border-2 border-slate-200 border-t-primary rounded-full animate-spin mb-2" />
+                <span className="text-xs font-medium">Loading Map...</span>
+              </div>
+            )}
+          </div>
+          <div className="absolute top-3 right-3 z-10">
+            <Badge className="bg-white/90 text-[10px] text-slate-500 border-slate-100 backdrop-blur-sm shadow-sm pointer-events-none">
+              {formData.coordinates 
+                 ? `LAT: ${formData.coordinates.lat.toFixed(4)} LNG: ${formData.coordinates.lng.toFixed(4)}`
+                 : 'Zamboanga City'}
+            </Badge>
+          </div>
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-slate-900/80 backdrop-blur-md rounded-full shadow-lg border border-white/10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <p className="text-[10px] font-bold text-white uppercase tracking-widest flex items-center gap-2">
+              <MapPin className="w-3 h-3 text-emerald-400" />
+              {formData.coordinates ? 'Location Captured' : 'Click to Pick Location'}
+            </p>
+          </div>
         </div>
-        <Badge className="absolute top-3 right-3 bg-white/90 text-[10px] text-slate-500 border-slate-100 backdrop-blur-sm pointer-events-none">
-          Zamboanga City
-        </Badge>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

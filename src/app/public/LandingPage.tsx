@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import MapImage from '@/assets/zamboanga_city_forest_20260413_010218.webp';
-import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
-import L from 'leaflet';
+import Map, { NavigationControl, Marker } from 'react-map-gl/mapbox';
+import { useMapboxToken } from '@/hooks/useMapboxToken';
 
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -572,7 +572,7 @@ function FeaturedEventsSection() {
 
 }
 function MapPreviewSection() {
-  const navigate = useNavigate();
+  const { token } = useMapboxToken();
   return (
     <section id="map" className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/50">
       <div className="max-w-7xl mx-auto">
@@ -616,54 +616,60 @@ function MapPreviewSection() {
             duration: 0.6
           }}>
 
-          <div className="relative rounded-3xl overflow-hidden border border-primary/10 shadow-2xl h-80 sm:h-[450px]">
-            <MapContainer
-              center={[6.9214, 122.039]}
-              zoom={13}
-              style={{ height: '100%', width: '100%' }}
-              zoomControl={false}
-              dragging={false}
-              scrollWheelZoom={false}
-              doubleClickZoom={false}
-              attributionControl={false}
-            >
-              <TileLayer
-                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-              />
-              {([
-                { lat: 6.9447, lng: 122.0033, label: 'Sta. Cruz Island' },
-                { lat: 6.9112, lng: 122.0716, label: 'City Center' },
-                { lat: 6.9211, lng: 121.9687, label: 'Sinunuc' },
-                { lat: 6.9062, lng: 122.0785, label: 'Paseo del Mar' },
-                { lat: 6.9335, lng: 122.0421, label: 'Pasonanca' },
-              ]).map((pin, i) => (
-                <Marker
-                  key={i}
-                  position={[pin.lat, pin.lng]}
-                  icon={L.divIcon({
-                    html: `<div style="width:14px;height:14px;background:#1F7A63;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.25);"></div>`,
-                    iconSize: [14, 14],
-                    iconAnchor: [7, 7],
-                    className: '',
-                  })}
-                >
-                  <Tooltip direction="top" offset={[0, -8]} opacity={1} permanent={false}>
-                    <span className="text-xs font-medium">{pin.label}</span>
-                  </Tooltip>
-                </Marker>
-              ))}
-            </MapContainer>
+          <div className="relative rounded-[2.5rem] overflow-hidden border border-emerald-600/10 shadow-[0_32px_64px_-16px_rgba(16,185,129,0.12)] h-[550px] group transition-all duration-700 hover:shadow-[0_40px_80px_-20px_rgba(16,185,129,0.18)]">
+            {/* Pure transparency for maximum clarity requested */}
+            <div className="absolute inset-0 z-10 pointer-events-none" />
+            
+            {token ? (
+              <Map
+                initialViewState={{
+                  latitude: 6.9150,
+                  longitude: 122.0650,
+                  zoom: 13.8,
+                  pitch: 0, // Flat vertical view
+                  bearing: 0
+                }}
+                style={{ 
+                  width: '100%', 
+                  height: '100%',
+                  filter: 'contrast(1.1) saturate(1.2) brightness(1.02)' 
+                }}
+                mapStyle="mapbox://styles/mapbox/standard"
+                mapboxAccessToken={token}
+                attributionControl={false}
+                scrollZoom={true}
+                dragPan={true}
+              >
+                <div className="absolute top-4 left-4 z-40">
+                  <NavigationControl showCompass={false} />
+                </div>
 
-            {/* Overlay gradient fade at bottom for aesthetics */}
-            <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background/30 to-transparent pointer-events-none z-[999]" />
+                {/* Pulsing Activity Points */}
+                {[
+                  { lat: 6.9447, lng: 122.0033 },
+                  { lat: 6.9211, lng: 121.9687 },
+                  { lat: 6.9335, lng: 122.0421 },
+                ].map((pos, i) => (
+                  <Marker key={i} latitude={pos.lat} longitude={pos.lng}>
+                    <div className="relative flex items-center justify-center">
+                      <div className="absolute w-8 h-8 bg-emerald-500/40 rounded-full animate-ping" />
+                      <div className="relative w-3 h-3 bg-emerald-400 rounded-full border-2 border-white shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
+                    </div>
+                  </Marker>
+                ))}
 
-            <div className="absolute bottom-4 right-4 z-[1000]">
-              <Button
-                onClick={() => navigate('/app/map')}
-                className="bg-white text-foreground hover:bg-white/90 shadow-md">
-                <MapPin className="w-4 h-4 mr-2" /> View Full Map
-              </Button>
-            </div>
+                {/* Aesthetic Gradient "Shadow" for Depth */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-transparent pointer-events-none z-10" />
+              </Map>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full bg-emerald-50/50">
+                <div className="w-10 h-10 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin" />
+                <p className="mt-4 text-xs font-bold text-emerald-800 tracking-widest uppercase">Initializing Canvas</p>
+              </div>
+            )}
+
+            <div className="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.03)] pointer-events-none z-20" />
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background/40 to-transparent pointer-events-none z-20" />
           </div>
         </motion.div>
       </div>

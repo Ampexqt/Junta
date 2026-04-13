@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 
 import { authenticateUser, AuthRequest } from './middleware/auth';
 import { authRoutes } from './routes/auth';
+import { uploadRoutes } from './routes/upload';
 
 dotenv.config();
 
@@ -17,10 +18,16 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Public Routes
 app.get('/', (req, res) => {
     res.send('Junta Backend API is running...');
+});
+
+// Config Routes
+app.get('/api/config/mapbox', (req, res) => {
+    res.json({ token: process.env.MAPBOX_ACCESS_TOKEN });
 });
 
 // Protected Route Example
