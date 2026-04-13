@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import Map, { Marker } from 'react-map-gl/mapbox';
+import { useMapboxToken } from '@/hooks/useMapboxToken';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sileo } from 'sileo';
@@ -68,6 +70,7 @@ interface EventFormData {
   documents: DocumentItem[];
   coverImage: File | null;
   gallery: File[];
+  coordinates: { lat: number; lng: number } | null;
 }
 
 interface CreateEventModalProps {
@@ -95,8 +98,10 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
     requirements: [],
     documents: [],
     coverImage: null,
-    gallery: []
+    gallery: [],
+    coordinates: null
   });
+  const { token } = useMapboxToken();
 
   const stepTitles = [
     'Base Identity',
@@ -222,10 +227,54 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
           className="h-10 rounded-xl bg-slate-50/50"
         />
       </div>
-      <div className="w-full h-32 bg-slate-100 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400">
-        <MapPin className="w-6 h-6 mb-1 opacity-50" />
-        <span className="text-[11px] font-medium">Integrated Map Mockup</span>
+      
+      <div className="grid gap-1.5">
+        <Label className="text-[12px] font-bold text-slate-700 ml-1">Pin Location <span className="text-rose-500">*</span></Label>
+        <div className="relative w-full h-48 rounded-xl overflow-hidden border border-slate-200 shadow-inner group">
+          {token ? (
+            <Map
+              initialViewState={{
+                latitude: formData.coordinates?.lat || 6.9214,
+                longitude: formData.coordinates?.lng || 122.039,
+                zoom: 12
+              }}
+              style={{ width: '100%', height: '100%' }}
+              mapStyle="mapbox://styles/mapbox/streets-v12"
+              mapboxAccessToken={token}
+              onClick={(e) => {
+                updateFormData('coordinates', { lat: e.lngLat.lat, lng: e.lngLat.lng });
+              }}
+            >
+              {formData.coordinates && (
+                <Marker 
+                  latitude={formData.coordinates.lat} 
+                  longitude={formData.coordinates.lng}
+                  anchor="bottom"
+                >
+                  <div className="relative flex flex-col items-center">
+                    <div className="absolute -top-1 w-2 h-2 bg-black/20 rounded-full blur-[1px]" />
+                    <MapPin className="w-8 h-8 text-primary fill-primary/20 stroke-[2.5px] drop-shadow-md animate-bounce" />
+                  </div>
+                </Marker>
+              )}
+            </Map>
+          ) : (
+            <div className="w-full h-full bg-slate-100 flex flex-col items-center justify-center text-slate-400">
+              <div className="w-6 h-6 border-2 border-slate-300 border-t-primary rounded-full animate-spin mb-2" />
+              <span className="text-[11px] font-medium tracking-tight">Initializing Mapbox...</span>
+            </div>
+          )}
+          
+          <div className="absolute bottom-2 left-2 right-2 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/20 shadow-sm pointer-events-none transition-opacity duration-300 group-hover:opacity-100 opacity-80">
+            <p className="text-[9px] font-bold text-slate-600 uppercase tracking-tighter">
+              {formData.coordinates 
+                ? `Pinned: ${formData.coordinates.lat.toFixed(4)}, ${formData.coordinates.lng.toFixed(4)}`
+                : 'Click map to set exact event pin'}
+            </p>
+          </div>
+        </div>
       </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-1.5">
           <Label className="text-[12px] font-bold text-slate-700 ml-1">Date <span className="text-rose-500">*</span></Label>
