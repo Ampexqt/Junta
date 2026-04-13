@@ -3,14 +3,25 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 // import { db } from './config/firebase-admin'; // Removed to fix ESLint unused var warning
 
+import { rateLimit } from 'express-rate-limit';
 import { authenticateUser, AuthRequest } from './middleware/auth';
 import { authRoutes } from './routes/auth';
 import { uploadRoutes } from './routes/upload';
+import { eventsRoutes } from './routes/events';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Rate limiting for sensitive config endpoints
+const configLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000, // 15 minutes
+	limit: 20, // Limit each IP to 20 requests per window
+	standardHeaders: 'draft-7',
+	legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
+});
 
 // Middleware
 app.use(cors());
@@ -19,6 +30,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/events', eventsRoutes);
 
 // Public Routes
 app.get('/', (req, res) => {
@@ -26,7 +38,7 @@ app.get('/', (req, res) => {
 });
 
 // Config Routes
-app.get('/api/config/mapbox', (req, res) => {
+app.get('/api/config/mapbox', configLimiter, (req, res) => {
     res.json({ token: process.env.MAPBOX_ACCESS_TOKEN });
 });
 
