@@ -1,10 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
-import { auth } from '../config/firebase-admin';
+import * as jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'junta_fallback_secret';
 
 export interface AuthRequest extends Request {
     user?: {
         uid: string;
         email?: string;
+        role?: string;
         name?: string;
     };
 }
@@ -16,18 +22,19 @@ export const authenticateUser = async (req: AuthRequest, res: Response, next: Ne
         return res.status(401).json({ error: 'No token provided' });
     }
 
-    const idToken = authHeader.split('Bearer ')[1];
+    const token = authHeader.split('Bearer ')[1];
 
     try {
-        const decodedToken = await auth.verifyIdToken(idToken);
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
         req.user = {
-            uid: decodedToken.uid,
-            email: decodedToken.email,
-            name: decodedToken.name as string,
+            uid: decoded.uid,
+            email: decoded.email,
+            role: decoded.role,
+            name: decoded.name,
         };
         next();
     } catch (error) {
-        console.error('Error verifying Firebase token:', error);
+        console.error('Error verifying JWT token:', error);
         return res.status(403).json({ error: 'Invalid or expired token' });
     }
 };
