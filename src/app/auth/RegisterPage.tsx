@@ -256,25 +256,22 @@ export function RegisterPage() {
 
       if (!response.ok) {
         const errorMessage = data.error || 'Failed to send verification code';
-        const hint = data.hint ? `\n\n💡 Dev Hint: ${data.hint}` : '';
-        
-        // If it's the Resend restriction error, we allow them to proceed to Step 3 anyway
-        if (errorMessage.includes('testing emails') || data.hint) {
-          sileo.warning({
-            title: 'OTP Bypass Active',
-            description: `We couldn't send the email, but we've logged your verification code to the terminal. Grab it from there to continue!`,
-          });
-          setStep(3);
-          return;
-        }
-        
-        throw new Error(`${errorMessage}${hint}`);
+        throw new Error(errorMessage);
       }
 
-      sileo.success({
-        title: 'OTP Sent',
-        description: `A verification code has been sent to ${email}`,
-      });
+      if (data.devMode) {
+        sileo.warning({
+          title: 'OTP Bypass Active',
+          description: 'We couldn\'t send the email, but we\'ve logged your verification code to the server terminal. Grab it from there to continue!',
+          duration: 5000
+        });
+      } else {
+        sileo.success({
+          title: 'OTP Sent',
+          description: `A verification code has been sent to ${email}`,
+          duration: 3000
+        });
+      }
       setStep(3);
     } catch (error: any) {
       sileo.error({
@@ -303,10 +300,19 @@ export function RegisterPage() {
         throw new Error(data.error || 'Failed to resend code');
       }
 
-      sileo.success({
-        title: 'Code Resent',
-        description: 'A new verification code has been sent.',
-      });
+      if (data.devMode) {
+        sileo.warning({
+          title: 'OTP Bypass Active',
+          description: 'The code has been logged to the server terminal. Grab it from there!',
+          duration: 4000
+        });
+      } else {
+        sileo.success({
+          title: 'Code Resent',
+          description: 'A new verification code has been sent.',
+          duration: 3000
+        });
+      }
     } catch (error: any) {
       sileo.error({
         title: 'Resend Failed',

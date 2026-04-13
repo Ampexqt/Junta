@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,10 +15,8 @@ import {
   Share2,
   FileText,
   CheckCircle,
-  TreePine,
   Phone,
-  Mail,
-  AlertCircle } from
+  Mail } from
 'lucide-react';
 export function EventDetailsPage() {
   const navigate = useNavigate();

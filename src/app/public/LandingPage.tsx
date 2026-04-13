@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import MapImage from '@/assets/zamboanga_city_forest_20260413_010218.webp';
+import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
+import L from 'leaflet';
 
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -614,64 +616,51 @@ function MapPreviewSection() {
             duration: 0.6
           }}>
 
-          <div className="relative rounded-3xl overflow-hidden border border-primary/10 shadow-2xl bg-gradient-to-br from-primary/5 via-background to-secondary/5 h-80 sm:h-[450px]">
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage:
-                  'radial-gradient(circle at 1px 1px, #1F7A63 0.5px, transparent 0)',
-                backgroundSize: '24px 24px'
-              }} />
-
-            {[
-              {
-                top: '25%',
-                left: '35%',
-                label: 'Sta. Cruz Island'
-              },
-              {
-                top: '40%',
-                left: '55%',
-                label: 'City Center'
-              },
-              {
-                top: '60%',
-                left: '30%',
-                label: 'Sinunuc'
-              },
-              {
-                top: '35%',
-                left: '70%',
-                label: 'Paseo del Mar'
-              },
-              {
-                top: '55%',
-                left: '60%',
-                label: 'Pasonanca'
-              }].
-              map((pin, i) =>
-                <div
+          <div className="relative rounded-3xl overflow-hidden border border-primary/10 shadow-2xl h-80 sm:h-[450px]">
+            <MapContainer
+              center={[6.9214, 122.039]}
+              zoom={13}
+              style={{ height: '100%', width: '100%' }}
+              zoomControl={false}
+              dragging={false}
+              scrollWheelZoom={false}
+              doubleClickZoom={false}
+              attributionControl={false}
+            >
+              <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+              />
+              {([
+                { lat: 6.9447, lng: 122.0033, label: 'Sta. Cruz Island' },
+                { lat: 6.9112, lng: 122.0716, label: 'City Center' },
+                { lat: 6.9211, lng: 121.9687, label: 'Sinunuc' },
+                { lat: 6.9062, lng: 122.0785, label: 'Paseo del Mar' },
+                { lat: 6.9335, lng: 122.0421, label: 'Pasonanca' },
+              ]).map((pin, i) => (
+                <Marker
                   key={i}
-                  className="absolute group"
-                  style={{
-                    top: pin.top,
-                    left: pin.left
-                  }}>
+                  position={[pin.lat, pin.lng]}
+                  icon={L.divIcon({
+                    html: `<div style="width:14px;height:14px;background:#1F7A63;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.25);"></div>`,
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7],
+                    className: '',
+                  })}
+                >
+                  <Tooltip direction="top" offset={[0, -8]} opacity={1} permanent={false}>
+                    <span className="text-xs font-medium">{pin.label}</span>
+                  </Tooltip>
+                </Marker>
+              ))}
+            </MapContainer>
 
-                  <div className="relative">
-                    <div className="absolute -inset-2 bg-primary/30 rounded-full animate-ping" />
-                    <div className="w-5 h-5 bg-primary rounded-full border-2 border-white shadow-xl relative z-10" />
-                  </div>
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white rounded-lg px-2 py-1 shadow-md text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                    {pin.label}
-                  </div>
-                </div>
-              )}
-            <div className="absolute bottom-4 right-4">
+            {/* Overlay gradient fade at bottom for aesthetics */}
+            <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background/30 to-transparent pointer-events-none z-[999]" />
+
+            <div className="absolute bottom-4 right-4 z-[1000]">
               <Button
                 onClick={() => navigate('/app/map')}
                 className="bg-white text-foreground hover:bg-white/90 shadow-md">
-
                 <MapPin className="w-4 h-4 mr-2" /> View Full Map
               </Button>
             </div>
@@ -701,37 +690,42 @@ function CTASection() {
           duration: 0.8,
           ease: "easeOut"
         }}
-        className="max-w-5xl mx-auto text-center bg-gradient-to-br from-primary via-primary to-[#06241d] rounded-[2.5rem] p-12 sm:p-20 relative overflow-hidden shadow-2xl shadow-primary/20">
-
-        <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
-        <div className="relative z-10">
-          <h2 className="font-heading text-4xl sm:text-5xl font-bold text-white leading-tight">
-            Ready to make a <br className="hidden sm:block" /> difference?
-          </h2>
-          <p className="text-white/80 mt-8 text-lg sm:text-xl max-w-2xl mx-auto mb-12 leading-relaxed">
-            Join the Junta community today and be part of the movement to protect
-            and preserve Zamboanga's natural beauty for future generations.
-          </p>
-          <div className="flex flex-wrap justify-center gap-6">
-            <Button
-              size="lg"
-              onClick={() => navigate('/register')}
-              className="bg-white text-primary hover:bg-white/90 h-16 px-12 rounded-2xl font-bold shadow-xl shadow-black/10 transition-all hover:translate-y-[-2px]">
-              Register Now
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate('/login')}
-              className="border-white/30 text-white hover:bg-white/10 h-16 px-12 rounded-2xl font-bold transition-all hover:translate-y-[-2px]">
-              Log In
-            </Button>
-          </div>
-        </div>
+        className="max-w-5xl mx-auto"
+      >
+        <Card className="rounded-[2.5rem] bg-gradient-to-br from-primary via-[#0f513d] to-[#06241d] border-0 overflow-hidden shadow-2xl relative shadow-primary/30">
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl opacity-70 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary-foreground/10 rounded-full translate-y-1/3 -translate-x-1/3 blur-3xl opacity-50 pointer-events-none" />
+          
+          <CardContent className="p-12 sm:p-20 relative z-10 text-center">
+            <h2 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight mb-8 drop-shadow-sm">
+              Ready to make a <br className="hidden sm:block" /> difference?
+            </h2>
+            <p className="text-white/90 mt-4 text-lg sm:text-xl max-w-2xl mx-auto mb-12 leading-relaxed font-medium">
+              Join the Junta community today and be part of the movement to protect
+              and preserve Zamboanga's natural beauty for future generations.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
+              <Button
+                size="lg"
+                onClick={() => navigate('/register')}
+                className="bg-white text-primary hover:bg-white/90 h-14 px-10 rounded-2xl font-bold text-base shadow-xl shadow-black/10 transition-all hover:scale-105 active:scale-95"
+              >
+                Register Now
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => navigate('/login')}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 h-14 px-10 rounded-2xl font-bold text-base backdrop-blur-md transition-all hover:scale-105 active:scale-95"
+              >
+                Log In
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
-    </section>);
-
+    </section>
+  );
 }
 function Footer() {
   return (
