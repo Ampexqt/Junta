@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarDays, Clock, MapPin, CheckCircle } from 'lucide-react';
+import { CalendarDays, Clock, MapPin } from 'lucide-react';
 const scheduleEvents: Record<
   string,
   Array<{

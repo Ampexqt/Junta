@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { db } from './config/firebase-admin';
+// import { db } from './config/firebase-admin'; // Removed to fix ESLint unused var warning
 
 import { authenticateUser, AuthRequest } from './middleware/auth';
 import { authRoutes } from './routes/auth';
@@ -24,14 +24,24 @@ app.get('/', (req, res) => {
 });
 
 // Protected Route Example
-app.get('/api/me', authenticateUser, (req: AuthRequest, res) => {
+app.get('/api/me', authenticateUser, (req: express.Request, res: express.Response) => {
+    const authReq = req as AuthRequest;
     // This will only run if the token is valid
     res.json({
         message: 'This is a protected route',
-        user: req.user
+        user: authReq.user
     });
 });
 
-app.listen(PORT, () => {
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+});
+
+app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
+

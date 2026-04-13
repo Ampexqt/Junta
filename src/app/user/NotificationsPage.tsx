@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,10 +9,8 @@ import {
   CalendarDays,
   CheckCircle,
   Info,
-  AlertTriangle,
   Users,
   Settings,
-  Mail,
   Check
 } from
   'lucide-react';
@@ -127,7 +124,6 @@ const initialNotifications: Notification[] = [
   }];
 
 export function NotificationsPage() {
-  const navigate = useNavigate();
   const [notifications, setNotifications] = useState(initialNotifications);
   const markAllRead = () =>
     setNotifications((prev) =>
