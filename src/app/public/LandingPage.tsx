@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import MapImage from '@/assets/zamboanga_city_forest_20260413_010218.webp';
 import Map, { NavigationControl, Marker } from 'react-map-gl/mapbox';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
@@ -573,54 +573,57 @@ function FeaturedEventsSection() {
 }
 function MapPreviewSection() {
   const { token } = useMapboxToken();
-  return (
-    <section id="map" className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/50">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{
-            once: true
-          }}
-          variants={stagger}
-          className="text-center mb-12">
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [hasEnteredView, setHasEnteredView] = useState(false);
 
-          <motion.p
-            variants={fadeUp}
-            custom={0}
-            className="text-sm font-medium text-primary mb-2">
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setHasEnteredView(true);
+        observer.disconnect();
+      }
+    }, {
+      threshold: 0.1
+    });
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <section id="map" className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/50" ref={sectionRef}>
+      <div className="max-w-7xl mx-auto">
+        <motion.div initial="hidden" whileInView="visible" viewport={{
+        once: true
+      }} variants={stagger} className="text-center mb-12">
+
+          <motion.p variants={fadeUp} custom={0} className="text-sm font-medium text-primary mb-2">
 
             Map View
           </motion.p>
-          <motion.h2
-            variants={fadeUp}
-            custom={1}
-            className="font-heading font-semibold text-3xl sm:text-4xl text-foreground">
+          <motion.h2 variants={fadeUp} custom={1} className="font-heading font-semibold text-3xl sm:text-4xl text-foreground">
 
             Find Events Near You
           </motion.h2>
         </motion.div>
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 20
-          }}
-          whileInView={{
-            opacity: 1,
-            y: 0
-          }}
-          viewport={{
-            once: true
-          }}
-          transition={{
-            duration: 0.6
-          }}>
+        <motion.div initial={{
+        opacity: 0,
+        y: 20
+      }} whileInView={{
+        opacity: 1,
+        y: 0
+      }} viewport={{
+        once: true
+      }} transition={{
+        duration: 0.6
+      }}>
 
           <div className="relative rounded-[2.5rem] overflow-hidden border border-emerald-600/10 shadow-[0_32px_64px_-16px_rgba(16,185,129,0.12)] h-[550px] group transition-all duration-700 hover:shadow-[0_40px_80px_-20px_rgba(16,185,129,0.18)]">
             {/* Pure transparency for maximum clarity requested */}
             <div className="absolute inset-0 z-10 pointer-events-none" />
             
-            {token ? (
+            {hasEnteredView && token ? (
               <Map
                 initialViewState={{
                   latitude: 6.9150,
