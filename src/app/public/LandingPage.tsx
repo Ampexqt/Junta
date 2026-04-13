@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import MapImage from '@/assets/zamboanga_city_forest_20260413_010218.webp';
-import Map, { NavigationControl } from 'react-map-gl/mapbox';
+import Map, { NavigationControl, Marker } from 'react-map-gl/mapbox';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
 
 import { Link, useNavigate } from 'react-router-dom';
@@ -624,26 +624,43 @@ function MapPreviewSection() {
             {token ? (
               <Map
                 initialViewState={{
-                  latitude: 6.9214,
-                  longitude: 122.039,
-                  zoom: 13.5,
-                  pitch: 40 // Angled for a detailed, alive feel
+                  latitude: 6.9150,
+                  longitude: 122.0650,
+                  zoom: 13.8,
+                  pitch: 0, // Flat vertical view
+                  bearing: 0
                 }}
                 style={{ 
                   width: '100%', 
                   height: '100%',
-                  filter: 'contrast(1.05) saturate(1.1)' // Enhanced vibrancy for parks and water
+                  filter: 'contrast(1.1) saturate(1.2) brightness(1.02)' 
                 }}
                 mapStyle="mapbox://styles/mapbox/standard"
                 mapboxAccessToken={token}
                 attributionControl={false}
                 scrollZoom={true}
                 dragPan={true}
-                doubleClickZoom={true}
               >
                 <div className="absolute top-4 left-4 z-40">
                   <NavigationControl showCompass={false} />
                 </div>
+
+                {/* Pulsing Activity Points */}
+                {[
+                  { lat: 6.9447, lng: 122.0033 },
+                  { lat: 6.9211, lng: 121.9687 },
+                  { lat: 6.9335, lng: 122.0421 },
+                ].map((pos, i) => (
+                  <Marker key={i} latitude={pos.lat} longitude={pos.lng}>
+                    <div className="relative flex items-center justify-center">
+                      <div className="absolute w-8 h-8 bg-emerald-500/40 rounded-full animate-ping" />
+                      <div className="relative w-3 h-3 bg-emerald-400 rounded-full border-2 border-white shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
+                    </div>
+                  </Marker>
+                ))}
+
+                {/* Aesthetic Gradient "Shadow" for Depth */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-transparent pointer-events-none z-10" />
               </Map>
             ) : (
               <div className="flex flex-col items-center justify-center h-full bg-emerald-50/50">
@@ -652,17 +669,8 @@ function MapPreviewSection() {
               </div>
             )}
 
-            {/* Aesthetic Vignette */}
             <div className="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.03)] pointer-events-none z-20" />
             <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background/40 to-transparent pointer-events-none z-20" />
-
-            <div className="absolute bottom-6 right-6 z-30">
-              <Button
-                onClick={() => navigate('/app/map')}
-                className="bg-white/80 backdrop-blur-md text-emerald-900 hover:bg-white hover:scale-105 shadow-xl border border-white/20 rounded-2xl px-6 h-12 font-bold transition-all">
-                <MapPin className="w-4 h-4 mr-2 text-emerald-600" /> View Live Network
-              </Button>
-            </div>
           </div>
         </motion.div>
       </div>
