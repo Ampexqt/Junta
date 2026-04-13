@@ -59,7 +59,7 @@ import {
   CommandGroup
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/components/ui/utils';
+import { cn } from '@/lib/utils';
 import { useAuth } from '../../features/auth/AuthContext';
 import type { UserRole } from '../../features/auth/AuthContext';
 import { API_BASE_URL } from '@/lib/api';

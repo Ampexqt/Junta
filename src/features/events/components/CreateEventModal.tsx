@@ -35,10 +35,21 @@ import {
   Image as ImageIcon,
   Globe,
   Clock,
-  FileText
+  FileText,
+  Calendar as CalendarIcon,
+  Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { API_BASE_URL } from '@/lib/api';
 
 // --- TYPES ---
 
@@ -68,9 +79,9 @@ interface EventFormData {
   timeline: TimelineItem[];
   requirements: string[];
   documents: DocumentItem[];
-  coverImage: File | null;
-  gallery: File[];
+  coverImage: string | null;
   coordinates: { lat: number; lng: number } | null;
+  aboutEvent: string;
 }
 
 interface CreateEventModalProps {
@@ -98,10 +109,12 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
     requirements: [],
     documents: [],
     coverImage: null,
-    gallery: [],
-    coordinates: null
+    coordinates: null,
+    aboutEvent: ''
   });
   const { token } = useMapboxToken();
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const stepTitles = [
     'Base Identity',
@@ -128,6 +141,42 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       ...prev,
       timeline: [...prev.timeline, { id: Math.random().toString(36), time: '', activity: '', description: '' }]
     }));
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'document' | 'image') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (type === 'document') setIsUploadingDoc(true);
+    else setIsUploadingImage(true);
+
+    const formData = new FormData();
+    formData.append(type, file); // multer expects 'image' or 'document'
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/upload/${type}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: formData
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Upload failed');
+
+      if (type === 'document') {
+        updateFormData('documents', [{ id: data.public_id, name: file.name, url: data.url }]);
+      } else {
+        updateFormData('coverImage', data.url);
+      }
+    } catch (err: any) {
+      sileo.error({ title: 'Upload Failed', description: err.message });
+    } finally {
+      if (type === 'document') setIsUploadingDoc(false);
+      else setIsUploadingImage(false);
+      // Reset input
+      event.target.value = '';
+    }
   };
 
   const removeTimelineItem = (id: string) => {
@@ -206,11 +255,20 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       </div>
       <div className="grid gap-1.5">
         <Label className="text-[12px] font-bold text-slate-700 ml-1">Tagline <span className="text-rose-500">*</span></Label>
-        <Textarea 
+        <Input 
           placeholder="Brief summary..." 
           value={formData.shortDescription}
           onChange={(e) => updateFormData('shortDescription', e.target.value)}
-          className="min-h-[80px] rounded-xl border-slate-200 bg-slate-50/50 resize-none focus:ring-primary/20"
+          className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:ring-primary/20"
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <Label className="text-[12px] font-bold text-slate-700 ml-1">About This Event <span className="text-rose-500">*</span></Label>
+        <Textarea 
+          placeholder="Detailed description of the event..." 
+          value={formData.aboutEvent}
+          onChange={(e) => updateFormData('aboutEvent', e.target.value)}
+          className="min-h-[120px] rounded-xl border-slate-200 bg-slate-50/50 resize-none focus:ring-primary/20"
         />
       </div>
     </div>
@@ -278,7 +336,28 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-1.5">
           <Label className="text-[12px] font-bold text-slate-700 ml-1">Date <span className="text-rose-500">*</span></Label>
-          <Input type="date" value={formData.date} onChange={(e) => updateFormData('date', e.target.value)} className="h-10 rounded-xl bg-slate-50/50" />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "h-10 rounded-xl bg-slate-50/50 justify-start text-left font-normal",
+                  !formData.date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.date ? format(new Date(formData.date), "PPP") : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-[60]" align="start">
+              <Calendar
+                mode="single"
+                selected={formData.date ? new Date(formData.date) : undefined}
+                onSelect={(date) => updateFormData('date', date?.toISOString() || '')}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="grid gap-1.5">
           <Label className="text-[12px] font-bold text-slate-700 ml-1">Capacity <span className="text-rose-500">*</span></Label>
@@ -335,13 +414,44 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       <Separator className="bg-slate-100" />
       <div className="space-y-3">
         <Label className="text-[12px] font-bold text-slate-700 ml-1 underline decoration-primary/30 underline-offset-4">Reference Documents</Label>
-        <div className="p-8 border-2 border-dashed border-slate-100 rounded-2xl flex flex-col items-center justify-center text-center bg-slate-50/30 hover:bg-slate-50 hover:border-primary/20 transition-all cursor-pointer group">
-          <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-400 mb-3 group-hover:bg-primary group-hover:text-white transition-all">
-            <Upload className="w-5 h-5" />
+        
+        {formData.documents.length > 0 ? (
+          <div className="flex items-center justify-between p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 text-red-500">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[12px] font-bold text-slate-700 truncate">{formData.documents[0].name}</p>
+                <p className="text-[10px] text-emerald-600 font-medium">Uploaded Successfully</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => updateFormData('documents', [])} className="text-slate-400 hover:text-red-500">
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
-          <p className="text-[11px] font-bold text-slate-600">Import PDF/DOCX materials</p>
-          <p className="text-[9px] text-slate-400 mt-1 uppercase tracking-tighter">Maximum file size 8MB</p>
-        </div>
+        ) : (
+          <label className="relative p-8 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center bg-slate-50/30 hover:bg-slate-50 hover:border-primary/20 transition-all cursor-pointer group">
+            <input 
+              type="file" 
+              accept=".pdf,.doc,.docx" 
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" 
+              onChange={(e) => handleFileUpload(e, 'document')}
+              disabled={isUploadingDoc}
+            />
+            {isUploadingDoc ? (
+              <div className="w-10 h-10 mb-3 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-400 mb-3 group-hover:bg-primary group-hover:text-white transition-all">
+                <Upload className="w-5 h-5" />
+              </div>
+            )}
+            <p className="text-[11px] font-bold text-slate-600">{isUploadingDoc ? 'Uploading document...' : 'Import PDF/DOCX materials'}</p>
+            <p className="text-[9px] text-slate-400 mt-1 uppercase tracking-tighter">Maximum file size 8MB</p>
+          </label>
+        )}
       </div>
     </div>
   );
@@ -350,22 +460,38 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
     <div className="space-y-5 py-2">
       <div className="space-y-3">
         <Label className="text-[12px] font-bold text-slate-700 ml-1">Event Showcase <span className="text-rose-500">*</span></Label>
-        <div className="aspect-[21/9] w-full bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:bg-white hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden">
-          <div className="flex flex-col items-center group-hover:scale-110 transition-transform duration-500">
-            <ImageIcon className="w-10 h-10 mb-2 opacity-20" />
-            <span className="text-[11px] font-bold text-slate-500">Upload Hero Image</span>
+        
+        {formData.coverImage ? (
+          <div className="relative aspect-[21/9] w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm group">
+            <img src={formData.coverImage} alt="Hero" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <Button variant="destructive" size="sm" onClick={() => updateFormData('coverImage', null)} className="h-8 rounded-lg font-bold">
+                <Trash2 className="w-4 h-4 mr-1.5" /> Remove Image
+              </Button>
+            </div>
           </div>
-        </div>
-      </div>
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-[12px] font-bold text-slate-700 ml-1">Supporting Media</Label>
-          <span className="text-[10px] text-slate-400 font-medium">Up to 4 slots</span>
-        </div>
-        <div className="grid grid-cols-4 gap-3">
-          <div className="aspect-square bg-slate-50 border-2 border-dashed border-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-white transition-all cursor-pointer"><Plus className="w-5 h-5" /></div>
-          {[1, 2, 3].map(i => <div key={i} className="aspect-square bg-slate-100/50 rounded-xl border border-slate-50" />)}
-        </div>
+        ) : (
+          <label className="relative aspect-[21/9] w-full bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:bg-white hover:border-primary/30 transition-all cursor-pointer group overflow-hidden">
+            <input 
+              type="file" 
+              accept="image/*" 
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" 
+              onChange={(e) => handleFileUpload(e, 'image')}
+              disabled={isUploadingImage}
+            />
+            {isUploadingImage ? (
+              <div className="flex flex-col items-center">
+                <Loader2 className="w-10 h-10 mb-2 text-primary animate-spin" />
+                <span className="text-[11px] font-bold text-primary">Uploading Image...</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center group-hover:scale-110 transition-transform duration-500">
+                <ImageIcon className="w-10 h-10 mb-2 opacity-20" />
+                <span className="text-[11px] font-bold text-slate-500">Upload Hero Image</span>
+              </div>
+            )}
+          </label>
+        )}
       </div>
     </div>
   );
@@ -382,10 +508,17 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       <div className="grid grid-cols-2 gap-y-4 gap-x-6">
         <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Identity</p><p className="font-bold text-slate-800 truncate">{formData.title || 'Untitled Action'}</p></div>
         <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Classification</p><Badge className="bg-slate-900 font-bold capitalize">{formData.category || 'N/A'}</Badge></div>
-        <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Timeline</p><p className="font-bold text-primary">{formData.date || 'To be set'}</p></div>
+        <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Date</p><p className="font-bold text-primary">{formData.date ? format(new Date(formData.date), 'PPP') : 'To be set'}</p></div>
         <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Access</p><p className="font-bold text-slate-800 capitalize">{formData.visibility}</p></div>
       </div>
-      <div className="pt-4 border-t border-slate-100">
+      <div className="pt-4 border-t border-slate-100 space-y-3">
+        <div className="flex items-center justify-between mb-2">
+            <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Attachments</span>
+            <span className="text-[10px] font-bold text-emerald-600">
+              {formData.coverImage ? 'Hero Img' : ''} {formData.coverImage && formData.documents.length ? '&' : ''} {formData.documents.length ? 'Doc' : ''}
+              {!formData.coverImage && !formData.documents.length ? 'None' : ' Attached'}
+            </span>
+        </div>
         <div className="flex items-center justify-between mb-2">
             <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Planned Activities</span>
             <span className="text-[10px] font-bold text-primary">{formData.timeline.length} PHASES</span>
