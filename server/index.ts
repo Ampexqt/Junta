@@ -23,6 +23,11 @@ app.get('/', (req, res) => {
     res.send('Junta Backend API is running...');
 });
 
+// Config Routes
+app.get('/api/config/mapbox', (req, res) => {
+    res.json({ token: process.env.MAPBOX_ACCESS_TOKEN });
+});
+
 // Protected Route Example
 app.get('/api/me', authenticateUser, (req: express.Request, res: express.Response) => {
     const authReq = req as AuthRequest;
