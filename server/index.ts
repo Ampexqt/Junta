@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 
 import { authenticateUser, AuthRequest } from './middleware/auth';
 import { authRoutes } from './routes/auth';
+import { uploadRoutes } from './routes/upload';
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Public Routes
 app.get('/', (req, res) => {
