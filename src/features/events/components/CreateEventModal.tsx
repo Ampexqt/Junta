@@ -37,7 +37,8 @@ import {
   Clock,
   FileText,
   Calendar as CalendarIcon,
-  Loader2
+  Loader2,
+  Zap
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -135,6 +136,41 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
 
   const progress = (step / 6) * 100;
 
+  const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+  const minutes = ['00', '15', '30', '45'];
+  const periods = ['AM', 'PM'];
+
+  const getTimeParts = (timeStr: string) => {
+    if (!timeStr) return { hour: '08', minute: '00', period: 'AM' };
+    const [time, period] = timeStr.split(' ');
+    const [hour, minute] = time.split(':');
+    return { hour, minute, period };
+  };
+
+  const updateTime = (key: 'startTime' | 'endTime', part: 'hour' | 'minute' | 'period', value: string) => {
+    const current = getTimeParts(formData[key]);
+    current[part] = value;
+    updateFormData(key, `${current.hour}:${current.minute} ${current.period}`);
+  };
+
+  const timeToMinutes = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [time, period] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
+  const filteredTimeOptions = timeOptions.filter(t => {
+    const startMins = timeToMinutes(formData.startTime || '12:00 AM');
+    const endMins = timeToMinutes(formData.endTime || '11:59 PM');
+    const currentMins = timeToMinutes(t);
+    // If end time is technically earlier than start (e.g. overnight), just show all
+    if (endMins < startMins) return true;
+    return currentMins >= startMins && currentMins <= endMins;
+  });
+
   // --- HANDLERS ---
 
   const handleNext = () => { if (step < 6) setStep(step + 1); };
@@ -147,7 +183,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
   const addTimelineItem = () => {
     setFormData(prev => ({
       ...prev,
-      timeline: [...prev.timeline, { id: Math.random().toString(36), time: '', activity: '', description: '' }]
+      timeline: [{ id: Math.random().toString(36), time: '', activity: '', description: '' }, ...prev.timeline]
     }));
   };
 
@@ -210,13 +246,49 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
   };
 
   const handleSubmit = async () => {
+    if (!formData.title || !formData.category || !formData.date || !formData.coverImage) {
+      sileo.error({ 
+        title: 'Missing Details', 
+        description: 'Please ensure title, category, date, and hero image are provided.' 
+      });
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      sileo.success({ title: 'Success', description: 'Event sent for approval!', duration: 2000 });
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create event');
+      }
+
+      sileo.success({ 
+        title: 'Event Created', 
+        description: 'Your event has been sent for approval!', 
+        duration: 3000 
+      });
+      
       setIsSubmitting(false);
       setOpen(false);
       navigate('/app/organizer/submissions');
-    }, 1200);
+    } catch (err: any) {
+      console.error('Submit error:', err);
+      sileo.error({ 
+        title: 'Submission Failed', 
+        description: err.message || 'An error occurred while creating your event.' 
+      });
+      setIsSubmitting(false);
+    }
   };
 
   // --- RENDERS ---
@@ -372,28 +444,132 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
           <Input type="number" placeholder="50" value={formData.capacity} onChange={(e) => updateFormData('capacity', e.target.value)} className="h-10 rounded-xl bg-slate-50/50" />
         </div>
       </div>
+
+      <div className="grid grid-cols-2 gap-6 pt-2">
+        <div className="space-y-2">
+          <Label className="text-[12px] font-bold text-slate-700 ml-1">Start Time <span className="text-rose-500">*</span></Label>
+          <div className="flex items-center gap-1">
+            <div className="flex-1 flex items-center bg-slate-50/50 rounded-xl border border-slate-100 p-0.5 overflow-hidden">
+                <Select 
+                  value={getTimeParts(formData.startTime).hour} 
+                  onValueChange={(val) => updateTime('startTime', 'hour', val)}
+                >
+                  <SelectTrigger className="border-none shadow-none bg-transparent h-9 text-[13px] px-3 focus:ring-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px]">
+                    {hours.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <span className="text-slate-300 font-bold">:</span>
+                <Select 
+                  value={getTimeParts(formData.startTime).minute} 
+                  onValueChange={(val) => updateTime('startTime', 'minute', val)}
+                >
+                  <SelectTrigger className="border-none shadow-none bg-transparent h-9 text-[13px] px-3 focus:ring-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {minutes.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+            </div>
+            <Select 
+              value={getTimeParts(formData.startTime).period} 
+              onValueChange={(val) => updateTime('startTime', 'period', val)}
+            >
+              <SelectTrigger className="w-[70px] h-10 rounded-xl bg-slate-900 text-white border-none text-[11px] font-black tracking-widest">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {periods.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-[12px] font-bold text-slate-700 ml-1">End Time <span className="text-rose-500">*</span></Label>
+          <div className="flex items-center gap-1">
+            <div className="flex-1 flex items-center bg-slate-50/50 rounded-xl border border-slate-100 p-0.5 overflow-hidden">
+                <Select 
+                  value={getTimeParts(formData.endTime).hour} 
+                  onValueChange={(val) => updateTime('endTime', 'hour', val)}
+                >
+                  <SelectTrigger className="border-none shadow-none bg-transparent h-9 text-[13px] px-3 focus:ring-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px]">
+                    {hours.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <span className="text-slate-300 font-bold">:</span>
+                <Select 
+                  value={getTimeParts(formData.endTime).minute} 
+                  onValueChange={(val) => updateTime('endTime', 'minute', val)}
+                >
+                  <SelectTrigger className="border-none shadow-none bg-transparent h-9 text-[13px] px-3 focus:ring-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {minutes.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+            </div>
+            <Select 
+              value={getTimeParts(formData.endTime).period} 
+              onValueChange={(val) => updateTime('endTime', 'period', val)}
+            >
+              <SelectTrigger className="w-[70px] h-10 rounded-xl bg-slate-900 text-white border-none text-[11px] font-black tracking-widest">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {periods.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
   const renderStep3 = () => (
-    <div className="space-y-4 py-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-      <div className="flex items-center justify-between sticky top-0 bg-white pb-2 z-10">
-        <Label className="text-[12px] font-bold text-slate-700 font-heading">Event Timeline</Label>
-        <Button variant="outline" size="sm" onClick={addTimelineItem} className="h-7 text-[10px] rounded-lg bg-primary/5 text-primary border-primary/20 hover:bg-primary/10">
-          <Plus className="w-3 h-3 mr-1" /> Add Entry
+    <div className="space-y-4 py-2 max-h-[420px] overflow-y-auto pr-2 no-scrollbar">
+      {/* Informational Guidance Note */}
+      <div className="px-4 py-3 rounded-2xl bg-emerald-50/50 border border-emerald-100/50 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center flex-shrink-0 shadow-sm">
+          <Clock className="w-4 h-4 text-white" />
+        </div>
+        <div className="space-y-0.5">
+          <p className="text-[10px] font-black uppercase tracking-[0.05em] text-emerald-600/70">Planned Schedule</p>
+          <p className="text-[13px] font-bold text-emerald-900 leading-none">
+            {formData.startTime || '08:00 AM'} — {formData.endTime || '05:00 PM'}
+          </p>
+          <p className="text-[10px] text-emerald-700/60 font-medium">Use this range to map out your event's internal sequence below.</p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md pb-2 z-10 -mx-1 px-1">
+        <Label className="text-[12px] font-black uppercase tracking-widest text-slate-400">Timeline Structure</Label>
+        <Button variant="outline" size="sm" onClick={addTimelineItem} className="h-8 text-[10px] font-black uppercase tracking-[0.1em] rounded-xl bg-slate-900 text-white border-none hover:bg-black transition-all">
+          <Plus className="w-3.5 h-3.5 mr-1.5" /> Entry
         </Button>
       </div>
       {formData.timeline.map((item) => (
         <div key={item.id} className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 space-y-3 relative group transition-all hover:bg-white hover:shadow-md">
           <div className="flex gap-2">
             <Select value={item.time} onValueChange={(val) => updateTimelineItem(item.id, 'time', val)}>
-              <SelectTrigger className="w-[120px] h-9 rounded-lg border-slate-200">
+              <SelectTrigger className="w-[124px] h-9 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white">
                 <SelectValue placeholder="Time" />
               </SelectTrigger>
-              <SelectContent className="max-h-[200px]" position="popper">
-                {timeOptions.map((time) => (
-                  <SelectItem key={time} value={time}>{time}</SelectItem>
-                ))}
+              <SelectContent className="max-h-[240px]" position="popper">
+                {filteredTimeOptions.length > 0 ? (
+                    filteredTimeOptions.map((time) => (
+                      <SelectItem key={time} value={time} className="text-[11px] font-medium">{time}</SelectItem>
+                    ))
+                ) : (
+                    <SelectItem value="none" disabled>Adjust Step 2</SelectItem>
+                )}
               </SelectContent>
             </Select>
             <Input placeholder="What's happening?" value={item.activity} onChange={(e) => updateTimelineItem(item.id, 'activity', e.target.value)} className="flex-1 h-9 rounded-lg border-slate-200" />
@@ -514,39 +690,88 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
   );
 
   const renderStep6 = () => (
-    <div className="space-y-6 py-2">
-      <div className="flex items-center gap-4 bg-primary/5 p-4 rounded-2xl border border-primary/10">
-        <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-primary shadow-sm active:scale-95 transition-transform"><CheckCircle className="w-6 h-6" /></div>
-        <div className="flex-1">
-          <h4 className="text-sm font-bold text-primary font-heading">Almost Published!</h4>
-          <p className="text-[10px] text-primary/70 leading-tight">Review your configuration carefully to ensure accuracy and expedite the approval process.</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-y-4 gap-x-6">
-        <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Identity</p><p className="font-bold text-slate-800 truncate">{formData.title || 'Untitled Action'}</p></div>
-        <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Classification</p><Badge className="bg-slate-900 text-white font-bold capitalize">{formData.category || 'N/A'}</Badge></div>
-        <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Date</p><p className="font-bold text-primary">{formData.date ? format(new Date(formData.date), 'PPP') : 'To be set'}</p></div>
-        <div className="space-y-1"><p className="text-slate-400 uppercase font-black text-[9px] tracking-tight">Access</p><p className="font-bold text-slate-800 capitalize">{formData.visibility}</p></div>
-      </div>
-      <div className="pt-4 border-t border-slate-100 space-y-3">
-        <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Attachments</span>
-            <span className="text-[10px] font-bold text-emerald-600">
-              {formData.coverImage ? 'Hero Img' : ''} {formData.coverImage && formData.documents.length ? '&' : ''} {formData.documents.length ? 'Doc' : ''}
-              {!formData.coverImage && !formData.documents.length ? 'None' : ' Attached'}
-            </span>
-        </div>
-        <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Planned Activities</span>
-            <span className="text-[10px] font-bold text-primary">{formData.timeline.length} PHASES</span>
-        </div>
-        <div className="flex gap-2.5 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
-            {formData.timeline.map((it, i) => (
-                <div key={i} className="min-w-[120px] p-2 bg-slate-50 rounded-lg border border-slate-100 flex flex-col gap-1">
-                    <span className="text-[9px] font-bold text-primary">{it.time || '--:--'}</span>
-                    <span className="text-[10px] text-slate-700 font-bold truncate">{it.activity || '...'}</span>
+    <div className="px-1">
+      <div className="space-y-5 max-h-[360px] overflow-y-auto pr-2 no-scrollbar">
+        {/* 1. Visual Header - Minimalist */}
+        {formData.coverImage && (
+          <div className="relative h-36 w-full rounded-2xl overflow-hidden shadow-sm border border-slate-100">
+             <img src={formData.coverImage} alt="Preview" className="w-full h-full object-cover" />
+             <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+             <div className="absolute bottom-3 left-4 flex gap-2">
+                  <Badge className="bg-white/90 backdrop-blur-md text-slate-900 border-none font-black uppercase text-[8px] px-2 py-0.5 tracking-tighter">
+                      {formData.category}
+                  </Badge>
+                  <div className="px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[8px] font-black tracking-tighter uppercase">
+                      {formData.visibility}
+                  </div>
+             </div>
+          </div>
+        )}
+
+        {/* 2. Content Flow - Single Column */}
+        <div className="space-y-6 pt-2">
+            <div className="space-y-1.5">
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">{formData.title || 'Untitled Action'}</h2>
+                <p className="text-[13px] text-slate-500 font-medium italic">
+                    {formData.shortDescription || 'A community-driven initiative for environmental preservation.'}
+                </p>
+                <div className="flex items-center gap-4 text-slate-400 font-medium pt-1">
+                    <div className="flex items-center gap-1.5">
+                        <CalendarIcon className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-[11px]">
+                            {formData.date ? format(new Date(formData.date), 'MMM dd, yyyy') : 'TBD'}
+                            {formData.startTime && ` • ${formData.startTime}`}
+                            {formData.endTime && ` - ${formData.endTime}`}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-[11px] truncate max-w-[200px]">{formData.locationName || 'TBD'}</span>
+                    </div>
                 </div>
-            ))}
+            </div>
+
+            <Separator className="bg-slate-100/50" />
+
+            <div className="space-y-3">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">About</h3>
+                <p className="text-[14px] text-slate-600 leading-relaxed font-normal">
+                    {formData.aboutEvent || 'No description provided.'}
+                </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Timeline</h3>
+                    <div className="relative pl-5 space-y-6 before:absolute before:left-[7px] before:top-1 before:bottom-1 before:w-[1px] before:bg-slate-100">
+                        {formData.timeline.map((item) => (
+                            <div key={item.id} className="relative">
+                                <div className="absolute -left-[20.5px] top-1 w-2.5 h-2.5 rounded-full bg-white border-2 border-emerald-500 z-10" />
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-tighter tabular-nums">{item.time || '00:00 AM'}</span>
+                                    <h4 className="text-[13px] font-bold text-slate-800 leading-tight">{item.activity || 'Activity'}</h4>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {formData.requirements.length > 0 && (
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Requirements</h3>
+                        <div className="space-y-2">
+                            {formData.requirements.map((req, i) => (
+                                <div key={i} className="flex items-center gap-2.5 group">
+                                    <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                                        <CheckCircle className="w-3 h-3" />
+                                    </div>
+                                    <span className="text-[12px] text-slate-600 font-bold">{req}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
       </div>
     </div>
@@ -557,7 +782,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-[0_32px_128px_rgba(0,0,0,0.1)] rounded-[32px] bg-white">
+      <DialogContent className="sm:max-w-[540px] max-h-[90vh] p-0 overflow-hidden border-none shadow-[0_32px_128px_rgba(0,0,0,0.1)] rounded-[32px] bg-white flex flex-col">
         <style dangerouslySetInnerHTML={{ __html: `
           .custom-scrollbar::-webkit-scrollbar { width: 4px; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -565,7 +790,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
           .no-scrollbar::-webkit-scrollbar { display: none; }
         `}} />
         
-        <DialogHeader className="px-8 pt-8 pb-4 space-y-6">
+        <DialogHeader className="px-6 pt-6 pb-2">
           <div className="flex flex-col gap-4">
             {/* Unique Minimalist Dot Stepper */}
             <div className="flex items-center justify-between px-1">
@@ -635,7 +860,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
           </div>
         </DialogHeader>
 
-        <div className="px-8 py-4">
+        <div className="px-6 py-2 overflow-y-auto flex-1 no-scrollbar">
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -654,7 +879,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
           </AnimatePresence>
         </div>
 
-        <div className="px-8 pb-8 pt-4 flex items-center justify-between gap-3">
+        <div className="px-6 pb-6 pt-2 flex items-center justify-between gap-3">
           <Button
             variant="ghost"
             onClick={handleBack}
@@ -675,10 +900,19 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="h-12 px-8 rounded-2xl font-bold bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 transition-all hover:translate-y-[-2px] active:scale-95"
+              className="h-11 px-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all active:scale-95 flex items-center gap-2 shadow-sm border-none"
             >
-              {isSubmitting ? 'Processing...' : 'Broadcast Event'}
-              <CheckCircle className="w-4 h-4 ml-2" />
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                <>
+                  Submit Event
+                  <CheckCircle className="w-4 h-4" />
+                </>
+              )}
             </Button>
           )}
         </div>
