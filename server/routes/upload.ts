@@ -1,22 +1,20 @@
 import { Router } from 'express';
-import { upload } from '../config/cloudinary';
+import { uploadImage, uploadDocument } from '../config/cloudinary';
 import { authenticateUser } from '../middleware/auth';
 
 const router = Router();
 
 // Single image upload
-// To use this, send a POST request with 'image' field in multipart/form-data
-router.post('/image', authenticateUser, upload.single('image'), (req, res) => {
+router.post('/image', authenticateUser, uploadImage.single('image'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // req.file.path contains the Cloudinary URL
     res.json({
       message: 'Image uploaded successfully',
       url: req.file.path,
-      public_id: (req.file as any).filename // multer-storage-cloudinary adds this
+      public_id: (req.file as any).filename
     });
   } catch (error: any) {
     console.error('Upload error:', error);
@@ -24,8 +22,26 @@ router.post('/image', authenticateUser, upload.single('image'), (req, res) => {
   }
 });
 
-// Multiple image upload
-router.post('/images', authenticateUser, upload.array('images', 5), (req, res) => {
+// Single document upload
+router.post('/document', authenticateUser, uploadDocument.single('document'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    res.json({
+      message: 'Document uploaded successfully',
+      url: req.file.path,
+      public_id: (req.file as any).filename
+    });
+  } catch (error: any) {
+    console.error('Upload error:', error);
+    res.status(500).json({ error: 'Failed to upload document' });
+  }
+});
+
+// Multiple image upload (kept for compatibility)
+router.post('/images', authenticateUser, uploadImage.array('images', 5), (req, res) => {
   try {
     const files = req.files as Express.Multer.File[];
     if (!files || files.length === 0) {
@@ -48,3 +64,4 @@ router.post('/images', authenticateUser, upload.array('images', 5), (req, res) =
 });
 
 export const uploadRoutes = router;
+

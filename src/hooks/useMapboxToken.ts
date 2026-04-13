@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '@/lib/api';
 
 export function useMapboxToken() {
   const [token, setToken] = useState<string | null>(null);
@@ -8,7 +9,7 @@ export function useMapboxToken() {
   useEffect(() => {
     async function fetchToken() {
       try {
-        const response = await fetch('http://localhost:5000/api/config/mapbox');
+        const response = await fetch(`${API_BASE_URL}/config/mapbox`);
         if (!response.ok) {
           throw new Error('Failed to fetch Mapbox token');
         }

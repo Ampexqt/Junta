@@ -31,7 +31,7 @@ import {
     SidebarMenuBadge,
     useSidebar,
 } from "@/components/ui/sidebar"
-import { cn } from "@/components/ui/utils"
+import { cn } from "@/lib/utils"
 import {
     DropdownMenu,
     DropdownMenuContent,

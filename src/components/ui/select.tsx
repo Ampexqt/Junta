@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Select as SelectPrimitive } from "radix-ui"
 
-import { cn } from "@/components/ui/utils"
+import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
 const Select = SelectPrimitive.Root
