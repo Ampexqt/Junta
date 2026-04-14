@@ -50,6 +50,31 @@ const fadeUp = {
     }
   })
 };
+const GreetingHeader = ({ userName, subtitle }: { userName: string; subtitle: string; }) => {
+  const firstName = userName.split(' ').slice(0, 2).join(' ');
+  const hour = new Date().getHours();
+  let greeting = 'Good morning';
+  if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
+  if (hour >= 17 || hour < 5) greeting = 'Good evening';
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="mb-8"
+    >
+      <h1 className="font-heading font-bold text-3xl tracking-tight text-slate-900 flex items-center gap-2">
+        {greeting}, <span className="text-primary">{firstName}</span>
+        <span className="text-2xl animate-bounce-subtle">👋</span>
+      </h1>
+      <p className="text-[14px] font-medium text-slate-500 mt-1">
+        {subtitle}
+      </p>
+    </motion.div>
+  );
+};
+
 function StatCard({
   icon: Icon,
   label,
@@ -131,14 +156,10 @@ function ParticipantDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading font-semibold text-2xl text-foreground">
-          Welcome back, {userName.split(' ')[0]}! 👋
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Here's your environmental impact overview.
-        </p>
-      </div>
+      <GreetingHeader 
+        userName={userName} 
+        subtitle="Here's your environmental impact overview for today." 
+      />
 
       <motion.div
         initial="hidden"
@@ -285,6 +306,7 @@ function ParticipantDashboard() {
 }
 function OrganizerDashboard() {
   const navigate = useNavigate();
+  const { userName } = useAuth();
   const events = [
     {
       name: 'Beach Cleanup Drive',
@@ -319,14 +341,10 @@ function OrganizerDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading font-semibold text-2xl text-foreground">
-            Organizer Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your events and track participation.
-          </p>
-        </div>
+        <GreetingHeader 
+          userName={userName} 
+          subtitle="Manage your events and track participant engagement effortlessly." 
+        />
         <CreateEventModal
           trigger={
             <Button className="bg-primary hover:bg-primary/90">
@@ -431,6 +449,7 @@ function OrganizerDashboard() {
 }
 function AdminDashboard() {
   const navigate = useNavigate();
+  const { userName } = useAuth();
   const activities = [
     {
       text: 'Maria Santos submitted ID verification',
@@ -455,14 +474,10 @@ function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading font-semibold text-2xl text-foreground">
-          Admin Dashboard
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          System overview and pending actions.
-        </p>
-      </div>
+      <GreetingHeader 
+        userName={userName} 
+        subtitle="Review system metrics and take necessary administrative actions." 
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
