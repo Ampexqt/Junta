@@ -5,4 +5,5 @@ export type AuthContextType = {
     setRole: (role: UserRole) => void;
     userName: string;
     setUserName: (name: string) => void;
+    logout: () => void;
 };

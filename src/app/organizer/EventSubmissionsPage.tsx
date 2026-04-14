@@ -1,13 +1,13 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle
-} from
-  '@/components/ui/card';
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -17,94 +17,64 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from
-  '@/components/ui/table';
+} from '@/components/ui/table';
 import { FileCheck, CheckCircle, Clock, XCircle, Eye, Edit } from 'lucide-react';
-type SubmissionStatus = 'Pending' | 'Approved' | 'Rejected';
-const submissions = [
-  {
-    id: 1,
-    name: 'Sta. Cruz Beach Cleanup Drive',
-    date: 'Jan 15, 2025',
-    category: 'Cleanup',
-    status: 'Approved' as SubmissionStatus,
-    submitted: 'Dec 20, 2024'
-  },
-  {
-    id: 2,
-    name: 'Mangrove Planting Initiative',
-    date: 'Jan 22, 2025',
-    category: 'Planting',
-    status: 'Approved' as SubmissionStatus,
-    submitted: 'Dec 22, 2024'
-  },
-  {
-    id: 3,
-    name: 'Marine Biodiversity Workshop',
-    date: 'Feb 3, 2025',
-    category: 'Workshop',
-    status: 'Approved' as SubmissionStatus,
-    submitted: 'Jan 5, 2025'
-  },
-  {
-    id: 4,
-    name: 'Coral Reef Monitoring',
-    date: 'Mar 1, 2025',
-    category: 'Research',
-    status: 'Approved' as SubmissionStatus,
-    submitted: 'Jan 10, 2025'
-  },
-  {
-    id: 5,
-    name: 'Youth Eco-Leadership Camp',
-    date: 'Mar 8, 2025',
-    category: 'Workshop',
-    status: 'Approved' as SubmissionStatus,
-    submitted: 'Jan 12, 2025'
-  },
-  {
-    id: 6,
-    name: 'Wetland Bird Watching Day',
-    date: 'Mar 20, 2025',
-    category: 'Awareness',
-    status: 'Pending' as SubmissionStatus,
-    submitted: 'Jan 14, 2025'
-  },
-  {
-    id: 7,
-    name: 'School Recycling Drive',
-    date: 'Mar 25, 2025',
-    category: 'Cleanup',
-    status: 'Pending' as SubmissionStatus,
-    submitted: 'Jan 15, 2025'
-  },
-  {
-    id: 8,
-    name: 'River Cleanup Initiative',
-    date: 'Feb 15, 2025',
-    category: 'Cleanup',
-    status: 'Rejected' as SubmissionStatus,
-    submitted: 'Jan 2, 2025'
-  }];
 
-const statusStyles: Record<SubmissionStatus, string> = {
-  Pending: 'bg-amber-50 text-amber-700',
-  Approved: 'bg-green-50 text-green-700',
-  Rejected: 'bg-red-50 text-red-700'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+interface OrganizerEvent {
+  id: string;
+  title: string;
+  date: string;
+  category: string;
+  status: 'pending' | 'published' | 'rejected';
+  createdAt: string;
+}
+
+const statusStyles: Record<string, string> = {
+  pending: 'bg-amber-50 text-amber-700 font-bold uppercase tracking-tighter text-[9px]',
+  published: 'bg-emerald-50 text-emerald-700 font-bold uppercase tracking-tighter text-[9px]',
+  rejected: 'bg-rose-50 text-rose-700 font-bold uppercase tracking-tighter text-[9px]'
 };
+
 const categoryStyles: Record<string, string> = {
-  Cleanup: 'bg-blue-50 text-blue-700',
-  Planting: 'bg-green-50 text-green-700',
-  Workshop: 'bg-purple-50 text-purple-700',
-  Awareness: 'bg-amber-50 text-amber-700',
-  Research: 'bg-cyan-50 text-cyan-700'
+  cleanup: 'bg-blue-50 text-blue-700',
+  planting: 'bg-green-50 text-green-700',
+  workshop: 'bg-purple-50 text-purple-700',
+  awareness: 'bg-amber-50 text-amber-700',
+  research: 'bg-cyan-50 text-cyan-700'
 };
 export function EventSubmissionsPage() {
   const navigate = useNavigate();
-  const total = submissions.length;
-  const approved = submissions.filter((s) => s.status === 'Approved').length;
-  const pending = submissions.filter((s) => s.status === 'Pending').length;
-  const rejected = submissions.filter((s) => s.status === 'Rejected').length;
+  const [events, setEvents] = useState<OrganizerEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchMyEvents = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/events/my-events`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setEvents(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch events:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyEvents();
+  }, []);
+
+  const total = events.length;
+  const approved = events.filter((s) => s.status === 'published').length;
+  const pending = events.filter((s) => s.status === 'pending').length;
+  const rejected = events.filter((s) => s.status === 'rejected').length;
   return (
     <motion.div
       initial={{
@@ -197,56 +167,53 @@ export function EventSubmissionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {submissions.map((s) =>
-                  <TableRow key={s.id}>
+                {loading ? (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                            Loading submissions...
+                        </TableCell>
+                    </TableRow>
+                ) : events.length === 0 ? (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground font-medium">
+                            No events found. Start by creating your first event!
+                        </TableCell>
+                    </TableRow>
+                ) : events.map((s) =>
+                  <TableRow key={s.id} className="group hover:bg-slate-50/50 transition-colors">
                     <TableCell>
-                      <p className="font-medium text-sm">{s.name}</p>
-                      <p className="text-xs text-muted-foreground sm:hidden">
-                        {s.date}
+                      <p className="font-bold text-[14px] text-slate-900">{s.title}</p>
+                      <p className="text-[10px] text-slate-400 font-medium sm:hidden mt-0.5">
+                        {s.date ? format(new Date(s.date), 'MMM dd, yyyy') : 'TBD'}
                       </p>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
-                      {s.date}
+                    <TableCell className="hidden sm:table-cell text-slate-500 text-[13px] font-medium">
+                        {s.date ? format(new Date(s.date), 'MMM dd, yyyy') : 'TBD'}
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={`text-xs border-0 ${categoryStyles[s.category] || ''}`}>
-
+                        className={`text-[10px] font-bold border-none uppercase tracking-tighter px-2 py-0.5 rounded-lg ${categoryStyles[s.category.toLowerCase()] || 'bg-slate-100 text-slate-600'}`}>
                         {s.category}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={`text-xs border-0 ${statusStyles[s.status]}`}>
-
+                        className={`px-2 py-0.5 rounded-lg border-none ${statusStyles[s.status]}`}>
                         {s.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                      {s.submitted}
+                    <TableCell className="hidden md:table-cell text-slate-400 text-[12px] font-medium">
+                        {s.createdAt ? format(new Date(s.createdAt), 'MMM dd, yyyy') : '--'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-8 h-8"
-                          onClick={() => navigate(`/app/events/${s.id}`)}>
-
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {s.status === 'Rejected' &&
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="w-8 h-8 text-amber-600 hover:bg-amber-50">
-
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        }
-                      </div>
+                      <Button
+                        size="sm"
+                        className="h-8 px-4 rounded-xl bg-slate-900 hover:bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200 hover:shadow-slate-300 transition-all active:scale-95"
+                        onClick={() => navigate(`/app/events/${s.id}`)}>
+                        View Details
+                      </Button>
                     </TableCell>
                   </TableRow>
                 )}

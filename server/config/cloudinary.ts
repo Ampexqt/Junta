@@ -27,8 +27,9 @@ const documentStorage = new CloudinaryStorage({
   params: async (req, file) => {
     return {
       folder: 'junta/documents',
-      resource_type: 'raw',
-      public_id: `${Date.now()}-${file.originalname.split('.')[0].replace(/[^a-zA-Z0-9]/g, '_')}.${file.originalname.split('.').pop()}`,
+      resource_type: 'auto',
+      access_mode: 'public',
+      public_id: `${Date.now()}-${file.originalname.split('.')[0].replace(/[^a-zA-Z0-9]/g, '_')}`,
     };
   },
 });

@@ -220,7 +220,7 @@ const roleLabels: Record<UserRole, string> = {
 }
 
 export function AppSidebar() {
-    const { role, userName } = useAuth()
+    const { role, userName, logout: handleLogout } = useAuth()
     const location = useLocation()
     const navigate = useNavigate()
     const groups = navByRole[role]
@@ -332,7 +332,10 @@ export function AppSidebar() {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                            onClick={() => navigate('/login')}
+                            onClick={() => {
+                                handleLogout();
+                                navigate('/login');
+                            }}
                             className="text-red-600 focus:text-red-600"
                         >
                             <LogOut className="w-4 h-4 mr-2" />

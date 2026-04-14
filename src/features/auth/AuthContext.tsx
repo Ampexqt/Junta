@@ -7,7 +7,8 @@ const AuthContext = createContext<AuthContextType>({
     role: 'participant',
     setRole: () => { /* Default role setter */ },
     userName: 'Juan Dela Cruz',
-    setUserName: () => { /* Default userName setter */ }
+    setUserName: () => { /* Default userName setter */ },
+    logout: () => { /* Default logout */ }
 });
 
 
@@ -56,13 +57,22 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
         localStorage.setItem('user_name', newName);
     };
 
+    const logout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('user_role');
+        setRoleState('participant');
+        setUserNameState('Juan Dela Cruz');
+    };
+
     return (
         <AuthContext.Provider
             value={{
                 role,
                 setRole,
                 userName,
-                setUserName
+                setUserName,
+                logout
             }}>
             {children}
         </AuthContext.Provider>

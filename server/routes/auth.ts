@@ -286,6 +286,28 @@ router.post('/login', async (req, res) => {
 });
 
 /**
+ * 4.5 Get Current User Profile (Protected)
+ * Fetches the full profile including organization name from Firestore.
+ */
+router.get('/me', authenticateUser, async (req: AuthRequest, res) => {
+    try {
+        const uid = req.user?.uid;
+        if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+        const userDoc = await db.collection('users').doc(uid).get();
+        if (!userDoc.exists) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const userData = userDoc.data();
+        res.json(userData);
+    } catch (error) {
+        console.error('Error fetching profile:', error);
+        res.status(500).json({ error: 'Failed to fetch profile' });
+    }
+});
+
+/**
  * 5. Send Login Link (Passwordless - Backup Method)
 
  */
