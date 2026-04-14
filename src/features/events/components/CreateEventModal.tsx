@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Map, { Marker } from 'react-map-gl/mapbox';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
 import { useNavigate } from 'react-router-dom';
@@ -113,9 +113,31 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
     coordinates: null,
     aboutEvent: ''
   });
+  const [profile, setProfile] = useState<{ orgName?: string } | null>(null);
   const { token } = useMapboxToken();
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      const fetchProfile = async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/auth/me`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setProfile(data);
+          }
+        } catch (err) {
+          console.error('Failed to fetch profile:', err);
+        }
+      };
+      fetchProfile();
+    }
+  }, [open]);
 
   const timeOptions = Array.from({ length: 48 }).map((_, i) => {
     const hour = Math.floor(i / 2);
@@ -191,11 +213,70 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Check file size (8MB limit)
+    if (file.size > 8 * 1024 * 1024) {
+      sileo.error({ 
+        title: 'File Too Large', 
+        description: `The selected ${type} exceeds the 8MB limit. Please choose a smaller file.` 
+      });
+      event.target.value = '';
+      return;
+    }
+
     if (type === 'document') setIsUploadingDoc(true);
     else setIsUploadingImage(true);
 
-    const formData = new FormData();
-    formData.append(type, file); // multer expects 'image' or 'document'
+    let fileToUpload: File | Blob = file;
+
+    // Client-side image compression
+    if (type === 'image') {
+      try {
+        fileToUpload = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target?.result as string;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let width = img.width;
+              let height = img.height;
+              const MAX_WIDTH = 1600;
+              const MAX_HEIGHT = 1600;
+
+              if (width > height) {
+                if (width > MAX_WIDTH) {
+                  height *= MAX_WIDTH / width;
+                  width = MAX_WIDTH;
+                }
+              } else {
+                if (height > MAX_HEIGHT) {
+                  width *= MAX_HEIGHT / height;
+                  height = MAX_HEIGHT;
+                }
+              }
+
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+              canvas.toBlob((blob) => {
+                if (blob) resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                else reject(new Error('Canvas to Blob failed'));
+              }, 'image/jpeg', 0.82); // 82% quality is a sweet spot for web
+            };
+            img.onerror = () => reject(new Error('Image load failed'));
+          };
+          reader.onerror = () => reject(new Error('File reader failed'));
+        });
+      } catch (err) {
+        console.warn('Compression failed, falling back to original file:', err);
+        fileToUpload = file;
+      }
+    }
+
+    const uploadFormData = new FormData();
+    uploadFormData.append(type, fileToUpload);
 
     try {
       const response = await fetch(`${API_BASE_URL}/upload/${type}`, {
@@ -203,7 +284,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
         },
-        body: formData
+        body: uploadFormData
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Upload failed');
@@ -707,22 +788,25 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
         {formData.coverImage && (
           <div className="relative h-36 w-full rounded-2xl overflow-hidden shadow-sm border border-slate-100">
              <img src={formData.coverImage} alt="Preview" className="w-full h-full object-cover" />
-             <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-             <div className="absolute bottom-3 left-4 flex gap-2">
-                  <Badge className="bg-white/90 backdrop-blur-md text-slate-900 border-none font-black uppercase text-[8px] px-2 py-0.5 tracking-tighter">
-                      {formData.category}
-                  </Badge>
-                  <div className="px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[8px] font-black tracking-tighter uppercase">
-                      {formData.visibility}
-                  </div>
-             </div>
           </div>
         )}
 
         {/* 2. Content Flow - Single Column */}
         <div className="space-y-6 pt-2">
             <div className="space-y-1.5">
+                <div className="flex gap-2">
+                    <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-none font-black uppercase text-[8px] px-2 py-0.5 tracking-tighter">
+                        {formData.category || 'Category'}
+                    </Badge>
+                    <Badge className="bg-emerald-500 text-white border-none font-black uppercase text-[8px] px-2 py-0.5 tracking-tighter shadow-sm">
+                        {formData.visibility}
+                    </Badge>
+                </div>
                 <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">{formData.title || 'Untitled Action'}</h2>
+                <div className="flex items-center gap-2">
+                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Organizer:</p>
+                    <p className="text-[13px] font-bold text-slate-600">{profile?.orgName || 'Individual/Personal'}</p>
+                </div>
                 <p className="text-[13px] text-slate-500 font-medium italic">
                     {formData.shortDescription || 'A community-driven initiative for environmental preservation.'}
                 </p>
@@ -755,7 +839,9 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
                 <div className="space-y-4">
                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Timeline</h3>
                     <div className="relative pl-5 space-y-6 before:absolute before:left-[7px] before:top-1 before:bottom-1 before:w-[1px] before:bg-slate-100">
-                        {formData.timeline.map((item) => (
+                        {[...formData.timeline]
+                            .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time))
+                            .map((item) => (
                             <div key={item.id} className="relative">
                                 <div className="absolute -left-[20.5px] top-1 w-2.5 h-2.5 rounded-full bg-white border-2 border-emerald-500 z-10" />
                                 <div className="flex flex-col gap-0.5">
