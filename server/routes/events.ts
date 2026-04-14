@@ -70,6 +70,30 @@ router.get('/my-events', authenticateUser, async (req, res) => {
     }
 });
 
+// Admin: Get all pending events
+router.get('/pending', authenticateUser, async (req, res) => {
+    try {
+        const authReq = req as AuthRequest;
+        if (authReq.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const snapshot = await db.collection('events')
+            .where('status', '==', 'pending')
+            .get();
+
+        const events = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        res.json(events);
+    } catch (error: any) {
+        console.error('Error fetching pending events:', error);
+        res.status(500).json({ error: 'Failed to fetch pending events' });
+    }
+});
+
 // Get single event details
 router.get('/:id', async (req, res) => {
     try {
@@ -101,31 +125,6 @@ router.get('/', async (req, res) => {
     } catch (error: any) {
         console.error('Error fetching events:', error);
         res.status(500).json({ error: 'Failed to fetch events' });
-    }
-});
-
-
-// Admin: Get all pending events
-router.get('/pending', authenticateUser, async (req, res) => {
-    try {
-        const authReq = req as AuthRequest;
-        if (authReq.user.role !== 'admin') {
-            return res.status(403).json({ error: 'Admin access required' });
-        }
-
-        const snapshot = await db.collection('events')
-            .where('status', '==', 'pending')
-            .get();
-
-        const events = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-
-        res.json(events);
-    } catch (error: any) {
-        console.error('Error fetching pending events:', error);
-        res.status(500).json({ error: 'Failed to fetch pending events' });
     }
 });
 
