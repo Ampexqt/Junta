@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EventCard } from '@/features/events/components/EventCard';
 import {
   Select,
@@ -20,95 +20,60 @@ import {
   Plus,
   LayoutGrid,
   List,
-  Waves,
-  TreePine,
-  BookOpen,
-  Flower2
+  Calendar,
+  Loader2
 } from
   'lucide-react';
 import { CreateEventModal } from '@/features/events/components/CreateEventModal';
 import { useAuth } from '@/features/auth/AuthContext';
-
-const events = [
-  {
-    id: 1,
-    title: 'Sta. Cruz Beach Cleanup Drive',
-    date: 'Jan 15, 2025',
-    location: 'Great Sta. Cruz Island',
-    participants: 45,
-    category: 'Cleanup',
-    icon: Waves
-  },
-  {
-    id: 2,
-    title: 'Mangrove Planting Initiative',
-    date: 'Jan 22, 2025',
-    location: 'Sinunuc Mangrove Area',
-    participants: 32,
-    category: 'Planting',
-    icon: TreePine
-  },
-  {
-    id: 3,
-    title: 'Marine Biodiversity Workshop',
-    date: 'Feb 3, 2025',
-    location: 'Zamboanga City Hall',
-    participants: 28,
-    category: 'Workshop',
-    icon: BookOpen
-  },
-  {
-    id: 4,
-    title: 'Paseo del Mar Awareness Walk',
-    date: 'Feb 10, 2025',
-    location: 'Paseo del Mar',
-    participants: 60,
-    category: 'Awareness',
-    icon: Flower2
-  },
-  {
-    id: 5,
-    title: 'Pasonanca Park Reforestation',
-    date: 'Mar 1, 2025',
-    location: 'Pasonanca Natural Park',
-    participants: 25,
-    category: 'Planting',
-    icon: TreePine
-  },
-  {
-    id: 6,
-    title: 'Rio Hondo Coastline Cleanup',
-    date: 'Mar 15, 2025',
-    location: 'Rio Hondo Area',
-    participants: 50,
-    category: 'Cleanup',
-    icon: Waves
-  },
-  {
-    id: 7,
-    title: 'Ecological Leadership Camp',
-    date: 'Apr 5, 2025',
-    location: 'Zamboanga Eco-Park',
-    participants: 40,
-    category: 'Workshop',
-    icon: BookOpen
-  },
-  {
-    id: 8,
-    title: 'Urban Community Garden',
-    date: 'Apr 20, 2025',
-    location: 'Barangay Tetuan',
-    participants: 20,
-    category: 'Planting',
-    icon: Flower2
-  }
-];
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 export function EventsPage() {
   const { role } = useAuth();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [events, setEvents] = useState<Record<string, unknown>[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'events'),
+      where('visibility', '==', 'public'),
+      where('status', '==', 'published')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetched = snapshot.docs.map(doc => {
+        const data = doc.data();
+        let formattedDate = 'TBD';
+        try {
+          if (data.date) {
+            formattedDate = format(new Date(data.date), 'MMM d, yyyy');
+          }
+        } catch (e) {
+          console.error('Date parse error:', e);
+        }
+        return {
+          id: doc.id,
+          title: data.title || 'Untitled',
+          date: formattedDate,
+          location: data.locationName || 'Unknown Location',
+          participants: data.participantsCount || 0,
+          category: data.category || 'Other',
+        };
+      });
+      setEvents(fetched);
+      setIsLoading(false);
+    }, (error) => {
+      console.error('Error fetching events:', error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const filtered = events.filter((e) => {
     const matchSearch =
@@ -179,7 +144,12 @@ export function EventsPage() {
         </ToggleGroup>
       </div>
 
-      {view === 'grid' ? (
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
+          <p>Loading environmental events...</p>
+        </div>
+      ) : view === 'grid' ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((e, i) => (
             <EventCard key={e.id} event={e} view="grid" index={i} />
@@ -193,34 +163,12 @@ export function EventsPage() {
         </div>
       )}
 
-      {filtered.length === 0 && (
+      {!isLoading && filtered.length === 0 && (
         <div className="text-center py-16">
           <Calendar className="w-12 h-12 text-muted-foreground/20 mx-auto mb-3" />
           <p className="text-muted-foreground">No events found matching your search.</p>
         </div>
       )}
     </div>
-  );
-}
-
-function Calendar({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-      <line x1="16" x2="16" y1="2" y2="6" />
-      <line x1="8" x2="8" y1="2" y2="6" />
-      <line x1="3" x2="21" y1="10" y2="10" />
-    </svg>
   );
 }

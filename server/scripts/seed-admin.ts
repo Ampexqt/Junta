@@ -1,5 +1,5 @@
 import { auth, db } from '../config/firebase-admin';
-import bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcryptjs';
 
 async function seedAdmin() {
     const adminEmail = 'admin@junta.com';
@@ -8,13 +8,14 @@ async function seedAdmin() {
     console.log(`🚀 Starting admin seeding process for: ${adminEmail}...`);
 
     try {
-        let userRecord;
+        let userRecord: import('firebase-admin').auth.UserRecord;
         try {
             // Check if user already exists in Auth
             userRecord = await auth.getUserByEmail(adminEmail);
             console.log('ℹ️ Admin user already exists in Firebase Authentication.');
-        } catch (error: any) {
-            if (error.code === 'auth/user-not-found') {
+        } catch (error) {
+            const err = error as { code: string };
+            if (err.code === 'auth/user-not-found') {
                 // Create the user in Auth
                 userRecord = await auth.createUser({
                     email: adminEmail,
@@ -27,6 +28,10 @@ async function seedAdmin() {
             }
         }
 
+        if (!userRecord) {
+            throw new Error('Failed to obtain user record.');
+        }
+
         // Hash password for our custom login logic
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(adminPassword, salt);
@@ -36,6 +41,9 @@ async function seedAdmin() {
             uid: userRecord.uid,
             email: adminEmail,
             password: hashedPassword, // Store hashed password for login
+            firstName: 'Junta',
+            lastName: 'Admin',
+            suffix: '',
             displayName: 'Junta Admin',
             role: 'admin',
             kycVerified: true, // Admin is auto-verified

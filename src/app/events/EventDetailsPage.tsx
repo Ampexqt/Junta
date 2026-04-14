@@ -89,7 +89,8 @@ export function EventDetailsPage() {
   const timeToMinutes = (timeStr: string) => {
     if (!timeStr) return 0;
     const [time, period] = timeStr.split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
+    const [rawHours, minutes] = time.split(':').map(Number);
+    let hours = rawHours;
     if (period === 'PM' && hours !== 12) hours += 12;
     if (period === 'AM' && hours === 12) hours = 0;
     return hours * 60 + minutes;

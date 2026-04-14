@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
-import { CalendarDays, MapPin, Users, ArrowRight } from "lucide-react"
+import { CalendarDays, MapPin, Users, ArrowRight, Waves, TreePine, BookOpen, Flower2, Calendar } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -8,13 +8,12 @@ import { cn } from "@/lib/utils"
 
 interface EventCardProps {
     event: {
-        id: number
+        id: string | number
         title: string
         date: string
         location: string
-        participants: number
+        participants?: number
         category: string
-        icon: any
     }
     view?: "grid" | "list"
     index?: number
@@ -36,8 +35,17 @@ const categoryGradients: Record<string, string> = {
     Research: "from-cyan-50 to-cyan-100",
 }
 
+const categoryIcons: Record<string, any> = {
+    Cleanup: Waves,
+    Planting: TreePine,
+    Workshop: BookOpen,
+    Awareness: Flower2,
+    Research: BookOpen,
+}
+
 export function EventCard({ event, view = "grid", index = 0 }: EventCardProps) {
     const navigate = useNavigate()
+    const IconObj = categoryIcons[event.category] || Calendar;
 
     if (view === "list") {
         return (
@@ -57,7 +65,7 @@ export function EventCard({ event, view = "grid", index = 0 }: EventCardProps) {
                                 categoryGradients[event.category] || "from-gray-50 to-gray-100"
                             )}
                         >
-                            <event.icon className="w-6 h-6 text-primary/30" />
+                            <IconObj className="w-6 h-6 text-primary/30" />
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
@@ -82,7 +90,7 @@ export function EventCard({ event, view = "grid", index = 0 }: EventCardProps) {
                                 </span>
                                 <span className="hidden sm:flex items-center gap-1">
                                     <Users className="w-3.5 h-3.5" />
-                                    {event.participants}
+                                    {event.participants || 0}
                                 </span>
                             </div>
                         </div>
@@ -111,7 +119,7 @@ export function EventCard({ event, view = "grid", index = 0 }: EventCardProps) {
                         categoryGradients[event.category] || "from-gray-50 to-gray-100"
                     )}
                 >
-                    <event.icon className="w-10 h-10 text-primary/20 group-hover:text-primary/40 transition-colors" />
+                    <IconObj className="w-10 h-10 text-primary/20 group-hover:text-primary/40 transition-colors" />
                 </div>
                 <CardContent className="pt-4 flex-1 flex flex-col">
                     <Badge variant="outline" className={cn("text-[10px] mb-2 border-0 w-fit", categoryColors[event.category])}>
@@ -131,7 +139,7 @@ export function EventCard({ event, view = "grid", index = 0 }: EventCardProps) {
                         </p>
                         <p className="flex items-center gap-1.5">
                             <Users className="w-3.5 h-3.5" />
-                            {event.participants} participants
+                            {event.participants || 0} participants
                         </p>
                     </div>
                     <Button
