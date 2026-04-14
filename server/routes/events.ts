@@ -16,11 +16,17 @@ router.post('/', authenticateUser, async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
+        // Fetch user's organization name to attach to the event
+        const userDoc = await db.collection('users').doc(organizerId).get();
+        const userData = userDoc.data();
+        const organizationName = userData?.orgName || '';
+
         // Add metadata
         const newEvent = {
             ...eventData,
             organizerId,
             organizerName: authReq.user.name || 'Anonymous Organizer', // Store name for easy display
+            organizationName,
             status: 'pending',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -37,6 +43,44 @@ router.post('/', authenticateUser, async (req, res) => {
     } catch (error: any) {
         console.error('Error creating event:', error);
         res.status(500).json({ error: 'Failed to create event' });
+    }
+});
+
+// Get my events (Organizer)
+router.get('/my-events', authenticateUser, async (req, res) => {
+    try {
+        const authReq = req as AuthRequest;
+        const organizerId = authReq.user?.uid;
+
+        if (!organizerId) return res.status(401).json({ error: 'Unauthorized' });
+
+        const snapshot = await db.collection('events')
+            .where('organizerId', '==', organizerId)
+            .get();
+
+        const events = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        res.json(events);
+    } catch (error: any) {
+        console.error('Error fetching my events:', error);
+        res.status(500).json({ error: 'Failed to fetch my events' });
+    }
+});
+
+// Get single event details
+router.get('/:id', async (req, res) => {
+    try {
+        const eventDoc = await db.collection('events').doc(req.params.id).get();
+        if (!eventDoc.exists) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        res.json({ id: eventDoc.id, ...eventDoc.data() });
+    } catch (error) {
+        console.error('Error fetching event details:', error);
+        res.status(500).json({ error: 'Failed to fetch event details' });
     }
 });
 
@@ -60,27 +104,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get my events (Organizer)
-router.get('/my-events', authenticateUser, async (req, res) => {
-    try {
-        const authReq = req as AuthRequest;
-        const organizerId = authReq.user.uid;
-
-        const snapshot = await db.collection('events')
-            .where('organizerId', '==', organizerId)
-            .get();
-
-        const events = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-
-        res.json(events);
-    } catch (error: any) {
-        console.error('Error fetching my events:', error);
-        res.status(500).json({ error: 'Failed to fetch your events' });
-    }
-});
 
 // Admin: Get all pending events
 router.get('/pending', authenticateUser, async (req, res) => {
@@ -115,18 +138,24 @@ router.patch('/:id/status', authenticateUser, async (req, res) => {
         }
 
         const { id } = req.params;
-        const { status } = req.body; // 'published' or 'rejected'
+        const { status, organizationName } = req.body; // 'published' or 'rejected'
 
         if (!['published', 'rejected', 'pending'].includes(status)) {
             return res.status(400).json({ error: 'Invalid status' });
         }
 
-        await db.collection('events').doc(id).update({
+        const updateData: any = {
             status,
             updatedAt: new Date().toISOString(),
             reviewedBy: authReq.user.uid,
             reviewedAt: new Date().toISOString()
-        });
+        };
+
+        if (organizationName !== undefined) {
+            updateData.organizationName = organizationName;
+        }
+
+        await db.collection('events').doc(id).update(updateData);
 
         res.json({ message: `Event ${status} successfully`, eventId: id });
     } catch (error: any) {
