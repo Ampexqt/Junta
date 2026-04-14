@@ -598,8 +598,19 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
         <div className="flex flex-wrap gap-1.5 min-h-[40px] items-center">
           {formData.requirements.length === 0 && <p className="text-[10px] text-slate-400 italic ml-1">No items added yet...</p>}
           {formData.requirements.map((r, i) => (
-            <Badge key={i} variant="secondary" className="px-2.5 py-1 rounded-full bg-white border border-slate-100 shadow-sm text-[11px] gap-1.5 text-slate-600 hover:bg-slate-50 active:scale-95 transition-all">
-              {r} <X className="w-3 h-3 cursor-pointer text-slate-400 hover:text-red-500" onClick={() => updateFormData('requirements', formData.requirements.filter(req => req !== r))} />
+            <Badge key={i} variant="secondary" className="px-2.5 py-1 rounded-full bg-white border border-slate-100 shadow-sm text-[11px] gap-1.5 text-slate-600 hover:bg-slate-50 active:scale-95 transition-all group/badge">
+              {r} 
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateFormData('requirements', formData.requirements.filter(req => req !== r));
+                }}
+                className="pointer-events-auto ml-1 p-0.5 rounded-full text-slate-400 hover:text-red-500 hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Remove requirement"
+              >
+                <X className="w-3 h-3" />
+              </button>
             </Badge>
           ))}
         </div>
