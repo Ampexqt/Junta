@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import Map, { Marker } from 'react-map-gl/mapbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,18 +18,91 @@ import {
   FileText,
   CheckCircle,
   Phone,
-  Mail } from
-'lucide-react';
+  Mail
+} from 'lucide-react';
+import { useMapboxToken } from '@/hooks/useMapboxToken';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+interface EventData {
+  id: string;
+  title: string;
+  shortDescription: string;
+  aboutEvent: string;
+  category: string;
+  status: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  locationName: string;
+  coordinates: { lat: number; lng: number } | null;
+  capacity?: number;
+  participantsCount?: number;
+  organizationName: string;
+  organizerName: string;
+  coverImage?: string;
+  timeline: { id: string; time: string; activity: string }[];
+  requirements: string[];
+}
+
 export function EventDetailsPage() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { token: mapboxToken } = useMapboxToken();
+  const [event, setEvent] = useState<EventData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [joined, setJoined] = useState(false);
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/events/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setEvent(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch event:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (id) fetchEvent();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="text-center py-20">
+        <h2 className="text-xl font-bold text-slate-900">Event not found</h2>
+        <Button variant="link" onClick={() => navigate('/app/events')}>Back to Events</Button>
+      </div>
+    );
+  }
+
+  const timeToMinutes = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [time, period] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
   return (
     <div className="space-y-6 max-w-6xl">
       <Button
         variant="ghost"
         onClick={() => navigate('/app/events')}
         className="text-muted-foreground -ml-2">
-        
+
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Events
       </Button>
 
@@ -40,22 +115,20 @@ export function EventDetailsPage() {
           opacity: 1,
           y: 0
         }}>
-        
+
         <div className="flex flex-wrap items-center gap-3 mb-2">
-          <Badge className="bg-green-50 text-green-700 border-0">Cleanup</Badge>
+          <Badge className="bg-emerald-50 text-emerald-700 border-0 uppercase font-black text-[10px] tracking-widest">{event.category}</Badge>
           <Badge
             variant="outline"
-            className="bg-blue-50 text-blue-700 border-0">
-            
-            Upcoming
+            className="bg-blue-50 text-blue-700 border-0 uppercase font-black text-[10px] tracking-widest">
+            {event.status === 'published' ? 'Upcoming' : event.status}
           </Badge>
         </div>
-        <h1 className="font-heading font-semibold text-2xl sm:text-3xl text-foreground">
-          Sta. Cruz Beach Cleanup Drive
+        <h1 className="font-heading font-black text-3xl sm:text-4xl text-slate-900 tracking-tight">
+          {event.title}
         </h1>
-        <p className="text-muted-foreground mt-2">
-          A community-driven initiative to clean and preserve the pristine
-          shores of Great Sta. Cruz Island.
+        <p className="text-slate-500 font-medium text-lg mt-2 max-w-3xl">
+          {event.shortDescription}
         </p>
       </motion.div>
 
@@ -68,18 +141,9 @@ export function EventDetailsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Join us for a meaningful day of environmental action at Great
-                Sta. Cruz Island, known for its famous pink sand beach. This
-                cleanup drive aims to remove marine debris, plastic waste, and
-                other pollutants from the shoreline and surrounding waters.
-              </p>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Volunteers will be provided with cleanup materials,
-                refreshments, and transportation to the island. This event is
-                open to all ages and skill levels. Together, we can protect one
-                of Zamboanga's most treasured natural wonders.
-              </p>
+              <div className="text-[15px] text-slate-600 leading-relaxed font-medium whitespace-pre-wrap">
+                {event.aboutEvent}
+              </div>
 
               <Separator />
 
@@ -88,49 +152,22 @@ export function EventDetailsPage() {
                   Event Timeline
                 </h3>
                 <div className="space-y-3">
-                  {[
-                  {
-                    time: '6:00 AM',
-                    label: 'Assembly at Port Area'
-                  },
-                  {
-                    time: '6:30 AM',
-                    label: 'Boat departure to Sta. Cruz Island'
-                  },
-                  {
-                    time: '7:00 AM',
-                    label: 'Orientation & Safety Briefing'
-                  },
-                  {
-                    time: '7:30 AM',
-                    label: 'Cleanup Activity Begins'
-                  },
-                  {
-                    time: '10:30 AM',
-                    label: 'Break & Refreshments'
-                  },
-                  {
-                    time: '11:00 AM',
-                    label: 'Waste Sorting & Documentation'
-                  },
-                  {
-                    time: '12:00 PM',
-                    label: 'Closing & Group Photo'
-                  }].
-                  map((item, i) =>
-                  <div key={i} className="flex items-start gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1.5" />
-                        {i < 6 && <div className="w-0.5 h-6 bg-border" />}
+                  {[...event.timeline]
+                    .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time))
+                    .map((item, i) =>
+                      <div key={item.id} className="flex items-start gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1.5" />
+                          {i < event.timeline.length - 1 && <div className="w-0.5 h-6 bg-slate-100" />}
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">
+                            {item.time}
+                          </p>
+                          <p className="text-[14px] font-bold text-slate-800 tracking-tight">{item.activity}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-medium text-primary">
-                          {item.time}
-                        </p>
-                        <p className="text-sm text-foreground">{item.label}</p>
-                      </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
 
@@ -140,19 +177,14 @@ export function EventDetailsPage() {
                 <h3 className="font-heading font-semibold text-sm mb-3">
                   Requirements
                 </h3>
-                <ul className="space-y-2">
-                  {[
-                  'Comfortable clothing and footwear',
-                  'Sunscreen and hat',
-                  'Reusable water bottle',
-                  'Valid ID for island entry',
-                  'Positive attitude and willingness to help!'].
-                  map((r, i) =>
-                  <li
-                    key={i}
-                    className="flex items-center gap-2 text-sm text-muted-foreground">
-                    
-                      <CheckCircle className="w-4 h-4 text-primary flex-shrink-0" />
+                <ul className="space-y-3">
+                  {event.requirements.map((r, i) =>
+                    <li
+                      key={i}
+                      className="flex items-center gap-3 text-[14px] text-slate-600 font-bold">
+                      <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                        <CheckCircle className="w-3 h-3" />
+                      </div>
                       {r}
                     </li>
                   )}
@@ -186,53 +218,69 @@ export function EventDetailsPage() {
 
         <div className="space-y-6">
           <Card className="rounded-2xl shadow-sm border overflow-hidden">
-            <div className="h-48 bg-gradient-to-br from-[#e8f4f0] via-[#d1e8df] to-[#b8dcc8] relative">
-              <div
-                className="absolute inset-0 opacity-20"
-                style={{
-                  backgroundImage:
-                  'radial-gradient(circle at 1px 1px, #1F7A63 0.5px, transparent 0)',
-                  backgroundSize: '20px 20px'
-                }} />
-              
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                <div className="w-5 h-5 bg-primary rounded-full border-2 border-white shadow-lg animate-pulse" />
-              </div>
+            <div className="h-48 bg-slate-50 relative overflow-hidden group">
+              {event.coordinates && mapboxToken ? (
+                <Map
+                  initialViewState={{
+                    latitude: event.coordinates.lat,
+                    longitude: event.coordinates.lng,
+                    zoom: 13
+                  }}
+                  style={{ width: '100%', height: '100%' }}
+                  mapStyle="mapbox://styles/mapbox/streets-v12"
+                  mapboxAccessToken={mapboxToken}
+                  interactive={false}
+                >
+                  <Marker 
+                    latitude={event.coordinates.lat} 
+                    longitude={event.coordinates.lng}
+                    anchor="bottom"
+                  >
+                    <div className="relative flex flex-col items-center">
+                      <div className="absolute -top-1 w-2 h-2 bg-black/20 rounded-full blur-[1px]" />
+                      <MapPin className="w-8 h-8 text-primary fill-primary/20 stroke-[2.5px] drop-shadow-md animate-bounce" />
+                    </div>
+                  </Marker>
+                </Map>
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-[#e8f4f0] via-[#d1e8df] to-[#b8dcc8] opacity-50" />
+              )}
+
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+
               <div className="absolute bottom-3 right-3">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="bg-white/90 text-xs"
+                  className="bg-white/90 backdrop-blur-sm border-none shadow-lg text-[10px] font-black uppercase tracking-widest h-8 px-3 rounded-xl"
                   onClick={() => navigate('/app/map')}>
-                  
-                  <MapPin className="w-3 h-3 mr-1" /> Open Map
+                  <MapPin className="w-3 h-3 mr-1.5 text-emerald-500" />
+                  Open Map
                 </Button>
               </div>
             </div>
             <CardContent className="pt-4 space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span className="text-foreground">
-                  Great Sta. Cruz Island, Zamboanga City
-                </span>
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                <MapPin className="w-4 h-4 text-emerald-500" />
+                <span>{event.locationName}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <CalendarDays className="w-4 h-4 text-primary" />
-                <span className="text-foreground">January 15, 2025</span>
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                <CalendarDays className="w-4 h-4 text-emerald-500" />
+                <span>{event.date ? format(new Date(event.date), 'MMMM dd, yyyy') : 'TBD'}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="w-4 h-4 text-primary" />
-                <span className="text-foreground">6:00 AM – 12:00 PM</span>
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                <Clock className="w-4 h-4 text-emerald-500" />
+                <span>{event.startTime} – {event.endTime}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Users className="w-4 h-4 text-primary" />
-                <span className="text-foreground">45 / 100 participants</span>
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                <Users className="w-4 h-4 text-emerald-500" />
+                <span>{event.participantsCount || 0} / {event.capacity || 'Unlimited'} participants</span>
               </div>
 
               <Separator />
 
               {joined ?
-              <div className="bg-primary/5 rounded-xl p-4 text-center">
+                <div className="bg-primary/5 rounded-xl p-4 text-center">
                   <CheckCircle className="w-8 h-8 text-primary mx-auto mb-2" />
                   <p className="text-sm font-medium text-primary">
                     You're registered!
@@ -242,10 +290,10 @@ export function EventDetailsPage() {
                   </p>
                 </div> :
 
-              <Button
-                className="w-full bg-primary hover:bg-primary/90 h-12 text-base"
-                onClick={() => setJoined(true)}>
-                
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90 h-12 text-base"
+                  onClick={() => setJoined(true)}>
+
                   Join This Event
                 </Button>
               }
@@ -263,26 +311,18 @@ export function EventDetailsPage() {
             <CardContent>
               <div className="flex items-center gap-3">
                 <Avatar className="w-12 h-12">
-                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                    ZE
+                  <AvatarFallback className="bg-emerald-50 text-emerald-700 font-black">
+                    {event.organizationName?.substring(0, 2).toUpperCase() || 'ORG'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium text-sm text-foreground">
-                    Zamboanga Eco Warriors
+                  <p className="font-black text-[14px] text-slate-900 leading-tight">
+                    {event.organizationName || 'Individual/Group'}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Environmental Organization
+                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                    Organizer Profile
                   </p>
                 </div>
-              </div>
-              <div className="mt-4 space-y-2">
-                <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Mail className="w-3.5 h-3.5" /> ecowarriors@envirolink.ph
-                </p>
-                <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Phone className="w-3.5 h-3.5" /> +63 912 345 6789
-                </p>
               </div>
             </CardContent>
           </Card>
