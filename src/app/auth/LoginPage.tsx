@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -12,11 +12,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { AuthNavigation } from '@/components/auth/AuthNavigation';
 import { sileo } from 'sileo';
 import { API_BASE_URL } from '@/lib/api';
+import { AnimatePresence } from 'framer-motion';
 
 
 export function LoginPage() {
@@ -25,6 +27,28 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Auto-login if token already exists
+    const token = localStorage.getItem('token');
+    const userRole = localStorage.getItem('user_role');
+    if (token && userRole) {
+      setIsLoading(true);
+      setTimeout(() => {
+        navigate('/app/dashboard');
+      }, 500);
+      return;
+    }
+
+    // Pre-fill email if remembered
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +63,8 @@ export function LoginPage() {
       return;
     }
 
+    setIsLoading(true);
+    
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
@@ -62,15 +88,26 @@ export function LoginPage() {
       setRole(data.user.role);
       setUserName(data.user.displayName);
 
+      // Remember me logic
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', email);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+      }
+
       sileo.success({
-        title: 'Welcome back!',
-        description: `Successfully signed in as ${data.user.displayName}`,
+        title: 'Welcome Back',
+        description: `Good to see you, ${data.user.displayName.split(' ').slice(0, 2).join(' ')}!`,
         duration: 2000
       });
 
-
-      navigate('/app/dashboard');
+      // Brief delay for the animation to feel "intentional" and smooth
+      setTimeout(() => {
+        navigate('/app/dashboard');
+      }, 800);
+      
     } catch (error: any) {
+      setIsLoading(false);
       sileo.error({
         title: 'Login Failed',
         description: error.message || 'Please check your credentials and try again.',
@@ -86,6 +123,85 @@ export function LoginPage() {
   return (
     <div className="min-h-screen w-full bg-slate-50/50 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
       <AuthNavigation />
+
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/80 backdrop-blur-xl"
+            style={{ pointerEvents: 'all' }}
+          >
+            <div className="relative">
+              {/* Outer Glow Ring */}
+              <motion.div
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0.3, 0.6, 0.3],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="absolute inset-0 bg-primary/20 blur-2xl rounded-full"
+              />
+              
+              {/* Main Spinner */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+                className="relative z-10 w-16 h-16 flex items-center justify-center"
+              >
+                <svg className="w-full h-full" viewBox="0 0 100 100">
+                  <motion.circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="text-slate-100"
+                  />
+                  <motion.circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray="283"
+                    className="text-primary"
+                    initial={{ strokeDashoffset: 280 }}
+                    animate={{ strokeDashoffset: [280, 100, 280] }}
+                    transition={{
+                      duration: 2.5,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  />
+                </svg>
+              </motion.div>
+            </div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+              className="mt-8 flex flex-col items-center"
+            >
+              <h3 className="text-slate-900 font-bold text-lg tracking-tight">Authenticating</h3>
+              <p className="text-slate-500 text-sm font-medium mt-1">Preparing your dashboard...</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -112,10 +228,11 @@ export function LoginPage() {
                   <Input
                     id="email"
                     type="email"
+                    disabled={isLoading}
                     placeholder="name@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-10 rounded-[12px] border-slate-200 bg-slate-50/30 text-[14px] focus-visible:ring-2 focus-visible:ring-primary/10 focus-visible:border-primary transition-all placeholder:text-slate-400"
+                    className="pl-10 h-10 rounded-[12px] border-slate-200 bg-slate-50/30 text-[14px] focus-visible:ring-2 focus-visible:ring-primary/10 focus-visible:border-primary transition-all placeholder:text-slate-400 disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -132,26 +249,52 @@ export function LoginPage() {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
+                    disabled={isLoading}
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-10 rounded-[12px] border-slate-200 bg-slate-50/30 text-[14px] focus-visible:ring-2 focus-visible:ring-primary/10 focus-visible:border-primary transition-all placeholder:text-slate-400"
+                    className="pl-10 pr-10 h-10 rounded-[12px] border-slate-200 bg-slate-50/30 text-[14px] focus-visible:ring-2 focus-visible:ring-primary/10 focus-visible:border-primary transition-all placeholder:text-slate-400 disabled:opacity-50"
                   />
                   <button
                     type="button"
+                    disabled={isLoading}
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-gray-600 transition-colors disabled:opacity-50"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
+              <div className="flex items-center space-x-2 py-0.5">
+                <Checkbox 
+                  id="remember" 
+                  checked={rememberMe} 
+                  disabled={isLoading}
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                  className="w-4 h-4 rounded-[4px] border-slate-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-colors"
+                />
+                <label
+                  htmlFor="remember"
+                  className="text-[12px] font-medium text-slate-500 cursor-pointer select-none"
+                >
+                  Remember me
+                </label>
+              </div>
+
               <Button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-hover active:scale-[0.98] text-white h-10 rounded-[12px] text-[14px] font-bold shadow-lg shadow-primary/10 transition-all duration-200"
+                disabled={isLoading}
+                className="w-full bg-primary hover:bg-primary-hover active:scale-[0.98] text-white h-10 rounded-[12px] text-[14px] font-bold shadow-lg shadow-primary/10 transition-all duration-200 disabled:opacity-70"
               >
-                Sign In
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Signing in...</span>
+                  </div>
+                ) : (
+                  'Sign In'
+                )}
               </Button>
             </form>
 
@@ -165,8 +308,12 @@ export function LoginPage() {
             <div className="w-full">
               <Button
                 variant="outline"
-                className="w-full h-10 rounded-[12px] border-slate-200 bg-white hover:bg-slate-50 text-[14px] font-bold text-slate-700 gap-2.5 shadow-sm transition-all active:scale-[0.98]"
-                onClick={() => navigate('/app/dashboard')}
+                disabled={isLoading}
+                className="w-full h-10 rounded-[12px] border-slate-200 bg-white hover:bg-slate-50 text-[14px] font-bold text-slate-700 gap-2.5 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50"
+                onClick={() => {
+                  setIsLoading(true);
+                  setTimeout(() => navigate('/app/dashboard'), 800);
+                }}
               >
                 <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
