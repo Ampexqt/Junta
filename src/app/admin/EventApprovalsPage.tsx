@@ -65,6 +65,7 @@ type PendingEvent = {
   aboutEvent: string;
   shortDescription: string;
   status: string;
+  organizationName?: string;
   coverImage?: string;
   timeline?: { id: string; time: string; activity: string; description: string; }[];
   requirements?: string[];
@@ -89,6 +90,12 @@ export function EventApprovalsPage() {
   const [selectedEvent, setSelectedEvent] = useState<PendingEvent | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    open: boolean;
+    type: 'published' | 'rejected';
+    id: string;
+    reason: string;
+  }>({ open: false, type: 'published', id: '', reason: '' });
 
   const fetchPendingEvents = async () => {
     try {
@@ -126,25 +133,41 @@ export function EventApprovalsPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
         },
-        body: JSON.stringify({ status: action })
+        body: JSON.stringify({ 
+          status: action
+        })
       });
 
       if (!response.ok) throw new Error('Action failed');
+      
+      // If rejected, we might want to store the reason in the future, 
+      // but for now we just log it or pass it if the API supports it
+      console.log(`Action: ${action}, Reason: ${confirmAction.reason}`);
 
       sileo.success({ 
         title: action === 'published' ? 'Event Approved' : 'Event Rejected', 
         description: `The event has been successfully ${action}.` 
       });
 
-      // Update local state and close dialog
+      // Update local state and close dialogs
       setEvents(prev => prev.filter(e => e.id !== id));
       setDialogOpen(false);
+      setConfirmAction(prev => ({ ...prev, open: false, reason: '' }));
     } catch (err) {
       console.error('Action error:', err);
       sileo.error({ title: 'Error', description: 'Failed to update event status.' });
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const timeToMinutes = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [time, period] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
   };
 
   if (loading) {
@@ -253,9 +276,14 @@ export function EventApprovalsPage() {
                             {(e.organizerName || 'A').split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm hidden sm:inline">
-                          {e.organizerName || 'Anonymous'}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-slate-900">
+                            {e.organizerName || 'Anonymous'}
+                          </span>
+                          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">
+                            {e.organizationName || 'No Organization'}
+                          </span>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
@@ -330,6 +358,14 @@ export function EventApprovalsPage() {
                   Organized by <span className="text-slate-600 font-bold">{selectedEvent.organizerName || 'Anonymous'}</span>
                 </DialogDescription>
               </div>
+
+              <div className="flex-1 max-w-[240px] ml-auto mr-8">
+                <p className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest px-1">Organization Label</p>
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl">
+                   <Tag className="w-3.5 h-3.5 text-slate-400" />
+                   <span className="text-[13px] font-bold text-slate-900">{selectedEvent.organizationName || 'No Organization'}</span>
+                </div>
+              </div>
             </DialogHeader>
 
             <ScrollArea className="flex-1 min-h-0">
@@ -338,18 +374,6 @@ export function EventApprovalsPage() {
                 {selectedEvent.coverImage && (
                   <div className="relative aspect-[16/6] w-full rounded-2xl overflow-hidden shadow-sm border border-slate-200">
                     <img src={selectedEvent.coverImage} className="w-full h-full object-cover" alt="Cover" />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/40 to-transparent p-4">
-                        <div className="flex items-center gap-3 text-white text-[11px] font-bold">
-                            <div className="flex items-center gap-1.5 bg-black/20 backdrop-blur-md px-2 py-1 rounded-lg">
-                                <CalendarDays className="w-3.5 h-3.5" />
-                                {selectedEvent.date ? format(new Date(selectedEvent.date), 'MMM dd, yyyy') : 'TBD'}
-                            </div>
-                            <div className="flex items-center gap-1.5 bg-black/20 backdrop-blur-md px-2 py-1 rounded-lg">
-                                <Clock className="w-3.5 h-3.5" />
-                                {selectedEvent.startTime || '--:--'} - {selectedEvent.endTime || '--:--'}
-                            </div>
-                        </div>
-                    </div>
                   </div>
                 )}
 
@@ -372,6 +396,14 @@ export function EventApprovalsPage() {
                                     <span className="text-[11px] font-bold truncate">{selectedEvent.locationName || 'Location TBD'}</span>
                                 </div>
                                 <div className="flex items-center gap-2.5 text-slate-600">
+                                    <CalendarDays className="w-4 h-4 text-emerald-500" />
+                                    <span className="text-[11px] font-bold">{selectedEvent.date ? format(new Date(selectedEvent.date), 'MMM dd, yyyy') : 'TBD'}</span>
+                                </div>
+                                <div className="flex items-center gap-2.5 text-slate-600">
+                                    <Clock className="w-4 h-4 text-emerald-500" />
+                                    <span className="text-[11px] font-bold">{selectedEvent.startTime || '--:--'} - {selectedEvent.endTime || '--:--'}</span>
+                                </div>
+                                <div className="flex items-center gap-2.5 text-slate-600">
                                     <Users className="w-4 h-4 text-emerald-500" />
                                     <span className="text-[11px] font-bold">Capacity: {selectedEvent.capacity || 'Open'}</span>
                                 </div>
@@ -388,7 +420,9 @@ export function EventApprovalsPage() {
                         </h3>
                         <div className="space-y-2">
                             {selectedEvent.timeline && selectedEvent.timeline.length > 0 ? (
-                                selectedEvent.timeline.map((item, idx) => (
+                                [...selectedEvent.timeline]
+                                    .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time))
+                                    .map((item, idx) => (
                                     <div key={item.id} className="flex gap-3 group">
                                         <div className="flex flex-col items-center">
                                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1" />
@@ -412,12 +446,15 @@ export function EventApprovalsPage() {
                         {/* Requirements */}
                         <div className="space-y-4">
                             <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">Operational Requirements</h3>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="space-y-2.5">
                                 {selectedEvent.requirements && selectedEvent.requirements.length > 0 ? (
                                     selectedEvent.requirements.map((req, i) => (
-                                        <Badge key={i} variant="secondary" className="bg-white border-slate-100 text-slate-600 text-[10px] font-bold rounded-lg px-2 py-1">
-                                            {req}
-                                        </Badge>
+                                        <div key={i} className="flex items-center gap-2.5 group">
+                                            <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                                                <CheckCircle className="w-3 h-3" />
+                                            </div>
+                                            <span className="text-[12px] text-slate-600 font-bold">{req}</span>
+                                        </div>
                                     ))
                                 ) : (
                                     <p className="text-xs text-slate-400 italic">No requirements listed.</p>
@@ -470,14 +507,14 @@ export function EventApprovalsPage() {
                             variant="ghost"
                             disabled={actionLoading === selectedEvent.id}
                             className="text-slate-400 hover:text-red-500 font-bold text-xs uppercase tracking-widest px-6"
-                            onClick={() => handleAction(selectedEvent.id, 'rejected')}
+                            onClick={() => setConfirmAction({ open: true, type: 'rejected', id: selectedEvent.id, reason: '' })}
                         >
                             {actionLoading === selectedEvent.id ? 'Loading...' : 'Decline Request'}
                         </Button>
                         <Button
                             disabled={actionLoading === selectedEvent.id}
                             className="bg-slate-900 hover:bg-black text-white px-8 h-11 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-black/10 active:scale-95 transition-all"
-                            onClick={() => handleAction(selectedEvent.id, 'published')}
+                            onClick={() => setConfirmAction({ open: true, type: 'published', id: selectedEvent.id, reason: '' })}
                         >
                             {actionLoading === selectedEvent.id ? 'Approving...' : 'Publish Event'}
                         </Button>
@@ -486,6 +523,53 @@ export function EventApprovalsPage() {
             </div>
           </DialogContent>
         }
+      </Dialog>
+
+      {/* Action Confirmation Modal */}
+      <Dialog open={confirmAction.open} onOpenChange={(open) => setConfirmAction(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-md rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-slate-900">
+               {confirmAction.type === 'published' ? 'Final Confirmation' : 'Decline Request'}
+            </DialogTitle>
+            <DialogDescription className="text-sm font-medium text-slate-500 pt-2">
+               {confirmAction.type === 'published' 
+                 ? 'Are you absolutely sure about this? Did you read the attached documentation and activity timeline thoroughly?' 
+                 : 'Please provide a reason why this event request is being declined. This helps organizers improve their submissions.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {confirmAction.type === 'rejected' && (
+            <div className="py-4">
+              <textarea 
+                className="w-full h-32 p-4 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all resize-none"
+                placeholder="Type your explanation here..."
+                value={confirmAction.reason}
+                onChange={(e) => setConfirmAction(prev => ({ ...prev, reason: e.target.value }))}
+              />
+            </div>
+          )}
+
+          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+             <Button
+                variant="ghost"
+                className="font-bold text-xs uppercase tracking-widest text-slate-400"
+                onClick={() => setConfirmAction(prev => ({ ...prev, open: false }))}
+             >
+                Cancel
+             </Button>
+             <Button
+                disabled={confirmAction.type === 'rejected' && !confirmAction.reason.trim()}
+                className={confirmAction.type === 'published' 
+                  ? "bg-slate-900 hover:bg-black text-white px-8 rounded-xl font-bold text-xs uppercase tracking-widest"
+                  : "bg-red-600 hover:bg-red-700 text-white px-8 rounded-xl font-bold text-xs uppercase tracking-widest"
+                }
+                onClick={() => handleAction(confirmAction.id, confirmAction.type)}
+             >
+                {confirmAction.type === 'published' ? 'Yes, Publish event' : 'Confirm Decline'}
+             </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </motion.div>);
 
