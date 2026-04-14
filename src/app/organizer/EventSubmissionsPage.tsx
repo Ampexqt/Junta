@@ -19,8 +19,7 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { FileCheck, CheckCircle, Clock, XCircle, Eye, Edit } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL } from '@/lib/api';
 
 interface OrganizerEvent {
   id: string;

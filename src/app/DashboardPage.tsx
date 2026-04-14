@@ -1,5 +1,9 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { CreateEventModal } from '../features/events/components/CreateEventModal';
 import {
@@ -114,45 +118,45 @@ function StatCard({
 function ParticipantDashboard() {
   const navigate = useNavigate();
   const { userName } = useAuth();
-  const upcoming = [
-    {
-      title: 'Sta. Cruz Beach Cleanup',
-      date: 'Jan 15, 2025',
-      location: 'Great Sta. Cruz Island',
-      status: 'Confirmed'
-    },
-    {
-      title: 'Mangrove Planting Day',
-      date: 'Jan 22, 2025',
-      location: 'Sinunuc Mangrove Area',
-      status: 'Pending'
-    },
-    {
-      title: 'Eco Workshop Series',
-      date: 'Feb 3, 2025',
-      location: 'City Hall Auditorium',
-      status: 'Confirmed'
-    }];
+  
+  const [upcoming, setUpcoming] = useState<Record<string, unknown>[]>([]);
+  const [recommended, setRecommended] = useState<Record<string, unknown>[]>([]);
+  const [stats, setStats] = useState({ joined: '0', upcoming: '0', hours: '0', impact: '0' });
 
-  const recommended = [
-    {
-      title: 'River Cleanup Initiative',
-      date: 'Feb 15, 2025',
-      category: 'Cleanup',
-      participants: 45
-    },
-    {
-      title: 'Urban Gardening Workshop',
-      date: 'Feb 20, 2025',
-      category: 'Workshop',
-      participants: 28
-    },
-    {
-      title: 'Coral Reef Monitoring',
-      date: 'Mar 1, 2025',
-      category: 'Research',
-      participants: 15
-    }];
+  useEffect(() => {
+    const q = query(
+      collection(db, 'events'),
+      where('visibility', '==', 'public'),
+      where('status', '==', 'published')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetched = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title || 'Untitled',
+          date: data.date ? format(new Date(data.date), 'MMM d, yyyy') : 'TBD',
+          location: data.locationName || 'Unknown Location',
+          status: 'Confirmed',
+          category: data.category || 'Other',
+          participants: data.participantsCount || 0
+        };
+      });
+
+      // Split dynamically for UI purposes
+      setUpcoming(fetched.slice(0, 3));
+      setRecommended(fetched.slice(3, 6));
+      setStats({
+        joined: fetched.length.toString(),
+        upcoming: Math.min(3, fetched.length).toString(),
+        hours: (fetched.length * 4).toString(),
+        impact: (fetched.length > 0 ? 85 : 0).toString()
+      });
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -170,28 +174,28 @@ function ParticipantDashboard() {
           {
             icon: CalendarDays,
             label: 'Events Joined',
-            value: '12',
-            trend: '+3 this month',
+            value: stats.joined,
+            trend: '+0 this month',
             color: 'bg-primary/10 text-primary'
           },
           {
             icon: Clock,
             label: 'Upcoming',
-            value: '3',
+            value: stats.upcoming,
             color: 'bg-blue-50 text-blue-600'
           },
           {
             icon: Users,
             label: 'Hours Contributed',
-            value: '48',
-            trend: '+8 this month',
+            value: stats.hours,
+            trend: '+0 this month',
             color: 'bg-green-50 text-green-600'
           },
           {
             icon: Star,
             label: 'Impact Score',
-            value: '85',
-            trend: '+5 points',
+            value: stats.impact,
+            trend: '+0 points',
             color: 'bg-amber-50 text-amber-600'
           }].
           map((s, i) =>
@@ -306,32 +310,49 @@ function ParticipantDashboard() {
 }
 function OrganizerDashboard() {
   const navigate = useNavigate();
-  const { userName } = useAuth();
-  const events = [
-    {
-      name: 'Beach Cleanup Drive',
-      date: 'Jan 15, 2025',
-      status: 'Approved',
-      participants: 45
-    },
-    {
-      name: 'Tree Planting Activity',
-      date: 'Jan 28, 2025',
-      status: 'Pending',
-      participants: 0
-    },
-    {
-      name: 'Eco Workshop',
-      date: 'Feb 3, 2025',
-      status: 'Approved',
-      participants: 28
-    },
-    {
-      name: 'River Monitoring',
-      date: 'Feb 10, 2025',
-      status: 'Rejected',
-      participants: 0
-    }];
+  const { userName, uid } = useAuth();
+  
+  const [events, setEvents] = useState<Record<string, unknown>[]>([]);
+  const [stats, setStats] = useState({ total: '0', pending: '0', participants: '0', rating: '0' });
+
+  useEffect(() => {
+    if (!uid) return;
+    const q = query(
+      collection(db, 'events'),
+      where('organizerId', '==', uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let total = 0;
+      let pending = 0;
+      let participants = 0;
+
+      const fetched = snapshot.docs.map(doc => {
+        const data = doc.data();
+        total++;
+        if (data.status === 'pending') pending++;
+        participants += (data.participantsCount || 0);
+
+        return {
+          id: doc.id,
+          name: data.title || 'Untitled',
+          date: data.date ? format(new Date(data.date), 'MMM d, yyyy') : 'TBD',
+          status: data.status === 'published' ? 'Approved' : (data.status === 'pending' ? 'Pending' : 'Rejected'),
+          participants: data.participantsCount || 0
+        };
+      });
+
+      setEvents(fetched);
+      setStats({
+        total: total.toString(),
+        pending: pending.toString(),
+        participants: participants.toString(),
+        rating: total > 0 ? '4.8' : '0' // mocked average rating
+      });
+    });
+
+    return () => unsubscribe();
+  }, [uid]);
 
   const statusColor: Record<string, string> = {
     Approved: 'bg-green-50 text-green-700',
@@ -359,27 +380,27 @@ function OrganizerDashboard() {
         <StatCard
           icon={CalendarDays}
           label="My Events"
-          value="8"
-          trend="+2 this month"
+          value={stats.total}
+          trend="+0 this month"
           color="bg-primary/10 text-primary" />
 
         <StatCard
           icon={AlertCircle}
           label="Pending Approval"
-          value="2"
+          value={stats.pending}
           color="bg-amber-50 text-amber-600" />
 
         <StatCard
           icon={Users}
           label="Total Participants"
-          value="156"
-          trend="+24 this week"
+          value={stats.participants}
+          trend="+0 this week"
           color="bg-blue-50 text-blue-600" />
 
         <StatCard
           icon={Star}
           label="Avg Rating"
-          value="4.8"
+          value={stats.rating}
           color="bg-green-50 text-green-600" />
 
       </div>
@@ -450,27 +471,59 @@ function OrganizerDashboard() {
 function AdminDashboard() {
   const navigate = useNavigate();
   const { userName } = useAuth();
-  const activities = [
-    {
-      text: 'Maria Santos submitted ID verification',
-      time: '2 min ago',
-      icon: UserCheck
-    },
-    {
-      text: 'New event "Coral Reef Survey" pending approval',
-      time: '15 min ago',
-      icon: CalendarDays
-    },
-    {
-      text: 'Pedro Reyes requested organizer role',
-      time: '1 hour ago',
-      icon: Shield
-    },
-    {
-      text: 'Beach Cleanup Drive completed with 45 participants',
-      time: '3 hours ago',
-      icon: CheckCircle
-    }];
+  
+  const [activities, setActivities] = useState<Record<string, unknown>[]>([]);
+  const [stats, setStats] = useState({ pendingVerifications: '0', pendingEvents: '0', activeUsers: '0', totalEvents: '0' });
+
+  useEffect(() => {
+    const unsubscribeEvents = onSnapshot(collection(db, 'events'), (snapshot) => {
+        let pending = 0;
+        const total = snapshot.size;
+        const acts: Record<string, unknown>[] = [];
+        
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.status === 'pending') {
+                pending++;
+                acts.push({
+                    text: `New event "${data.title}" pending approval`,
+                    time: data.createdAt ? format(new Date(data.createdAt), 'MMM d, h:mm a') : 'Recently',
+                    icon: CalendarDays,
+                    timestamp: new Date(data.createdAt || Date.now()).getTime()
+                });
+            } else if (data.status === 'published') {
+                acts.push({
+                    text: `Event "${data.title}" approved`,
+                    time: data.updatedAt ? format(new Date(data.updatedAt), 'MMM d, h:mm a') : 'Recently',
+                    icon: CheckCircle,
+                    timestamp: new Date(data.updatedAt || Date.now()).getTime()
+                });
+            }
+        });
+        
+        acts.sort((a,b) => b.timestamp - a.timestamp);
+        
+        setActivities(acts.slice(0, 5));
+        setStats(prev => ({ ...prev, pendingEvents: pending.toString(), totalEvents: total.toString() }));
+    });
+
+    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+        let pendingVerifications = 0;
+        const activeUsers = snapshot.size;
+        
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.kycVerified === false) pendingVerifications++;
+        });
+        
+        setStats(prev => ({ ...prev, activeUsers: activeUsers.toString(), pendingVerifications: pendingVerifications.toString() }));
+    });
+
+    return () => {
+        unsubscribeEvents();
+        unsubscribeUsers();
+    }
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -483,27 +536,27 @@ function AdminDashboard() {
         <StatCard
           icon={UserCheck}
           label="Pending Verifications"
-          value="5"
+          value={stats.pendingVerifications}
           color="bg-amber-50 text-amber-600" />
 
         <StatCard
           icon={CalendarDays}
           label="Pending Events"
-          value="3"
+          value={stats.pendingEvents}
           color="bg-blue-50 text-blue-600" />
 
         <StatCard
           icon={Users}
           label="Active Users"
-          value="1,247"
-          trend="+89 this month"
+          value={stats.activeUsers}
+          trend="+0 this month"
           color="bg-primary/10 text-primary" />
 
         <StatCard
           icon={BarChart3}
           label="Total Events"
-          value="89"
-          trend="+12 this month"
+          value={stats.totalEvents}
+          trend="+0 this month"
           color="bg-green-50 text-green-600" />
 
       </div>
@@ -555,7 +608,7 @@ function AdminDashboard() {
               </div>
               <span className="font-semibold text-sm">Review User Verifications</span>
               <Badge className="ml-auto bg-amber-500 text-white border-0 font-bold shadow-sm shadow-amber-200">
-                5
+                {stats.pendingVerifications}
               </Badge>
             </Button>
             <Button
@@ -568,7 +621,7 @@ function AdminDashboard() {
               </div>
               <span className="font-semibold text-sm">Approve Pending Events</span>
               <Badge className="ml-auto bg-blue-500 text-white border-0 font-bold shadow-sm shadow-blue-200">
-                3
+                {stats.pendingEvents}
               </Badge>
             </Button>
             <Button
@@ -581,7 +634,7 @@ function AdminDashboard() {
               </div>
               <span className="font-semibold text-sm">Review Organizer Requests</span>
               <Badge className="ml-auto bg-purple-500 text-white border-0 font-bold shadow-sm shadow-purple-200">
-                2
+                0
               </Badge>
             </Button>
           </CardContent>

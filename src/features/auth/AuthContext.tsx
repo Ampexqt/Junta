@@ -8,6 +8,7 @@ const AuthContext = createContext<AuthContextType>({
     setRole: () => { /* Default role setter */ },
     userName: 'Juan Dela Cruz',
     setUserName: () => { /* Default userName setter */ },
+    uid: null,
     logout: () => { /* Default logout */ }
 });
 
@@ -46,6 +47,19 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
         return 'Juan Dela Cruz';
     });
 
+    const [uid, setUid] = useState<string | null>(() => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                const user = JSON.parse(storedUser);
+                return user.uid || null;
+            } catch (e) {
+                return null;
+            }
+        }
+        return null;
+    });
+
 
     const setRole = (newRole: UserRole) => {
         setRoleState(newRole);
@@ -63,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
         localStorage.removeItem('user_role');
         setRoleState('participant');
         setUserNameState('Juan Dela Cruz');
+        setUid(null);
     };
 
     return (
@@ -72,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
                 setRole,
                 userName,
                 setUserName,
+                uid,
                 logout
             }}>
             {children}

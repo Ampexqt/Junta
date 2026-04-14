@@ -9,6 +9,10 @@ router.post('/', authenticateUser, async (req, res) => {
     try {
         const authReq = req as AuthRequest;
         const eventData = req.body;
+        
+        if (!authReq.user || !authReq.user.uid) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
         const organizerId = authReq.user.uid;
 
         // Basic validation
@@ -25,7 +29,7 @@ router.post('/', authenticateUser, async (req, res) => {
         const newEvent = {
             ...eventData,
             organizerId,
-            organizerName: authReq.user.name || 'Anonymous Organizer', // Store name for easy display
+            organizerName: authReq.user?.name || 'Anonymous Organizer', // Store name for easy display
             organizationName,
             status: 'pending',
             createdAt: new Date().toISOString(),
@@ -40,7 +44,7 @@ router.post('/', authenticateUser, async (req, res) => {
             eventId: docRef.id,
             event: { id: docRef.id, ...newEvent }
         });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error creating event:', error);
         res.status(500).json({ error: 'Failed to create event' });
     }
@@ -64,9 +68,33 @@ router.get('/my-events', authenticateUser, async (req, res) => {
         }));
 
         res.json(events);
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error fetching my events:', error);
         res.status(500).json({ error: 'Failed to fetch my events' });
+    }
+});
+
+// Admin: Get all pending events
+router.get('/pending', authenticateUser, async (req, res) => {
+    try {
+        const authReq = req as AuthRequest;
+        if (!authReq.user || authReq.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+
+        const snapshot = await db.collection('events')
+            .where('status', '==', 'pending')
+            .get();
+
+        const events = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        res.json(events);
+    } catch (error) {
+        console.error('Error fetching pending events:', error);
+        res.status(500).json({ error: 'Failed to fetch pending events' });
     }
 });
 
@@ -98,34 +126,9 @@ router.get('/', async (req, res) => {
         }));
 
         res.json(events);
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error fetching events:', error);
         res.status(500).json({ error: 'Failed to fetch events' });
-    }
-});
-
-
-// Admin: Get all pending events
-router.get('/pending', authenticateUser, async (req, res) => {
-    try {
-        const authReq = req as AuthRequest;
-        if (authReq.user.role !== 'admin') {
-            return res.status(403).json({ error: 'Admin access required' });
-        }
-
-        const snapshot = await db.collection('events')
-            .where('status', '==', 'pending')
-            .get();
-
-        const events = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-
-        res.json(events);
-    } catch (error: any) {
-        console.error('Error fetching pending events:', error);
-        res.status(500).json({ error: 'Failed to fetch pending events' });
     }
 });
 
@@ -133,7 +136,7 @@ router.get('/pending', authenticateUser, async (req, res) => {
 router.patch('/:id/status', authenticateUser, async (req, res) => {
     try {
         const authReq = req as AuthRequest;
-        if (authReq.user.role !== 'admin') {
+        if (!authReq.user || authReq.user.role !== 'admin') {
             return res.status(403).json({ error: 'Admin access required' });
         }
 
@@ -144,10 +147,10 @@ router.patch('/:id/status', authenticateUser, async (req, res) => {
             return res.status(400).json({ error: 'Invalid status' });
         }
 
-        const updateData: any = {
+        const updateData: Record<string, unknown> = {
             status,
             updatedAt: new Date().toISOString(),
-            reviewedBy: authReq.user.uid,
+            reviewedBy: authReq.user?.uid || 'admin',
             reviewedAt: new Date().toISOString()
         };
 
@@ -158,7 +161,7 @@ router.patch('/:id/status', authenticateUser, async (req, res) => {
         await db.collection('events').doc(id).update(updateData);
 
         res.json({ message: `Event ${status} successfully`, eventId: id });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error updating event status:', error);
         res.status(500).json({ error: 'Failed to update event status' });
     }

@@ -21,8 +21,7 @@ import {
   Mail
 } from 'lucide-react';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL } from '@/lib/api';
 
 interface EventData {
   id: string;
@@ -90,7 +89,8 @@ export function EventDetailsPage() {
   const timeToMinutes = (timeStr: string) => {
     if (!timeStr) return 0;
     const [time, period] = timeStr.split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
+    const [rawHours, minutes] = time.split(':').map(Number);
+    let hours = rawHours;
     if (period === 'PM' && hours !== 12) hours += 12;
     if (period === 'AM' && hours === 12) hours = 0;
     return hours * 60 + minutes;
