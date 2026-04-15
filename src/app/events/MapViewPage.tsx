@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,89 +10,26 @@ import {
   CalendarDays,
   Users,
   Search,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
-import Map, { Marker, Popup, MapRef } from 'react-map-gl/mapbox';
+import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/mapbox';
+import type { MapRef } from 'react-map-gl/mapbox';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { format } from 'date-fns';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
 
-// Custom colored SVG marker creator for Mapbox
-function createColoredIcon(color: string, isSelected = false) {
-  const size = isSelected ? 14 : 11;
-  return (
-    <div style={{ pointerEvents: 'auto', cursor: 'pointer' }}>
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-        {isSelected && <circle cx="12" cy="12" r="11" fill={color} opacity="0.25"/>}
-        <circle cx="12" cy="12" r={size / 2 + 2} fill="white" opacity="0.9"/>
-        <circle cx="12" cy="12" r={size / 2} fill={color}/>
-      </svg>
-    </div>
-  );
+interface EventPin {
+  id: string;
+  title: string;
+  date: string;
+  location: string;
+  category: string;
+  participants: number;
+  lat: number;
+  lng: number;
 }
-
-// No longer using L.divIcon
-
-const pins = [
-  {
-    id: 1,
-    title: 'Sta. Cruz Beach Cleanup',
-    date: 'Jan 15, 2025',
-    location: 'Great Sta. Cruz Island',
-    category: 'Cleanup',
-    participants: 45,
-    lat: 6.9447,
-    lng: 122.0033,
-  },
-  {
-    id: 2,
-    title: 'Mangrove Planting Initiative',
-    date: 'Jan 22, 2025',
-    location: 'Sinunuc Mangrove Area',
-    category: 'Planting',
-    participants: 32,
-    lat: 6.9211,
-    lng: 121.9687,
-  },
-  {
-    id: 3,
-    title: 'Marine Biodiversity Workshop',
-    date: 'Feb 3, 2025',
-    location: 'Zamboanga City Hall',
-    category: 'Workshop',
-    participants: 28,
-    lat: 6.9112,
-    lng: 122.0716,
-  },
-  {
-    id: 4,
-    title: 'Paseo del Mar Awareness Walk',
-    date: 'Feb 10, 2025',
-    location: 'Paseo del Mar',
-    category: 'Awareness',
-    participants: 60,
-    lat: 6.9062,
-    lng: 122.0785,
-  },
-  {
-    id: 5,
-    title: 'Pasonanca Reforestation',
-    date: 'Feb 18, 2025',
-    location: 'Pasonanca Natural Park',
-    category: 'Planting',
-    participants: 50,
-    lat: 6.9335,
-    lng: 122.0421,
-  },
-  {
-    id: 6,
-    title: 'Coastal Water Testing',
-    date: 'Mar 1, 2025',
-    location: 'Rio Hondo Coastline',
-    category: 'Research',
-    participants: 15,
-    lat: 6.8996,
-    lng: 122.0601,
-  },
-];
 
 const categoryColors: Record<string, string> = {
   Cleanup: '#3b82f6',
@@ -109,14 +46,54 @@ const categoryBadge: Record<string, string> = {
   Research: 'bg-cyan-50 text-cyan-700',
 };
 
-// Helper components removed as they are integrated into the main component logic
-
 export function MapViewPage() {
   const navigate = useNavigate();
   const { token } = useMapboxToken();
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [pins, setPins] = useState<EventPin[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const mapRef = useRef<MapRef>(null);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'events'),
+      where('visibility', '==', 'public'),
+      where('status', '==', 'published')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetched = snapshot.docs.map(doc => {
+        const data = doc.data();
+        let formattedDate = 'TBD';
+        try {
+          if (data.date) {
+            formattedDate = format(new Date(data.date), 'MMM d, yyyy');
+          }
+        } catch (e) {
+          console.error('Date parse error:', e);
+        }
+        return {
+          id: doc.id,
+          title: data.title || 'Untitled',
+          date: formattedDate,
+          location: data.locationName || 'Unknown Location',
+          category: data.category || 'Other',
+          participants: data.participantsCount || 0,
+          lat: data.coordinates?.lat || 0,
+          lng: data.coordinates?.lng || 0,
+        };
+      });
+      setPins(fetched);
+      setIsLoading(false);
+    }, (error) => {
+      console.error('Error fetching events:', error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const selectedPin = pins.find((p) => p.id === selected);
   const filtered = pins.filter(
     (p) =>
@@ -124,7 +101,7 @@ export function MapViewPage() {
       p.location.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handlePinSelect = (id: number) => {
+  const handlePinSelect = (id: string) => {
     setSelected(id);
     const pin = pins.find(p => p.id === id);
     if (pin && mapRef.current) {
@@ -163,132 +140,175 @@ export function MapViewPage() {
           </div>
           <ScrollArea className="flex-1">
             <div className="p-3 space-y-2">
-              {filtered.map((pin) => (
-                <Button
-                  asChild
-                  variant="ghost"
-                  key={pin.id}
-                  onClick={() => handlePinSelect(pin.id)}
-                  className={`w-full h-auto text-left p-3 rounded-xl transition-all cursor-pointer block ${
-                    selected === pin.id
-                      ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/20'
-                      : 'hover:bg-muted border-transparent'
-                  }`}
-                >
-                  <div>
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
-                      style={{ backgroundColor: categoryColors[pin.category] }}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {pin.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3" />
-                        {pin.location}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] border-0 ${categoryBadge[pin.category]}`}
-                        >
-                          {pin.category}
-                        </Badge>
-                        <span className="text-[10px] text-muted-foreground">
-                          {pin.date}
-                        </span>
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-10 opacity-60">
+                  <Loader2 className="w-6 h-6 animate-spin mb-2 text-emerald-600" />
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Fetching Events</p>
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-10 opacity-60">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">No Events Found</p>
+                </div>
+              ) : (
+                filtered.map((pin) => (
+                  <Button
+                    asChild
+                    variant="ghost"
+                    key={pin.id}
+                    onClick={() => handlePinSelect(pin.id)}
+                    className={`w-full h-auto text-left p-3 rounded-xl transition-all cursor-pointer block group ${
+                      selected === pin.id
+                        ? 'bg-emerald-50 border-emerald-200 ring-1 ring-emerald-200 shadow-sm'
+                        : 'hover:bg-slate-50 border-transparent border border-slate-100 hover:border-slate-200 hover:shadow-sm'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`w-3 h-3 rounded-full mt-1.5 flex-shrink-0 transition-transform ${selected === pin.id ? 'scale-125' : 'group-hover:scale-110'}`}
+                          style={{ 
+                            backgroundColor: categoryColors[pin.category] || '#10b981',
+                            boxShadow: `0 0 8px ${categoryColors[pin.category] || '#10b981'}80`
+                          }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-bold truncate transition-colors ${selected === pin.id ? 'text-emerald-700' : 'text-slate-900 group-hover:text-emerald-600'}`}>
+                            {pin.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 mb-1.5">
+                            <Badge
+                              variant="secondary"
+                              className={`text-[9px] px-1.5 py-0 border-0 font-black uppercase tracking-widest ${categoryBadge[pin.category] || 'bg-slate-100 text-slate-600'}`}
+                            >
+                              {pin.category}
+                            </Badge>
+                            <span className="text-[10px] font-medium text-slate-500">
+                              {pin.date}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="truncate">{pin.location}</span>
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    </div>
-                  </div>
-                </Button>
-              ))}
+                  </Button>
+                ))
+              )}
             </div>
           </ScrollArea>
         </Card>
 
         {/* Map */}
-        <Card className="rounded-2xl shadow-sm border flex-1 overflow-hidden relative bg-muted/20 flex items-center justify-center">
+        <Card className="rounded-2xl shadow-sm border flex-1 overflow-hidden relative bg-slate-50 flex items-center justify-center">
+          <div className="absolute inset-0 shadow-[inset_0_0_80px_rgba(0,0,0,0.03)] pointer-events-none z-20" />
           {token ? (
-            <Map
-              ref={mapRef}
-              initialViewState={{
-                latitude: 6.9214,
-                longitude: 122.0390,
-                zoom: 12
-              }}
-              mapStyle="mapbox://styles/mapbox/light-v11"
-              mapboxAccessToken={token}
-              style={{ height: '100%', width: '100%' }}
-            >
-              {/* Markers */}
-              {pins.map((pin) => (
-                <Marker
-                  key={pin.id}
-                  latitude={pin.lat}
-                  longitude={pin.lng}
-                  onClick={(e) => {
-                  e.originalEvent.stopPropagation();
-                  setSelected(pin.id);
+            <div className="w-full h-full relative" style={{ filter: 'contrast(1.1) saturate(1.2) brightness(1.02)' }}>
+              <Map
+                ref={mapRef}
+                initialViewState={{
+                  latitude: 6.9150,
+                  longitude: 122.0650,
+                  zoom: 12.5,
+                  pitch: 0,
+                  bearing: 0
                 }}
-                >
-                  {createColoredIcon(
-                    categoryColors[pin.category],
-                    selected === pin.id
-                  )}
-                </Marker>
-              ))}
+                mapStyle="mapbox://styles/mapbox/standard"
+                mapboxAccessToken={token}
+                style={{ width: '100%', height: '100%' }}
+                scrollZoom={true}
+                dragPan={true}
+              >
+                <NavigationControl position="top-left" showCompass={false} />
 
-              {/* Popup */}
-              {selectedPin && (
-                <Popup
-                  latitude={selectedPin.lat}
-                  longitude={selectedPin.lng}
-                  onClose={() => setSelected(null)}
-                  closeButton={true}
-                  closeOnClick={false}
-                  anchor="bottom"
-                  offset={15}
-                  className="junta-mapbox-popup"
-                >
-                  <div className="p-1 min-w-[200px]">
-                    <div className="flex items-start justify-between mb-1.5">
-                      <span
-                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${categoryBadge[selectedPin.category]}`}
-                      >
-                        {selectedPin.category}
-                      </span>
-                    </div>
-                    <h3 className="font-semibold text-sm text-gray-900 leading-snug mb-2 font-heading">
-                      {selectedPin.title}
-                    </h3>
-                    <div className="space-y-1 text-xs text-gray-500">
-                      <p className="flex items-center gap-1.5">
-                        <CalendarDays className="w-3 h-3 text-emerald-600" />
-                        {selectedPin.date}
-                      </p>
-                      <p className="flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3 text-emerald-600" />
-                        {selectedPin.location}
-                      </p>
-                      <p className="flex items-center gap-1.5">
-                        <Users className="w-3 h-3 text-emerald-600" />
-                        {selectedPin.participants} participants
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => navigate(`/app/events/${selectedPin.id}`)}
-                      className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-200/50"
-                      size="sm"
+                {/* Markers */}
+                {pins.map((pin) => {
+                  const hexColor = categoryColors[pin.category] || '#10b981';
+                  const isPinSelected = selected === pin.id;
+                  
+                  return (
+                    <Marker
+                      key={pin.id}
+                      latitude={pin.lat}
+                      longitude={pin.lng}
+                      onClick={(e: unknown) => {
+                        const event = e as { originalEvent?: Event };
+                        if (event?.originalEvent) {
+                          event.originalEvent.stopPropagation();
+                        }
+                        setSelected(pin.id);
+                      }}
                     >
-                      View Details <ArrowRight className="w-3 h-3 ml-1.5" />
-                    </Button>
-                  </div>
-                </Popup>
-              )}
-            </Map>
+                      <div className="relative flex items-center justify-center cursor-pointer group">
+                        <div 
+                          className={`absolute rounded-full animate-ping ${isPinSelected ? 'w-10 h-10' : 'w-6 h-6 group-hover:w-8 group-hover:h-8'}`} 
+                          style={{ backgroundColor: `${hexColor}60` }}
+                        />
+                        <div 
+                          className={`relative rounded-full border-[2.5px] border-white transition-all shadow-[0_0_12px_rgba(0,0,0,0.3)] ${isPinSelected ? 'w-5 h-5 scale-110' : 'w-4 h-4 group-hover:scale-125'}`}
+                          style={{ 
+                            backgroundColor: hexColor,
+                            boxShadow: `0 0 10px ${hexColor}` 
+                          }} 
+                        />
+                      </div>
+                    </Marker>
+                  );
+                })}
+
+                {/* Popup */}
+                {selectedPin && (
+                  <Popup
+                    latitude={selectedPin.lat}
+                    longitude={selectedPin.lng}
+                    onClose={() => setSelected(null)}
+                    closeButton={true}
+                    closeOnClick={false}
+                    anchor="bottom"
+                    offset={15}
+                    className="junta-mapbox-premium-popup z-[60]"
+                  >
+                    <div className="p-2 min-w-[220px]">
+                      <div className="flex items-start justify-between mb-2">
+                         <Badge
+                            variant="secondary"
+                            className={`text-[9px] px-2 py-0 border-0 font-black uppercase tracking-widest ${categoryBadge[selectedPin.category] || 'bg-slate-100 text-slate-600'}`}
+                          >
+                            {selectedPin.category}
+                          </Badge>
+                      </div>
+                      <h3 className="font-bold text-sm text-slate-900 leading-snug mb-3 line-clamp-2">
+                        {selectedPin.title}
+                      </h3>
+                      <div className="space-y-1.5 text-xs font-medium text-slate-500">
+                        <p className="flex items-center gap-2">
+                          <CalendarDays className="w-3.5 h-3.5 text-emerald-600" />
+                          {selectedPin.date}
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="truncate max-w-[170px]">{selectedPin.location}</span>
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <Users className="w-3.5 h-3.5 text-emerald-600" />
+                          {selectedPin.participants} participants
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => navigate(`/app/events/${selectedPin?.id}`)}
+                        className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 rounded-lg shadow-md shadow-emerald-600/20 group/btn transition-all"
+                      >
+                        View Details 
+                        <ArrowRight className="w-3.5 h-3.5 ml-1.5 transition-transform group-hover/btn:translate-x-1" />
+                      </Button>
+                    </div>
+                  </Popup>
+                )}
+              </Map>
+              {/* Aesthetic Gradient "Shadow" for Depth */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-transparent pointer-events-none z-10" />
+            </div>
           ) : (
             <div className="flex flex-col items-center gap-2">
               <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />

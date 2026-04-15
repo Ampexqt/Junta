@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow } from
 '@/components/ui/table';
-import { Search, Eye } from 'lucide-react';
+import { Search } from 'lucide-react';
 const users = [
 {
   name: 'Juan Dela Cruz',
