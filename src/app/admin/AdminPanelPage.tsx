@@ -20,9 +20,7 @@ import {
   CalendarDays,
   CheckCircle,
   XCircle,
-  Eye,
-  Check,
-  X } from
+  Eye } from
 'lucide-react';
 const verifications = [
 {
