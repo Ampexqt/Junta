@@ -556,10 +556,10 @@ function FeaturedEventsSection() {
                     {e.location}
                   </p>
                 </div>
-                <Button
+                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mt-4 w-full text-primary hover:text-white hover:bg-primary rounded-xl transition-all duration-300 text-xs font-bold border border-primary/10">
+                  className="mt-4 w-full text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all duration-300 text-xs font-bold border border-emerald-600/10">
 
                   View Details <ArrowRight className="ml-2 w-3.5 h-3.5" />
                 </Button>

@@ -474,12 +474,14 @@ export function CreateEventPage() {
               className="pl-3 pr-1.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 border-none flex items-center gap-1.5 transition-colors"
             >
               <span className="text-[12px] font-medium text-slate-700">{req}</span>
-              <button 
+              <Button 
+                variant="ghost"
+                size="icon"
                 onClick={() => removeRequirement(req)}
-                className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-slate-300 text-slate-500 transition-colors"
+                className="w-5 h-5 rounded-full hover:bg-slate-300 text-slate-500 transition-colors p-0"
               >
                 <X className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </Badge>
           ))}
         </div>

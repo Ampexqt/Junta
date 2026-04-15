@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -12,7 +13,7 @@ import {
   TableHeader,
   TableRow } from
 '@/components/ui/table';
-import { Search } from 'lucide-react';
+import { Search, Eye } from 'lucide-react';
 const users = [
 {
   name: 'Juan Dela Cruz',
@@ -122,18 +123,18 @@ export function AdminUsersPage() {
         <p className="text-muted-foreground mt-1">Platform user directory.</p>
       </div>
 
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search users..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10" />
-        
-      </div>
-
       <Card className="rounded-2xl shadow-sm border">
-        <CardContent className="pt-6">
+        <CardHeader className="pb-0 pt-4">
+          <div className="relative max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search users..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10" />
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -146,10 +147,17 @@ export function AdminUsersPage() {
                   <TableHead className="hidden lg:table-cell text-right">
                     Events
                   </TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((u) =>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground font-medium">
+                      No users match your search.
+                    </TableCell>
+                  </TableRow>
+                ) : filtered.map((u) =>
                 <TableRow key={u.email}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -190,6 +198,15 @@ export function AdminUsersPage() {
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-right text-muted-foreground text-sm">
                       {u.events}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-primary hover:bg-primary/5 h-8 px-3 rounded-lg transition-colors font-medium"
+                      >
+                        View
+                      </Button>
                     </TableCell>
                   </TableRow>
                 )}

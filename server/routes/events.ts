@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import admin from 'firebase-admin';
 import { db } from '../config/firebase-admin';
 import { authenticateUser, AuthRequest } from '../middleware/auth';
 
@@ -35,6 +36,8 @@ router.post('/', authenticateUser, async (req, res) => {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             participantsCount: 0,
+            averageRating: 0,
+            ratingCount: 0,
         };
 
         const docRef = await db.collection('events').add(newEvent);
@@ -164,6 +167,35 @@ router.patch('/:id/status', authenticateUser, async (req, res) => {
     } catch (error) {
         console.error('Error updating event status:', error);
         res.status(500).json({ error: 'Failed to update event status' });
+    }
+});
+
+// Join an event (Participant)
+router.post('/:id/join', authenticateUser, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const eventRef = db.collection('events').doc(id);
+        const eventDoc = await eventRef.get();
+
+        if (!eventDoc.exists) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        const eventData = eventDoc.data();
+        if (eventData?.status !== 'published') {
+            return res.status(400).json({ error: 'Registration is not open for this event' });
+        }
+
+        // Increment participants count atomically
+        await eventRef.update({
+            participantsCount: admin.firestore.FieldValue.increment(1),
+            updatedAt: new Date().toISOString()
+        });
+
+        res.json({ message: 'Successfully joined event', eventId: id });
+    } catch (error) {
+        console.error('Error joining event:', error);
+        res.status(500).json({ error: 'Failed to join event' });
     }
 });
 

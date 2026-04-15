@@ -88,9 +88,13 @@ export function SettingsPage() {
                     JD
                   </AvatarFallback>
                 </Avatar>
-                <button className="absolute bottom-0 right-0 w-7 h-7 bg-primary rounded-full flex items-center justify-center border-2 border-white">
+                <Button
+                  size="icon"
+                  className="absolute bottom-0 right-0 w-7 h-7 bg-primary rounded-full border-2 border-white shadow-sm hover:bg-primary/90"
+                  aria-label="Change profile photo"
+                >
                   <Camera className="w-3.5 h-3.5 text-white" />
-                </button>
+                </Button>
               </div>
               <div>
                 <p className="font-medium text-foreground">{firstName} {lastName} {suffix && suffix !== 'none' ? suffix : ''}</p>

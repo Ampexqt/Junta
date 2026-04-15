@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Map, { Marker } from 'react-map-gl/mapbox';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
 import { useNavigate } from 'react-router-dom';
@@ -37,8 +37,7 @@ import {
   Clock,
   FileText,
   Calendar as CalendarIcon,
-  Loader2,
-  Zap
+  Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';

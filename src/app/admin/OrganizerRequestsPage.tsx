@@ -118,19 +118,16 @@ export function OrganizerRequestsPage() {
                       {r.date}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="text-green-600 border-green-200 hover:bg-green-50 text-xs h-8">
-
+                          className="bg-green-500 hover:bg-green-600 text-white text-xs h-8 shadow-sm shadow-green-200/60 transition-all duration-200">
                           Approve
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-red-500 border-red-200 hover:bg-red-50 text-xs h-8">
-
+                          className="text-red-500 border-red-200 hover:bg-red-500 hover:text-white hover:border-red-500 text-xs h-8 transition-all duration-200">
                           Reject
                         </Button>
                       </div>

@@ -152,7 +152,11 @@ export function NotificationsPage() {
             }}>
 
             <Card
-              className={`rounded-xl shadow-sm border cursor-pointer transition-colors hover:bg-muted/50 ${!n.read ? 'bg-primary/[0.02] border-primary/10' : ''}`}
+              className={`rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md overflow-hidden ${
+                !n.read 
+                  ? 'bg-primary/[0.02] border-primary/15 shadow-primary/5' 
+                  : 'hover:bg-muted/30'
+              }`}
               onClick={() =>
                 setNotifications((prev) =>
                   prev.map((x) =>
@@ -165,8 +169,10 @@ export function NotificationsPage() {
                   )
                 )
               }>
-
-              <CardContent className="py-4 flex items-start gap-3">
+              {!n.read && (
+                <div className="h-0.5 w-full bg-gradient-to-r from-primary/60 to-primary/20" />
+              )}
+                  <CardContent className="py-4 flex items-start gap-3">
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${n.iconBg}`}>
 
@@ -218,7 +224,7 @@ export function NotificationsPage() {
           </p>
         </div>
         {unreadCount > 0 &&
-          <Button variant="outline" size="sm" onClick={markAllRead}>
+          <Button variant="outline" size="sm" onClick={markAllRead} className="hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all">
             <Check className="w-4 h-4 mr-1.5" /> Mark all read
           </Button>
         }

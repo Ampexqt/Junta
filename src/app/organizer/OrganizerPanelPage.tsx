@@ -125,7 +125,7 @@ export function OrganizerPanelPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90">
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200/50 font-semibold border-none">
               <Plus className="w-4 h-4 mr-2" /> Create Event
             </Button>
           </DialogTrigger>
@@ -191,7 +191,7 @@ export function OrganizerPanelPage() {
                 Cancel
               </Button>
               <Button
-                className="bg-primary hover:bg-primary/90"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200/50 font-semibold border-none"
                 onClick={() => setDialogOpen(false)}>
 
                 Submit for Approval
@@ -307,12 +307,11 @@ export function OrganizerPanelPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="w-8 h-8"
+                          className="w-8 h-8 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors"
                           onClick={() => navigate(`/app/events/${e.id}`)}>
-
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="w-8 h-8">
+                        <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors">
                           <Edit className="w-4 h-4" />
                         </Button>
                       </div>

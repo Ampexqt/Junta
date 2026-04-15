@@ -20,7 +20,9 @@ import {
   CalendarDays,
   CheckCircle,
   XCircle,
-  Eye } from
+  Eye,
+  Check,
+  X } from
 'lucide-react';
 const verifications = [
 {
@@ -243,21 +245,21 @@ export function AdminPanelPage() {
                             <Button
                             variant="ghost"
                             size="icon"
-                            className="w-8 h-8 text-muted-foreground">
+                            className="w-8 h-8 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors">
                             
                               <Eye className="w-4 h-4" />
                             </Button>
                             <Button
                             variant="ghost"
                             size="icon"
-                            className="w-8 h-8 text-green-600 hover:text-green-700 hover:bg-green-50">
+                            className="w-8 h-8 text-green-600 hover:text-white hover:bg-green-600 transition-all duration-200">
                             
                               <CheckCircle className="w-4 h-4" />
                             </Button>
                             <Button
                             variant="ghost"
                             size="icon"
-                            className="w-8 h-8 text-red-500 hover:text-red-600 hover:bg-red-50">
+                            className="w-8 h-8 text-red-500 hover:text-white hover:bg-red-500 transition-all duration-200">
                             
                               <XCircle className="w-4 h-4" />
                             </Button>
@@ -320,19 +322,16 @@ export function AdminPanelPage() {
                           {r.date}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-1.5">
                             <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-green-600 border-green-200 hover:bg-green-50 text-xs h-8">
-                            
+                              size="sm"
+                              className="bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase tracking-wider h-7 px-3 shadow-sm transition-all duration-200">
                               Approve
                             </Button>
                             <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-500 border-red-200 hover:bg-red-50 text-xs h-8">
-                            
+                              size="sm"
+                              variant="outline"
+                              className="text-red-500 border-red-200 hover:bg-red-500 hover:text-white hover:border-red-500 text-[10px] font-bold uppercase tracking-wider h-7 px-3 transition-all duration-200">
                               Reject
                             </Button>
                           </div>
@@ -388,19 +387,16 @@ export function AdminPanelPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-1.5">
                             <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-green-600 border-green-200 hover:bg-green-50 text-xs h-8">
-                            
+                              size="sm"
+                              className="bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase tracking-wider h-7 px-3 shadow-sm transition-all duration-200">
                               Approve
                             </Button>
                             <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-500 border-red-200 hover:bg-red-50 text-xs h-8">
-                            
+                              size="sm"
+                              variant="outline"
+                              className="text-red-500 border-red-200 hover:bg-red-500 hover:text-white hover:border-red-500 text-[10px] font-bold uppercase tracking-wider h-7 px-3 transition-all duration-200">
                               Reject
                             </Button>
                           </div>

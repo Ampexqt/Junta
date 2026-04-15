@@ -45,6 +45,8 @@ app.get('/api/config/mapbox', configLimiter, (req, res) => {
 // Protected Route Example
 app.get('/api/me', authenticateUser, (req: express.Request, res: express.Response) => {
     const authReq = req as AuthRequest;
+    if (!authReq.user) return res.status(401).json({ error: 'Unauthorized' });
+    
     // This will only run if the token is valid
     res.json({
         message: 'This is a protected route',

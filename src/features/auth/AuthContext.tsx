@@ -9,6 +9,7 @@ const AuthContext = createContext<AuthContextType>({
     userName: 'Juan Dela Cruz',
     setUserName: () => { /* Default userName setter */ },
     uid: null,
+    setUid: () => { /* Default uid setter */ },
     logout: () => { /* Default logout */ }
 });
 
@@ -88,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
                 userName,
                 setUserName,
                 uid,
+                setUid,
                 logout
             }}>
             {children}
