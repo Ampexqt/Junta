@@ -30,12 +30,22 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { format } from 'date-fns';
 
+interface Event {
+  id: string;
+  title: string;
+  date: string;
+  location: string;
+  participants: number;
+  category: string;
+  image?: string;
+}
+
 export function EventsPage() {
   const { role } = useAuth();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [events, setEvents] = useState<Record<string, unknown>[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -63,6 +73,7 @@ export function EventsPage() {
           location: data.locationName || 'Unknown Location',
           participants: data.participantsCount || 0,
           category: data.category || 'Other',
+          image: data.coverImage,
         };
       });
       setEvents(fetched);
@@ -96,7 +107,7 @@ export function EventsPage() {
         </div>
         {(role === 'organizer' || role === 'admin') &&
           <CreateEventModal trigger={
-            <Button className="bg-primary hover:bg-primary/90 shadow-sm gap-2">
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200/50 font-semibold border-none gap-2">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Create Event</span>
             </Button>

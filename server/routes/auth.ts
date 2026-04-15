@@ -59,14 +59,15 @@ router.post('/send-otp', async (req, res) => {
                 `,
             });
             sendError = error;
-        } catch (e: any) {
+        } catch (e) {
             sendError = e;
         }
 
         if (sendError) {
             // Resend free tier only allows sending to the account owner's email.
             // If blocked, we still succeed — the OTP is in Firestore and the terminal.
-            console.warn(`[AUTH] Resend failed for ${email}:`, sendError.message || sendError);
+            const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
+            console.warn(`[AUTH] Resend failed for ${email}:`, errorMessage);
             console.warn('[AUTH] OTP is still valid — user can enter the code shown in the server terminal.');
             // Return success so the frontend can proceed to the OTP step
             return res.json({
@@ -204,19 +205,19 @@ router.post('/register', async (req, res) => {
                 role: role || 'participant'
             }
         });
-
-    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    } catch (error) {
         console.error('Error in register:', error);
         
+        const err = error as { code?: string; message: string };
         // Handle common Firebase Auth errors
-        if (error.code === 'auth/email-already-exists') {
+        if (err.code === 'auth/email-already-exists') {
             return res.status(400).json({ error: 'This email is already registered.' });
         }
-        if (error.code === 'auth/invalid-phone-number') {
+        if (err.code === 'auth/invalid-phone-number') {
             return res.status(400).json({ error: 'The phone number format is invalid.' });
         }
 
-        res.status(500).json({ error: error.message || 'Failed to complete registration' });
+        res.status(500).json({ error: err.message || 'Failed to complete registration' });
     }
 });
 
@@ -279,7 +280,7 @@ router.post('/login', async (req, res) => {
                 role: userData.role
             }
         });
-    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    } catch (error) {
         console.error('Error in login:', error);
         res.status(500).json({ error: 'Authentication failed' });
     }
@@ -356,8 +357,9 @@ import { Request, Response } from 'express';
 
 router.post('/sync-profile', authenticateUser, async (req: Request, res: Response) => {
     const authReq = req as AuthRequest;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const { uid, email, name } = authReq.user!;
+    if (!authReq.user) return res.status(401).json({ error: 'Unauthorized' });
+    
+    const { uid, email, name } = authReq.user;
     const { displayName, photoURL } = req.body;
 
     try {

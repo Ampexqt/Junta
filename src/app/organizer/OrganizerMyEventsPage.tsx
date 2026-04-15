@@ -18,7 +18,7 @@ import {
   TableRow
 } from
   '@/components/ui/table';
-import { Eye, MapPin, Users, CalendarDays, Plus } from 'lucide-react';
+import { Eye, MapPin, Users, CalendarDays, Plus, FolderOpen } from 'lucide-react';
 import { CreateEventModal } from '../../features/events/components/CreateEventModal';
 
 const approvedEvents = [
@@ -84,7 +84,7 @@ export function OrganizerMyEventsPage() {
         <CreateEventModal
           trigger={
             <Button
-              className="bg-primary hover:bg-primary/90 shadow-sm transition-all hover:scale-105 active:scale-95"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200/50 font-semibold border-none transition-all hover:scale-105 active:scale-95"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Event
@@ -124,7 +124,17 @@ export function OrganizerMyEventsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {approvedEvents.map((e) =>
+                {approvedEvents.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-36 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <FolderOpen className="w-8 h-8 text-muted-foreground/20" />
+                        <p className="text-sm font-medium text-muted-foreground">No approved events yet</p>
+                        <p className="text-xs text-muted-foreground/60">Create an event to get started.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : approvedEvents.map((e) =>
                   <TableRow
                     key={e.id}
                     className="cursor-pointer"
@@ -155,7 +165,7 @@ export function OrganizerMyEventsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="text-xs">
+                      <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors">
                         <Eye className="w-3.5 h-3.5 mr-1" /> View
                       </Button>
                     </TableCell>

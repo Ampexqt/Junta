@@ -99,7 +99,13 @@ export function SchedulePage() {
 
       <div className="grid lg:grid-cols-[auto_1fr] gap-6">
         <Card className="rounded-2xl shadow-sm border">
-          <CardContent className="p-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="font-heading text-base flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-primary" />
+              Calendar
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
             <Calendar
               mode="single"
               selected={date}
@@ -111,7 +117,6 @@ export function SchedulePage() {
                 event: 'bg-primary/10 text-primary font-semibold'
               }}
               className="rounded-xl" />
-            
           </CardContent>
         </Card>
 
@@ -186,10 +191,9 @@ export function SchedulePage() {
                       </div>
                     </div>
                     <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs flex-shrink-0">
-                  
+                      variant="outline"
+                      size="sm"
+                      className="text-xs flex-shrink-0 hover:bg-primary hover:text-white hover:border-primary transition-colors">
                       View
                     </Button>
                   </motion.div>
@@ -202,11 +206,10 @@ export function SchedulePage() {
                   No events scheduled for this date.
                 </p>
                 <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2 text-primary"
-                onClick={() => navigate('/app/events')}>
-                
+                  variant="outline"
+                  size="sm"
+                  className="mt-4 text-primary border-primary/20 hover:bg-primary/10 hover:border-primary/30 transition-all font-medium"
+                  onClick={() => navigate('/app/events')}>
                   Browse Events
                 </Button>
               </div>

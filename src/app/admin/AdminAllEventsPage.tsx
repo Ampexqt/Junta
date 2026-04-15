@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardContent } from
+  CardContent,
+  CardHeader
+} from
 '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -21,7 +24,7 @@ import {
   TableHeader,
   TableRow } from
 '@/components/ui/table';
-import { Search } from 'lucide-react';
+import { Search, Eye } from 'lucide-react';
 const allEvents = [
 {
   name: 'Sta. Cruz Beach Cleanup Drive',
@@ -146,33 +149,33 @@ export function AdminAllEventsPage() {
         <p className="text-muted-foreground mt-1">Complete event directory.</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search events or organizers..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10" />
-          
-        </div>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            <SelectItem value="Cleanup">Cleanup</SelectItem>
-            <SelectItem value="Planting">Planting</SelectItem>
-            <SelectItem value="Workshop">Workshop</SelectItem>
-            <SelectItem value="Awareness">Awareness</SelectItem>
-            <SelectItem value="Research">Research</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       <Card className="rounded-2xl shadow-sm border">
-        <CardContent className="pt-6">
+        <CardHeader className="pb-0 pt-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 sm:max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search events or organizers..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10" />
+            </div>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="Cleanup">Cleanup</SelectItem>
+                <SelectItem value="Planting">Planting</SelectItem>
+                <SelectItem value="Workshop">Workshop</SelectItem>
+                <SelectItem value="Awareness">Awareness</SelectItem>
+                <SelectItem value="Research">Research</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -187,6 +190,7 @@ export function AdminAllEventsPage() {
                   <TableHead className="hidden lg:table-cell text-right">
                     Participants
                   </TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -219,6 +223,15 @@ export function AdminAllEventsPage() {
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-right text-muted-foreground text-sm">
                       {e.participants}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-primary hover:bg-primary/5 h-8 px-3 rounded-lg transition-colors font-medium"
+                      >
+                        View
+                      </Button>
                     </TableCell>
                   </TableRow>
                 )}

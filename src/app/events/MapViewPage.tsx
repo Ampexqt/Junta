@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -163,15 +164,18 @@ export function MapViewPage() {
           <ScrollArea className="flex-1">
             <div className="p-3 space-y-2">
               {filtered.map((pin) => (
-                <button
+                <Button
+                  asChild
+                  variant="ghost"
                   key={pin.id}
                   onClick={() => handlePinSelect(pin.id)}
-                  className={`w-full text-left p-3 rounded-xl transition-colors ${
+                  className={`w-full h-auto text-left p-3 rounded-xl transition-all cursor-pointer block ${
                     selected === pin.id
-                      ? 'bg-primary/5 border border-primary/20'
-                      : 'hover:bg-muted border border-transparent'
+                      ? 'bg-primary/5 border-primary/20 ring-1 ring-primary/20'
+                      : 'hover:bg-muted border-transparent'
                   }`}
                 >
+                  <div>
                   <div className="flex items-start gap-3">
                     <div
                       className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
@@ -197,8 +201,9 @@ export function MapViewPage() {
                         </span>
                       </div>
                     </div>
+                    </div>
                   </div>
-                </button>
+                </Button>
               ))}
             </div>
           </ScrollArea>
@@ -273,12 +278,13 @@ export function MapViewPage() {
                         {selectedPin.participants} participants
                       </p>
                     </div>
-                    <button
+                    <Button
                       onClick={() => navigate(`/app/events/${selectedPin.id}`)}
-                      className="mt-3 w-full flex items-center justify-center gap-1 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white py-2 rounded-lg transition-colors shadow-sm"
+                      className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-200/50"
+                      size="sm"
                     >
-                      View Details <ArrowRight className="w-3 h-3" />
-                    </button>
+                      View Details <ArrowRight className="w-3 h-3 ml-1.5" />
+                    </Button>
                   </div>
                 </Popup>
               )}

@@ -15,6 +15,13 @@ export interface AuthRequest extends Request {
     };
 }
 
+interface JWTPayload {
+    uid: string;
+    email?: string;
+    role?: string;
+    name?: string;
+}
+
 export const authenticateUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
 
@@ -25,7 +32,7 @@ export const authenticateUser = async (req: AuthRequest, res: Response, next: Ne
     const token = authHeader.split('Bearer ')[1];
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = jwt.verify(token, JWT_SECRET) as unknown as JWTPayload;
         req.user = {
             uid: decoded.uid,
             email: decoded.email,

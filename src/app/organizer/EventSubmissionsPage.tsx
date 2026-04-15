@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import { FileCheck, CheckCircle, Clock, XCircle, Eye, Edit } from 'lucide-react';
+import { FileCheck, CheckCircle, Clock, XCircle, Loader2, ArrowRight } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 
 interface OrganizerEvent {
@@ -123,16 +123,16 @@ export function EventSubmissionsPage() {
           }].
           map((s) =>
             <Card key={s.label} className="rounded-2xl shadow-sm border">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{s.label}</p>
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.08em]">{s.label}</p>
                     <p className="text-2xl font-heading font-semibold text-foreground mt-1">
                       {s.value}
                     </p>
                   </div>
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.color}`}>
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${s.color}`}>
 
                     <s.icon className="w-5 h-5" />
                   </div>
@@ -168,8 +168,11 @@ export function EventSubmissionsPage() {
               <TableBody>
                 {loading ? (
                     <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                            Loading submissions...
+                        <TableCell colSpan={6} className="h-36 text-center">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <Loader2 className="w-5 h-5 animate-spin text-primary/40" />
+                            <p className="text-sm text-muted-foreground/60 font-medium">Loading your submissions...</p>
+                          </div>
                         </TableCell>
                     </TableRow>
                 ) : events.length === 0 ? (
@@ -208,10 +211,11 @@ export function EventSubmissionsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
+                        variant="ghost"
                         size="sm"
-                        className="h-8 px-4 rounded-xl bg-slate-900 hover:bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200 hover:shadow-slate-300 transition-all active:scale-95"
+                        className="h-9 px-4 rounded-xl text-primary font-bold hover:bg-primary/5 transition-all flex items-center gap-1.5"
                         onClick={() => navigate(`/app/events/${s.id}`)}>
-                        View Details
+                        View Details <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
                     </TableCell>
                   </TableRow>

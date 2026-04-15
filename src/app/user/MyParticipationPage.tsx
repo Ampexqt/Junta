@@ -19,7 +19,8 @@ import {
   CheckCircle,
   Clock,
   MapPin,
-  Trophy
+  Trophy,
+  Eye
 } from
   'lucide-react';
 const participations = [
@@ -152,7 +153,7 @@ export function MyParticipationPage() {
           opacity: 1,
           y: 0
         }}
-        className="grid grid-cols-3 gap-4">
+        className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
         {[
           {
@@ -175,16 +176,16 @@ export function MyParticipationPage() {
           }].
           map((s) =>
             <Card key={s.label} className="rounded-2xl shadow-sm border">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{s.label}</p>
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.08em]">{s.label}</p>
                     <p className="text-2xl font-heading font-semibold text-foreground mt-1">
                       {s.value}
                     </p>
                   </div>
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.color}`}>
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${s.color}`}>
 
                     <s.icon className="w-5 h-5" />
                   </div>
@@ -257,8 +258,8 @@ export function MyParticipationPage() {
                       }
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="text-xs">
-                        View
+                      <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors">
+                        <Eye className="w-3.5 h-3.5 mr-1" /> View
                       </Button>
                     </TableCell>
                   </TableRow>

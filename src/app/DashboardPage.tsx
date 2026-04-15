@@ -37,9 +37,27 @@ import {
   AlertCircle,
   UserCheck,
   Shield,
-  BarChart3
+  BarChart3,
+  LucideIcon
 } from
   'lucide-react';
+
+interface EventData {
+  id: string;
+  title: string;
+  date: string;
+  location: string;
+  status: string;
+  category: string;
+  participants: number;
+}
+
+interface ActivityData {
+  text: string;
+  time: string;
+  icon: LucideIcon;
+  timestamp: number;
+}
 const fadeUp = {
   hidden: {
     opacity: 0,
@@ -85,30 +103,27 @@ function StatCard({
   value,
   trend,
   color
-}: { icon: any; label: string; value: string; trend?: string; color: string; }) {
+}: { icon: LucideIcon; label: string; value: string; trend?: string; color: string; }) {
   return (
-    <Card className="rounded-2xl shadow-sm border border-border/50 bg-white hover:shadow-md transition-all duration-300 group overflow-hidden relative">
-      <div className={`absolute top-0 left-0 w-1 h-full ${color.split(' ')[1]}`} />
-      <CardContent className="pt-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider">{label}</p>
+    <Card className="rounded-2xl shadow-sm border border-border/50 bg-white hover:shadow-md transition-all duration-300 group overflow-hidden">
+      <CardContent className="pt-5 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.08em]">{label}</p>
             <p className="text-2xl font-heading font-bold text-foreground mt-1 group-hover:text-primary transition-colors">
               {value}
             </p>
             {trend &&
               <div className="flex items-center gap-1.5 mt-2">
-                <div className="flex items-center justify-center w-4 h-4 rounded-full bg-primary/10">
-                  <TrendingUp className="w-2.5 h-2.5 text-primary" />
-                </div>
-                <span className="text-[10px] font-bold text-primary tracking-tight">
+                <TrendingUp className="w-3 h-3 text-primary" />
+                <span className="text-[10px] font-bold text-primary">
                   {trend}
                 </span>
               </div>
             }
           </div>
           <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 duration-300 ${color}`}>
+            className={`w-13 h-13 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 duration-300 flex-shrink-0 ${color}`}>
             <Icon className="w-6 h-6" />
           </div>
         </div>
@@ -119,8 +134,8 @@ function ParticipantDashboard() {
   const navigate = useNavigate();
   const { userName } = useAuth();
   
-  const [upcoming, setUpcoming] = useState<Record<string, unknown>[]>([]);
-  const [recommended, setRecommended] = useState<Record<string, unknown>[]>([]);
+  const [upcoming, setUpcoming] = useState<EventData[]>([]);
+  const [recommended, setRecommended] = useState<EventData[]>([]);
   const [stats, setStats] = useState({ joined: '0', upcoming: '0', hours: '0', impact: '0' });
 
   useEffect(() => {
@@ -223,11 +238,17 @@ function ParticipantDashboard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {upcoming.map((e) =>
+          {upcoming.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <CalendarDays className="w-10 h-10 text-muted-foreground/20 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">No upcoming events</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Browse events to get started.</p>
+            </div>
+          ) : upcoming.map((e) =>
               <div
-                key={e.title}
+                key={e.id}
                 className="flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                onClick={() => navigate('/app/events/1')}>
+                onClick={() => navigate(`/app/events/${e.id}`)}>
 
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -253,7 +274,7 @@ function ParticipantDashboard() {
                   </Badge>
                 </div>
               </div>
-            )}
+          )}
           </CardContent>
         </Card>
 
@@ -274,11 +295,17 @@ function ParticipantDashboard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {recommended.map((e) =>
+          {recommended.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Users className="w-10 h-10 text-muted-foreground/20 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">No recommendations yet</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">More events are coming soon.</p>
+            </div>
+          ) : recommended.map((e) =>
               <div
-                key={e.title}
+                key={e.id}
                 className="flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                onClick={() => navigate('/app/events/1')}>
+                onClick={() => navigate(`/app/events/${e.id}`)}>  
 
                 <div>
                   <p className="text-sm font-medium text-foreground">
@@ -301,7 +328,7 @@ function ParticipantDashboard() {
                   {e.participants}
                 </div>
               </div>
-            )}
+          )}
           </CardContent>
         </Card>
       </div>
@@ -312,7 +339,15 @@ function OrganizerDashboard() {
   const navigate = useNavigate();
   const { userName, uid } = useAuth();
   
-  const [events, setEvents] = useState<Record<string, unknown>[]>([]);
+  interface OrganizerEvent {
+    id: string;
+    name: string;
+    date: string;
+    status: string;
+    participants: number;
+  }
+
+  const [events, setEvents] = useState<OrganizerEvent[]>([]);
   const [stats, setStats] = useState({ total: '0', pending: '0', participants: '0', rating: '0' });
 
   useEffect(() => {
@@ -338,16 +373,23 @@ function OrganizerDashboard() {
           name: data.title || 'Untitled',
           date: data.date ? format(new Date(data.date), 'MMM d, yyyy') : 'TBD',
           status: data.status === 'published' ? 'Approved' : (data.status === 'pending' ? 'Pending' : 'Rejected'),
-          participants: data.participantsCount || 0
+          participants: data.participantsCount || 0,
+          averageRating: data.averageRating || 0
         };
       });
 
-      setEvents(fetched);
+      // Calculate aggregate rating across all organizer events
+      const validRatings = fetched.filter(e => (e.averageRating || 0) > 0);
+      const avgRating = validRatings.length > 0 
+        ? (validRatings.reduce((acc, e) => acc + (e.averageRating || 0), 0) / validRatings.length).toFixed(1)
+        : '0.0';
+
+      setEvents(fetched as any);
       setStats({
         total: total.toString(),
         pending: pending.toString(),
         participants: participants.toString(),
-        rating: total > 0 ? '4.8' : '0' // mocked average rating
+        rating: avgRating
       });
     });
 
@@ -368,7 +410,7 @@ function OrganizerDashboard() {
         />
         <CreateEventModal
           trigger={
-            <Button className="bg-primary hover:bg-primary/90">
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200/50 font-semibold border-none">
               <Plus className="w-4 h-4 mr-2" />
               Create Event
             </Button>
@@ -455,7 +497,7 @@ function OrganizerDashboard() {
                     {e.participants}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors">
                       View
                     </Button>
                   </TableCell>
@@ -472,14 +514,14 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const { userName } = useAuth();
   
-  const [activities, setActivities] = useState<Record<string, unknown>[]>([]);
+  const [activities, setActivities] = useState<ActivityData[]>([]);
   const [stats, setStats] = useState({ pendingVerifications: '0', pendingEvents: '0', activeUsers: '0', totalEvents: '0' });
 
   useEffect(() => {
     const unsubscribeEvents = onSnapshot(collection(db, 'events'), (snapshot) => {
         let pending = 0;
         const total = snapshot.size;
-        const acts: Record<string, unknown>[] = [];
+        const acts: ActivityData[] = [];
         
         snapshot.forEach(doc => {
             const data = doc.data();

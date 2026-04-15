@@ -67,7 +67,7 @@ import { AuthNavigation } from '@/components/auth/AuthNavigation';
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { setRole, setUserName } = useAuth();
+  const { setRole, setUserName, setUid } = useAuth();
   const [step, setStep] = useState(1);
   const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -144,7 +144,7 @@ export function RegisterPage() {
       // Success logic - Auto Login
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-
+      setUid(data.user.uid);
       setRole(selectedRole);
       const suffixValue = formData.suffix && formData.suffix !== 'none' ? ` ${formData.suffix}` : '';
       const fullName = `${formData.firstName} ${formData.lastName}${suffixValue}`;
@@ -482,47 +482,55 @@ export function RegisterPage() {
                   className="space-y-3"
                 >
                   <div className="grid grid-cols-2 gap-2.5">
-                    <button
+                    <Button
+                      variant="ghost"
+                      asChild
                       onClick={() => setSelectedRole('participant')}
-                      className={`relative p-4 rounded-lg border text-left transition-all ${selectedRole === 'participant'
-                        ? 'border-primary bg-primary/5'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      className={`relative h-auto p-4 rounded-lg border text-left transition-all block ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${selectedRole === 'participant'
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-sm'
                         }`}
                     >
-                      {selectedRole === 'participant' && (
-                        <div className="absolute top-3 right-3">
-                          <CheckCircle className="w-4 h-4 text-primary" />
+                      <div>
+                        {selectedRole === 'participant' && (
+                          <div className="absolute top-3 right-3">
+                            <CheckCircle className="w-4 h-4 text-primary" />
+                          </div>
+                        )}
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${selectedRole === 'participant' ? 'bg-primary/10' : 'bg-gray-100'}`}>
+                          <Users className={`w-5 h-5 ${selectedRole === 'participant' ? 'text-primary' : 'text-gray-400'}`} />
                         </div>
-                      )}
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${selectedRole === 'participant' ? 'bg-primary/10' : 'bg-gray-100'}`}>
-                        <Users className={`w-5 h-5 ${selectedRole === 'participant' ? 'text-primary' : 'text-gray-400'}`} />
+                        <p className="text-sm font-semibold text-gray-800">Participant</p>
+                        <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
+                          Join events, volunteer, and track your environmental impact with Junta.
+                        </p>
                       </div>
-                      <p className="text-sm font-semibold text-gray-800">Participant</p>
-                      <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
-                        Join events, volunteer, and track your environmental impact with Junta.
-                      </p>
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
+                      variant="ghost"
+                      asChild
                       onClick={() => setSelectedRole('organizer')}
-                      className={`relative p-4 rounded-lg border text-left transition-all ${selectedRole === 'organizer'
-                        ? 'border-primary bg-primary/5'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      className={`relative h-auto p-4 rounded-lg border text-left transition-all block ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${selectedRole === 'organizer'
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-sm'
                         }`}
                     >
-                      {selectedRole === 'organizer' && (
-                        <div className="absolute top-3 right-3">
-                          <CheckCircle className="w-4 h-4 text-primary" />
+                      <div>
+                        {selectedRole === 'organizer' && (
+                          <div className="absolute top-3 right-3">
+                            <CheckCircle className="w-4 h-4 text-primary" />
+                          </div>
+                        )}
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${selectedRole === 'organizer' ? 'bg-primary/10' : 'bg-gray-100'}`}>
+                          <Megaphone className={`w-5 h-5 ${selectedRole === 'organizer' ? 'text-primary' : 'text-gray-400'}`} />
                         </div>
-                      )}
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${selectedRole === 'organizer' ? 'bg-primary/10' : 'bg-gray-100'}`}>
-                        <Megaphone className={`w-5 h-5 ${selectedRole === 'organizer' ? 'text-primary' : 'text-gray-400'}`} />
+                        <p className="text-sm font-semibold text-gray-800">Organizer</p>
+                        <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
+                          Create and manage environmental events for the community.
+                        </p>
                       </div>
-                      <p className="text-sm font-semibold text-gray-800">Organizer</p>
-                      <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
-                        Create and manage environmental events for the community.
-                      </p>
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 border border-gray-100">
@@ -698,13 +706,15 @@ export function RegisterPage() {
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         className={`pl-10 pr-10 ${inputClass}`}
                       />
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-transparent transition-colors"
                       >
-                        {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
-                      </button>
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
                     </div>
                   </div>
 
@@ -816,16 +826,17 @@ export function RegisterPage() {
                   </div>
                   <p className="text-center text-xs text-gray-400">
                     Didn't receive the code?{' '}
-                    <button 
+                    <Button 
+                      variant="link"
                       className={cn(
-                        "text-primary font-medium hover:underline",
-                        isSendingOTP && "opacity-50 cursor-not-allowed no-underline"
+                        "h-auto p-0 text-primary font-bold hover:no-underline",
+                        isSendingOTP && "opacity-50 cursor-not-allowed"
                       )}
                       onClick={handleResendOTP}
                       disabled={isSendingOTP}
                     >
                       {isSendingOTP ? 'Sending...' : 'Resend'}
-                    </button>
+                    </Button>
                   </p>
                   <div className="flex gap-2.5">
                     <Button
@@ -945,15 +956,17 @@ export function RegisterPage() {
                           />
                         )}
 
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => {
                             setKycMode('none');
                             stopCamera();
                           }}
-                          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors z-20"
+                          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors z-20"
                         >
                           <X className="w-4 h-4" />
-                        </button>
+                        </Button>
 
                         <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center gap-3 px-4">
                           {!((kycMode === 'id' && idPreview) || (kycMode === 'selfie' && selfiePreview)) ? (
@@ -1061,17 +1074,18 @@ export function RegisterPage() {
                           </Button>
                         </div>
                         <p className="text-center">
-                          <button
+                          <Button
+                            variant="link"
                             type="button"
                             onClick={handleComplete}
                             disabled={isCompleting}
                             className={cn(
-                              "text-[11px] font-medium text-gray-400 hover:text-primary transition-colors underline underline-offset-4 decoration-gray-300 hover:decoration-primary/50",
+                              "h-auto p-0 text-[11px] font-bold text-gray-400 hover:text-primary transition-colors underline decoration-gray-300 hover:decoration-primary/50",
                               isCompleting && "opacity-50 cursor-not-allowed"
                             )}
                           >
                             {isCompleting ? 'Creating account...' : "Skip for now. I'll verify later in my profile settings"}
-                          </button>
+                          </Button>
                         </p>
                       </div>
                     </>

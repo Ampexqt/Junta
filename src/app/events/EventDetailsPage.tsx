@@ -16,9 +16,7 @@ import {
   Users,
   Share2,
   FileText,
-  CheckCircle,
-  Phone,
-  Mail
+  CheckCircle
 } from 'lucide-react';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
 import { API_BASE_URL } from '@/lib/api';
@@ -42,6 +40,7 @@ interface EventData {
   coverImage?: string;
   timeline: { id: string; time: string; activity: string }[];
   requirements: string[];
+  documents?: { id: string; name: string; url: string }[];
 }
 
 export function EventDetailsPage() {
@@ -101,8 +100,7 @@ export function EventDetailsPage() {
       <Button
         variant="ghost"
         onClick={() => navigate('/app/events')}
-        className="text-muted-foreground -ml-2">
-
+        className="text-muted-foreground hover:text-primary hover:bg-primary/5 -ml-2 transition-all duration-200">
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Events
       </Button>
 
@@ -131,6 +129,18 @@ export function EventDetailsPage() {
           {event.shortDescription}
         </p>
       </motion.div>
+
+      {/* Hero Image Banner */}
+      {event.coverImage && (
+        <div className="relative w-full h-52 sm:h-72 rounded-2xl overflow-hidden shadow-sm border border-border/50">
+          <img
+            src={event.coverImage}
+            alt={event.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -203,13 +213,22 @@ export function EventDetailsPage() {
               <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
                 <FileText className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-sm font-medium text-foreground">
-                  Event Guidelines PDF
+                  {event.documents?.[0]?.name || 'Event Guidelines PDF'}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Cleanup protocols and safety guidelines
                 </p>
-                <Button variant="outline" size="sm" className="mt-3">
-                  Download PDF
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-3 hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-all duration-200"
+                  disabled={!event.documents?.length}
+                  onClick={() => {
+                    const url = event.documents?.[0]?.url;
+                    if (url) window.open(url, '_blank');
+                  }}
+                >
+                  View Docs/PDF
                 </Button>
               </div>
             </CardContent>
@@ -220,30 +239,41 @@ export function EventDetailsPage() {
           <Card className="rounded-2xl shadow-sm border overflow-hidden">
             <div className="h-48 bg-slate-50 relative overflow-hidden group">
               {event.coordinates && mapboxToken ? (
-                <Map
-                  initialViewState={{
-                    latitude: event.coordinates.lat,
-                    longitude: event.coordinates.lng,
-                    zoom: 13
-                  }}
-                  style={{ width: '100%', height: '100%' }}
-                  mapStyle="mapbox://styles/mapbox/streets-v12"
-                  mapboxAccessToken={mapboxToken}
-                  interactive={false}
-                >
-                  <Marker 
-                    latitude={event.coordinates.lat} 
-                    longitude={event.coordinates.lng}
-                    anchor="bottom"
+                <div className="w-full h-full">
+                  <Map
+                    initialViewState={{
+                      latitude: event.coordinates.lat,
+                      longitude: event.coordinates.lng,
+                      zoom: 13
+                    }}
+                    style={{ width: '100%', height: '100%' }}
+                    mapStyle="mapbox://styles/mapbox/streets-v12"
+                    mapboxAccessToken={mapboxToken}
+                    interactive={false}
                   >
-                    <div className="relative flex flex-col items-center">
-                      <div className="absolute -top-1 w-2 h-2 bg-black/20 rounded-full blur-[1px]" />
-                      <MapPin className="w-8 h-8 text-primary fill-primary/20 stroke-[2.5px] drop-shadow-md animate-bounce" />
-                    </div>
-                  </Marker>
-                </Map>
+                    <Marker 
+                      latitude={event.coordinates.lat} 
+                      longitude={event.coordinates.lng}
+                      anchor="bottom"
+                    >
+                      <div className="relative flex flex-col items-center">
+                        <div className="absolute -top-1 w-2 h-2 bg-black/20 rounded-full blur-[1px]" />
+                        <MapPin className="w-8 h-8 text-primary fill-primary/20 stroke-[2.5px] drop-shadow-md animate-bounce" />
+                      </div>
+                    </Marker>
+                  </Map>
+                </div>
               ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-[#e8f4f0] via-[#d1e8df] to-[#b8dcc8] opacity-50" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
+                  {!mapboxToken ? (
+                    <div className="flex flex-col items-center gap-2">
+                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Loading Map...</span>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#e8f4f0] via-[#d1e8df] to-[#b8dcc8] opacity-50" />
+                  )}
+                </div>
               )}
 
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
@@ -252,7 +282,7 @@ export function EventDetailsPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="bg-white/90 backdrop-blur-sm border-none shadow-lg text-[10px] font-black uppercase tracking-widest h-8 px-3 rounded-xl"
+                  className="bg-white/90 backdrop-blur-sm border-white/60 shadow-lg text-[10px] font-black uppercase tracking-widest h-8 px-3 rounded-xl hover:bg-white hover:shadow-xl transition-all"
                   onClick={() => navigate('/app/map')}>
                   <MapPin className="w-3 h-3 mr-1.5 text-emerald-500" />
                   Open Map
@@ -292,13 +322,30 @@ export function EventDetailsPage() {
 
                 <Button
                   className="w-full bg-primary hover:bg-primary/90 h-12 text-base"
-                  onClick={() => setJoined(true)}>
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(`${API_BASE_URL}/events/${id}/join`, {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                        }
+                      });
+                      if (response.ok) {
+                        setJoined(true);
+                      } else {
+                        const data = await response.json();
+                        throw new Error(data.error || 'Failed to join');
+                      }
+                    } catch (err: any) {
+                      console.error('Join error:', err);
+                    }
+                  }}>
 
                   Join This Event
                 </Button>
               }
 
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-all duration-200">
                 <Share2 className="w-4 h-4 mr-2" /> Share Event
               </Button>
             </CardContent>

@@ -40,18 +40,14 @@ import {
   Loader2,
   Clock,
   ExternalLink,
-  FileText,
-  Trash2,
-  Plus,
-  X,
-  FileDown
+  FileText
 } from
   'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { format } from 'date-fns';
 import { sileo } from 'sileo';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 type PendingEvent = {
   id: string;
   title: string;
@@ -236,7 +232,7 @@ export function EventApprovalsPage() {
                     </p>
                   </div>
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.color}`}>
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center ${s.color}`}>
 
                     <s.icon className="w-5 h-5" />
                   </div>
@@ -542,8 +538,8 @@ export function EventApprovalsPage() {
 
           {confirmAction.type === 'rejected' && (
             <div className="py-4">
-              <textarea 
-                className="w-full h-32 p-4 rounded-2xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all resize-none"
+              <Textarea 
+                className="h-32 resize-none"
                 placeholder="Type your explanation here..."
                 value={confirmAction.reason}
                 onChange={(e) => setConfirmAction(prev => ({ ...prev, reason: e.target.value }))}

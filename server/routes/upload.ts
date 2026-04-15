@@ -4,6 +4,10 @@ import { authenticateUser } from '../middleware/auth';
 
 const router = Router();
 
+interface CloudinaryFile extends Express.Multer.File {
+  filename: string;
+}
+
 // Single image upload
 router.post('/image', authenticateUser, uploadImage.single('image'), (req, res) => {
   try {
@@ -14,9 +18,9 @@ router.post('/image', authenticateUser, uploadImage.single('image'), (req, res) 
     res.json({
       message: 'Image uploaded successfully',
       url: req.file.path,
-      public_id: (req.file as any).filename
+      public_id: (req.file as unknown as CloudinaryFile).filename
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({ error: 'Failed to upload image' });
   }
@@ -32,9 +36,9 @@ router.post('/document', authenticateUser, uploadDocument.single('document'), (r
     res.json({
       message: 'Document uploaded successfully',
       url: req.file.path,
-      public_id: (req.file as any).filename
+      public_id: (req.file as unknown as CloudinaryFile).filename
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({ error: 'Failed to upload document' });
   }
@@ -50,14 +54,14 @@ router.post('/images', authenticateUser, uploadImage.array('images', 5), (req, r
 
     const results = files.map(file => ({
       url: file.path,
-      public_id: (file as any).filename
+      public_id: (file as unknown as CloudinaryFile).filename
     }));
 
     res.json({
       message: 'Images uploaded successfully',
       results
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Batch upload error:', error);
     res.status(500).json({ error: 'Failed to upload images' });
   }

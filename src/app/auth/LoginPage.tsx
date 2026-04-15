@@ -23,7 +23,7 @@ import { AnimatePresence } from 'framer-motion';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { setRole, setUserName } = useAuth();
+  const { setRole, setUserName, setUid } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -87,6 +87,7 @@ export function LoginPage() {
       // Update Context
       setRole(data.user.role);
       setUserName(data.user.displayName);
+      setUid(data.user.uid);
 
       // Remember me logic
       if (rememberMe) {
@@ -255,14 +256,16 @@ export function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10 h-10 rounded-[12px] border-slate-200 bg-slate-50/30 text-[14px] focus-visible:ring-2 focus-visible:ring-primary/10 focus-visible:border-primary transition-all placeholder:text-slate-400 disabled:opacity-50"
                   />
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     type="button"
                     disabled={isLoading}
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-transparent transition-colors disabled:opacity-50"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                  </Button>
                 </div>
               </div>
 

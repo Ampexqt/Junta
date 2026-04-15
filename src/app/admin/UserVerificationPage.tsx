@@ -146,20 +146,20 @@ export function UserVerificationPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="w-8 h-8">
+                        <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors">
                           <Eye className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="w-8 h-8 text-green-600 hover:text-green-700 hover:bg-green-50">
+                          className="w-8 h-8 text-green-600 hover:text-white hover:bg-green-600 transition-all duration-200">
 
                           <CheckCircle className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="w-8 h-8 text-red-500 hover:text-red-600 hover:bg-red-50">
+                          className="w-8 h-8 text-red-500 hover:text-white hover:bg-red-500 transition-all duration-200">
 
                           <XCircle className="w-4 h-4" />
                         </Button>
