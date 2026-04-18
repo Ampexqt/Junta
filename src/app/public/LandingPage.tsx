@@ -52,7 +52,7 @@ const stagger = {
 function Navbar() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const links = ['Features', 'How It Works', 'Events', 'Map', 'Contact'];
+  const links = ['Map', 'Events', 'How It Works', 'Contact'];
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-black/50 backdrop-blur-xl border-b border-primary/5 shadow-[0_10px_40px_rgba(31,122,99,0.06)] transition-all duration-500">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 h-20 flex items-center justify-between">
@@ -861,12 +861,10 @@ export function LandingPage() {
     <div className="w-full min-h-screen bg-[#F0F5F2]">
       <Navbar />
       <HeroSection />
-      <FeaturesSection />
-      <HowItWorksSection />
-      <FeaturedEventsSection />
       <MapPreviewSection />
+      <FeaturedEventsSection />
+      <HowItWorksSection />
       <CTASection />
       <Footer />
     </div>);
-
 }
