@@ -32,9 +32,19 @@ const statusStyles: Record<string, string> = {
   Upcoming: 'bg-blue-50 text-blue-700',
   'In Progress': 'bg-amber-50 text-amber-700'
 };
+interface Participation {
+  id: string;
+  eventId: string;
+  title: string;
+  date: string;
+  location: string;
+  status: string;
+  progress?: number;
+}
+
 export function MyParticipationPage() {
   const navigate = useNavigate();
-  const [participations, setParticipations] = useState<any[]>([]);
+  const [participations, setParticipations] = useState<Participation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

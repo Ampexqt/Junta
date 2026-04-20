@@ -1,7 +1,8 @@
 import React, { useState, createContext, useContext, useEffect, useRef } from 'react';
 import { AuthContextType, UserRole, UserProfile } from './types';
+export type { UserRole, UserProfile, AuthContextType };
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 
 const AuthContext = createContext<AuthContextType>({
@@ -13,9 +14,8 @@ const AuthContext = createContext<AuthContextType>({
     setUid: () => undefined,
     user: null,
     profile: null,
-    isAuthLoading: true,
     logout: () => Promise.resolve()
-});
+} as AuthContextType);
 
 const KEYS = {
     ROLE: 'junta_user_role',
@@ -25,7 +25,7 @@ const KEYS = {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode; }) {
-    const [user, setUser] = useState<FirebaseUser | null>(null);
+    const [user] = useState<FirebaseUser | null>(null);
     const isFirstLoad = useRef(true);
     
     // 1. Immediate Hydration from Cache
@@ -126,7 +126,6 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
                 setUid,
                 user,
                 profile,
-                isAuthLoading: false, // Legacy field, JWT tokens are synchronous
                 logout
             }}>
             {children}

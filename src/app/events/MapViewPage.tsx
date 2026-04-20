@@ -135,15 +135,15 @@ export function MapViewPage() {
 
   const points = useMemo(() => {
     return filtered.map(pin => ({
-      type: "Feature",
+      type: "Feature" as const,
       properties: { cluster: false, pinId: pin.id, category: pin.category },
-      geometry: { type: "Point", coordinates: [pin.lng, pin.lat] }
+      geometry: { type: "Point" as const, coordinates: [pin.lng, pin.lat] as [number, number] }
     }));
   }, [filtered]);
 
   const { clusters, supercluster } = useSupercluster({
     points,
-    bounds,
+    bounds: bounds ? bounds : undefined,
     zoom,
     options: { radius: 75, maxZoom: 20 }
   });
@@ -290,13 +290,14 @@ export function MapViewPage() {
                 {clusters.map((cluster) => {
                   const [longitude, latitude] = cluster.geometry.coordinates;
                   const properties = cluster.properties;
-                  const isCluster = properties?.cluster;
-                  const pointCount = properties?.point_count;
-                  const pinId = properties?.pinId;
+                  const props = properties as { cluster?: boolean; point_count?: number; pinId?: string };
+                  const isCluster = props?.cluster;
+                  const pointCount = props?.point_count;
+                  const pinId = props?.pinId;
 
                   if (isCluster) {
                     // Cluster Marker
-                    const expansionZoom = Math.min(supercluster.getClusterExpansionZoom(cluster.id), 20);
+                    const expansionZoom = supercluster ? Math.min(supercluster.getClusterExpansionZoom(cluster.id as number), 20) : zoom;
                     return (
                       <Marker
                         key={`cluster-${cluster.id}`}
