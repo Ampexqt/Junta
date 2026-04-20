@@ -868,5 +868,4 @@ export function LandingPage() {
       <CTASection />
       <Footer />
     </div>);
-
 }
