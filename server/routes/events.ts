@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import admin from 'firebase-admin';
 import { db } from '../config/firebase-admin';
+import * as jwt from 'jsonwebtoken';
 import { authenticateUser, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -142,14 +143,46 @@ router.get('/pending', authenticateUser, async (req, res) => {
     }
 });
 
-// Get single event details
+// Get single event details (with IDOR protection)
 router.get('/:id', async (req, res) => {
     try {
-        const eventDoc = await db.collection('events').doc(req.params.id).get();
+        const eventId = req.params.id;
+        const eventDoc = await db.collection('events').doc(eventId).get();
+        
         if (!eventDoc.exists) {
             return res.status(404).json({ error: 'Event not found' });
         }
-        res.json({ id: eventDoc.id, ...eventDoc.data() });
+
+        const eventData = eventDoc.data();
+        
+        // If the event is public and published, anyone can see it
+        if (eventData?.visibility === 'public' && eventData?.status === 'published') {
+            return res.json({ id: eventDoc.id, ...eventData });
+        }
+
+        // Otherwise, we need to check who is asking (Authorization Check)
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(403).json({ error: 'This event is private or pending review' });
+        }
+
+        // Verify token to see if the requester is the owner or an admin
+        const token = authHeader.split('Bearer ')[1];
+        const JWT_SECRET = process.env.JWT_SECRET || 'junta_fallback_secret';
+        
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET) as any;
+            const isOwner = eventData?.organizerId === decoded.uid;
+            const isAdmin = decoded.role === 'admin';
+
+            if (isOwner || isAdmin) {
+                return res.json({ id: eventDoc.id, ...eventData });
+            } else {
+                return res.status(403).json({ error: 'You do not have permission to view this event' });
+            }
+        } catch (e) {
+            return res.status(403).json({ error: 'Invalid token' });
+        }
     } catch (error) {
         console.error('Error fetching event details:', error);
         res.status(500).json({ error: 'Failed to fetch event details' });
@@ -257,6 +290,76 @@ router.post('/:id/join', authenticateUser, async (req, res) => {
     } catch (error) {
         console.error('Error joining event:', error);
         res.status(500).json({ error: 'Failed to join event' });
+    }
+});
+
+// Update an event (Organizer Only - IDOR Prevention)
+router.put('/:id', authenticateUser, async (req, res) => {
+    try {
+        const authReq = req as AuthRequest;
+        const { id } = req.params;
+        const userId = authReq.user?.uid;
+        const updateData = req.body;
+
+        const eventRef = db.collection('events').doc(id);
+        const eventDoc = await eventRef.get();
+
+        if (!eventDoc.exists) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        const eventData = eventDoc.data();
+
+        // AUTHORIZATION CHECK: Ensure the user is the organizer or an admin
+        if (eventData?.organizerId !== userId && authReq.user?.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized: You can only edit your own events' });
+        }
+
+        const cleanUpdate = {
+            ...updateData,
+            updatedAt: new Date().toISOString()
+        };
+
+        // Prevent tampering with sensitive fields
+        delete cleanUpdate.organizerId;
+        delete cleanUpdate.id;
+
+        await eventRef.update(cleanUpdate);
+
+        res.json({ message: 'Event updated successfully', id });
+    } catch (error) {
+        console.error('Error updating event:', error);
+        res.status(500).json({ error: 'Failed to update event' });
+    }
+});
+
+// Delete an event (Organizer Only - IDOR Prevention)
+router.delete('/:id', authenticateUser, async (req, res) => {
+    try {
+        const authReq = req as AuthRequest;
+        const { id } = req.params;
+        const userId = authReq.user?.uid;
+
+        const eventRef = db.collection('events').doc(id);
+        const eventDoc = await eventRef.get();
+
+        if (!eventDoc.exists) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        const eventData = eventDoc.data();
+
+        // AUTHORIZATION CHECK: Ensure the user is the organizer or an admin
+        if (eventData?.organizerId !== userId && authReq.user?.role !== 'admin') {
+            return res.status(403).json({ error: 'Unauthorized: You can only delete your own events' });
+        }
+
+        await eventRef.delete();
+
+        res.json({ message: 'Event deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting event:', error);
+        res.status(500).json({ error: 'Failed to delete event' });
     }
 });
 
