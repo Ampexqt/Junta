@@ -135,18 +135,27 @@ export function NotificationsPage() {
           </motion.div>
         ))
       ) : (
-        <div className="text-center py-12">
-          <Bell className="w-12 h-12 text-muted-foreground/20 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">
-            {isLoading ? 'Loading notifications...' : 'No notifications in this category.'}
-          </p>
-        </div>
+        <Card className="rounded-2xl border-dashed border-2 shadow-none bg-transparent">
+          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+              <Bell className="w-8 h-8 text-muted-foreground/40" />
+            </div>
+            <h3 className="font-heading font-medium text-lg text-foreground mb-1">
+              {isLoading ? 'Loading...' : 'No notifications'}
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+              {isLoading 
+                ? 'Please wait while we fetch your notifications.' 
+                : 'You currently have no notifications in this category. We\'ll let you know when something comes up.'}
+            </p>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-4xl mx-auto w-full pb-10">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading font-semibold text-2xl text-foreground">
@@ -165,20 +174,22 @@ export function NotificationsPage() {
         )}
       </div>
 
-      <Tabs defaultValue="all">
-        <TabsList>
-          <TabsTrigger value="all">
-            All{' '}
-            {unreadCount > 0 && (
-              <Badge className="ml-1.5 bg-primary/10 text-primary border-0 text-[10px] px-1.5 h-4">
-                {unreadCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="events">Events</TabsTrigger>
-          <TabsTrigger value="system">System</TabsTrigger>
-          <TabsTrigger value="reminders">Reminders</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="all" className="w-full">
+        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md pb-2 -mx-2 px-2 pt-2">
+          <TabsList className="bg-muted/50 border p-1 rounded-xl w-full justify-start overflow-x-auto hide-scrollbar">
+            <TabsTrigger value="all" className="rounded-lg px-4">
+              All{' '}
+              {unreadCount > 0 && (
+                <Badge className="ml-2 bg-primary/10 text-primary hover:bg-primary/20 border-0 text-[10px] px-1.5 h-4">
+                  {unreadCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="events" className="rounded-lg px-4">Events</TabsTrigger>
+            <TabsTrigger value="system" className="rounded-lg px-4">System</TabsTrigger>
+            <TabsTrigger value="reminders" className="rounded-lg px-4">Reminders</TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="all" className="mt-4">
           {renderList(notifications)}
         </TabsContent>

@@ -77,6 +77,47 @@ router.get('/my-events', authenticateUser, async (req, res) => {
     }
 });
 
+// Get my participations
+router.get('/my-participations', authenticateUser, async (req, res) => {
+    try {
+        const authReq = req as AuthRequest;
+        const userId = authReq.user?.uid;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+        const participationsSnapshot = await db.collection('participations')
+            .where('userId', '==', userId)
+            .get();
+
+        if (participationsSnapshot.empty) {
+            return res.json([]);
+        }
+
+        const participations = [];
+        for (const doc of participationsSnapshot.docs) {
+            const data = doc.data();
+            const eventDoc = await db.collection('events').doc(data.eventId).get();
+            if (eventDoc.exists) {
+                const eventData = eventDoc.data();
+                participations.push({
+                    id: doc.id,
+                    eventId: data.eventId,
+                    title: eventData?.title || eventData?.name,
+                    date: eventData?.date,
+                    location: eventData?.location,
+                    status: data.status,
+                    progress: data.progress,
+                    joinedAt: data.joinedAt
+                });
+            }
+        }
+
+        res.json(participations);
+    } catch (error) {
+        console.error('Error fetching my participations:', error);
+        res.status(500).json({ error: 'Failed to fetch participations' });
+    }
+});
+
 // Admin: Get all pending events
 router.get('/pending', authenticateUser, async (req, res) => {
     try {
@@ -173,6 +214,10 @@ router.patch('/:id/status', authenticateUser, async (req, res) => {
 // Join an event (Participant)
 router.post('/:id/join', authenticateUser, async (req, res) => {
     try {
+        const authReq = req as AuthRequest;
+        const userId = authReq.user?.uid;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
         const { id } = req.params;
         const eventRef = db.collection('events').doc(id);
         const eventDoc = await eventRef.get();
@@ -186,10 +231,26 @@ router.post('/:id/join', authenticateUser, async (req, res) => {
             return res.status(400).json({ error: 'Registration is not open for this event' });
         }
 
+        // Check if already joined
+        const participationRef = db.collection('participations').doc(`${id}_${userId}`);
+        const pDoc = await participationRef.get();
+        if (pDoc.exists) {
+            return res.status(400).json({ error: 'You have already joined this event' });
+        }
+
         // Increment participants count atomically
         await eventRef.update({
             participantsCount: admin.firestore.FieldValue.increment(1),
             updatedAt: new Date().toISOString()
+        });
+
+        // Record participation
+        await participationRef.set({
+            eventId: id,
+            userId,
+            status: 'Upcoming', // Can be 'Upcoming', 'In Progress', 'Completed'
+            progress: 0,
+            joinedAt: new Date().toISOString()
         });
 
         res.json({ message: 'Successfully joined event', eventId: id });
