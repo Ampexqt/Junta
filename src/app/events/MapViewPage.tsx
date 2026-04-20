@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useSupercluster from 'use-supercluster';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +12,8 @@ import {
   Users,
   Search,
   ArrowRight,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-react';
 import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
@@ -29,31 +31,48 @@ interface EventPin {
   participants: number;
   lat: number;
   lng: number;
+  coverImage?: string;
 }
 
-const categoryColors: Record<string, string> = {
-  Cleanup: '#3b82f6',
-  Planting: '#22c55e',
-  Workshop: '#a855f7',
-  Awareness: '#f59e0b',
-  Research: '#06b6d4',
+const categoryConfig: Record<string, { color: string; bg: string; text: string; icon: string }> = {
+  cleanup: { color: '#ef4444', bg: 'bg-red-50', text: 'text-red-600', icon: '🧹' },
+  planting: { color: '#10b981', bg: 'bg-emerald-50', text: 'text-emerald-600', icon: '🌱' },
+  workshop: { color: '#f59e0b', bg: 'bg-amber-50', text: 'text-amber-600', icon: '🎓' },
+  seminar: { color: '#3b82f6', bg: 'bg-blue-50', text: 'text-blue-600', icon: '🏛️' },
+  research: { color: '#8b5cf6', bg: 'bg-purple-50', text: 'text-purple-600', icon: '🧬' },
+  other: { color: '#64748b', bg: 'bg-slate-50', text: 'text-slate-600', icon: '📍' },
 };
+
+const categoryColors: Record<string, string> = {
+  cleanup: '#ef4444',
+  planting: '#10b981',
+  workshop: '#f59e0b',
+  seminar: '#3b82f6',
+  research: '#8b5cf6',
+  other: '#64748b',
+};
+
 const categoryBadge: Record<string, string> = {
-  Cleanup: 'bg-blue-50 text-blue-700',
-  Planting: 'bg-green-50 text-green-700',
-  Workshop: 'bg-purple-50 text-purple-700',
-  Awareness: 'bg-amber-50 text-amber-700',
-  Research: 'bg-cyan-50 text-cyan-700',
+  cleanup: 'bg-red-50 text-red-600 border-red-100',
+  planting: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+  workshop: 'bg-amber-50 text-amber-600 border-amber-100',
+  seminar: 'bg-blue-50 text-blue-600 border-blue-100',
+  research: 'bg-purple-50 text-purple-600 border-purple-100',
 };
 
 export function MapViewPage() {
   const navigate = useNavigate();
   const { token } = useMapboxToken();
   const [selected, setSelected] = useState<string | null>(null);
+  const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [pins, setPins] = useState<EventPin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const mapRef = useRef<MapRef>(null);
+  
+  // Map state for clustering
+  const [bounds, setBounds] = useState<[number, number, number, number] | null>(null);
+  const [zoom, setZoom] = useState(12.5);
 
   useEffect(() => {
     const q = query(
@@ -82,6 +101,7 @@ export function MapViewPage() {
           participants: data.participantsCount || 0,
           lat: data.coordinates?.lat || 0,
           lng: data.coordinates?.lng || 0,
+          coverImage: data.coverImageUrl || data.coverImage || null,
         };
       });
       setPins(fetched);
@@ -107,11 +127,26 @@ export function MapViewPage() {
     if (pin && mapRef.current) {
       mapRef.current.flyTo({
         center: [pin.lng, pin.lat],
-        zoom: 14,
+        zoom: 15,
         duration: 1500
       });
     }
   };
+
+  const points = useMemo(() => {
+    return filtered.map(pin => ({
+      type: "Feature",
+      properties: { cluster: false, pinId: pin.id, category: pin.category },
+      geometry: { type: "Point", coordinates: [pin.lng, pin.lat] }
+    }));
+  }, [filtered]);
+
+  const { clusters, supercluster } = useSupercluster({
+    points,
+    bounds,
+    zoom,
+    options: { radius: 75, maxZoom: 20 }
+  });
 
   return (
     <div className="space-y-4">
@@ -124,9 +159,9 @@ export function MapViewPage() {
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-220px)] min-h-[500px]">
+      <div className="flex flex-col lg:flex-row gap-4 lg:h-[calc(100vh-220px)]">
         {/* Sidebar */}
-        <Card className="rounded-2xl shadow-sm border lg:w-[340px] flex-shrink-0 flex flex-col overflow-hidden">
+        <Card className="rounded-2xl shadow-sm border lg:w-[340px] flex-shrink-0 flex flex-col h-[350px] lg:h-full overflow-hidden">
           <div className="p-4 border-b">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -156,23 +191,25 @@ export function MapViewPage() {
                     variant="ghost"
                     key={pin.id}
                     onClick={() => handlePinSelect(pin.id)}
+                    onMouseEnter={() => setHoveredPin(pin.id)}
+                    onMouseLeave={() => setHoveredPin(null)}
                     className={`w-full h-auto text-left p-3 rounded-xl transition-all cursor-pointer block group ${
-                      selected === pin.id
+                      selected === pin.id || hoveredPin === pin.id
                         ? 'bg-emerald-50 border-emerald-200 ring-1 ring-emerald-200 shadow-sm'
-                        : 'hover:bg-slate-50 border-transparent border border-slate-100 hover:border-slate-200 hover:shadow-sm'
+                        : 'hover:bg-slate-50 border-transparent border border-slate-100 hover:border-slate-200'
                     }`}
                   >
                     <div>
                       <div className="flex items-start gap-3">
                         <div
-                          className={`w-3 h-3 rounded-full mt-1.5 flex-shrink-0 transition-transform ${selected === pin.id ? 'scale-125' : 'group-hover:scale-110'}`}
+                          className={`w-3 h-3 rounded-full mt-1.5 flex-shrink-0 transition-transform ${selected === pin.id || hoveredPin === pin.id ? 'scale-125' : 'group-hover:scale-110'}`}
                           style={{ 
                             backgroundColor: categoryColors[pin.category] || '#10b981',
                             boxShadow: `0 0 8px ${categoryColors[pin.category] || '#10b981'}80`
                           }}
                         />
                         <div className="min-w-0 flex-1">
-                          <p className={`text-sm font-bold truncate transition-colors ${selected === pin.id ? 'text-emerald-700' : 'text-slate-900 group-hover:text-emerald-600'}`}>
+                          <p className={`text-sm font-bold truncate transition-colors ${selected === pin.id || hoveredPin === pin.id ? 'text-emerald-700' : 'text-slate-900 group-hover:text-emerald-600'}`}>
                             {pin.title}
                           </p>
                           <div className="flex items-center gap-2 mt-1 mb-1.5">
@@ -201,7 +238,7 @@ export function MapViewPage() {
         </Card>
 
         {/* Map */}
-        <Card className="rounded-2xl shadow-sm border flex-1 overflow-hidden relative bg-slate-50 flex items-center justify-center">
+        <Card className="rounded-2xl shadow-sm border flex-1 h-[400px] lg:h-full overflow-hidden relative bg-slate-50 flex items-center justify-center">
           <div className="absolute inset-0 shadow-[inset_0_0_80px_rgba(0,0,0,0.03)] pointer-events-none z-20" />
           {token ? (
             <div className="w-full h-full relative" style={{ filter: 'contrast(1.1) saturate(1.2) brightness(1.02)' }}>
@@ -219,90 +256,199 @@ export function MapViewPage() {
                 style={{ width: '100%', height: '100%' }}
                 scrollZoom={true}
                 dragPan={true}
+                onMove={(evt) => {
+                  setZoom(evt.viewState.zoom);
+                  if (mapRef.current) {
+                    const mapBounds = mapRef.current.getMap().getBounds();
+                    if (mapBounds) {
+                      setBounds([
+                        mapBounds.getWest(),
+                        mapBounds.getSouth(),
+                        mapBounds.getEast(),
+                        mapBounds.getNorth()
+                      ]);
+                    }
+                  }
+                }}
+                onLoad={() => {
+                  if (mapRef.current) {
+                    const mapBounds = mapRef.current.getMap().getBounds();
+                    if (mapBounds) {
+                      setBounds([
+                        mapBounds.getWest(),
+                        mapBounds.getSouth(),
+                        mapBounds.getEast(),
+                        mapBounds.getNorth()
+                      ]);
+                    }
+                  }
+                }}
               >
                 <NavigationControl position="top-left" showCompass={false} />
 
-                {/* Markers */}
-                {pins.map((pin) => {
+                {/* Clusters & Markers */}
+                {clusters.map((cluster) => {
+                  const [longitude, latitude] = cluster.geometry.coordinates;
+                  const properties = cluster.properties;
+                  const isCluster = properties?.cluster;
+                  const pointCount = properties?.point_count;
+                  const pinId = properties?.pinId;
+
+                  if (isCluster) {
+                    // Cluster Marker
+                    const expansionZoom = Math.min(supercluster.getClusterExpansionZoom(cluster.id), 20);
+                    return (
+                      <Marker
+                        key={`cluster-${cluster.id}`}
+                        latitude={latitude}
+                        longitude={longitude}
+                        onClick={(e) => {
+                          e.originalEvent.stopPropagation();
+                          if (mapRef.current) {
+                            mapRef.current.flyTo({
+                              center: [longitude, latitude],
+                              zoom: expansionZoom,
+                              duration: 1000
+                            });
+                          }
+                        }}
+                      >
+                        <div className="relative group cursor-pointer">
+                          <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping scale-110" />
+                          <div className="w-10 h-10 rounded-2xl bg-white border-2 border-emerald-500 flex items-center justify-center text-emerald-700 text-xs font-black shadow-[0_8px_20px_rgba(16,185,129,0.3)] group-hover:scale-110 transition-all z-40 transform rotate-45 overflow-hidden">
+                             <div className="transform -rotate-45 flex items-center justify-center">
+                               {pointCount}
+                             </div>
+                          </div>
+                        </div>
+                      </Marker>
+                    );
+                  }
+
+                  // Individual Pin
+                  const pin = pins.find(p => p.id === pinId);
+                  if (!pin) return null;
+                  
                   const hexColor = categoryColors[pin.category] || '#10b981';
                   const isPinSelected = selected === pin.id;
+                  const isHovered = hoveredPin === pin.id;
+                  const isActive = isPinSelected || isHovered;
                   
                   return (
                     <Marker
-                      key={pin.id}
+                      key={`pin-${pin.id}`}
                       latitude={pin.lat}
                       longitude={pin.lng}
-                      onClick={(e: unknown) => {
-                        const event = e as { originalEvent?: Event };
-                        if (event?.originalEvent) {
-                          event.originalEvent.stopPropagation();
-                        }
-                        setSelected(pin.id);
+                      style={{ zIndex: isActive ? 50 : 30 }}
+                      onClick={(e) => {
+                        e.originalEvent.stopPropagation();
+                        handlePinSelect(pin.id);
                       }}
                     >
-                      <div className="relative flex items-center justify-center cursor-pointer group">
+                      <div className="relative flex flex-col items-center cursor-pointer group">
+                        {isActive && (
+                          <div className="absolute -top-1 w-8 h-8 rounded-full animate-ping" style={{ backgroundColor: `${hexColor}40` }} />
+                        )}
                         <div 
-                          className={`absolute rounded-full animate-ping ${isPinSelected ? 'w-10 h-10' : 'w-6 h-6 group-hover:w-8 group-hover:h-8'}`} 
-                          style={{ backgroundColor: `${hexColor}60` }}
-                        />
-                        <div 
-                          className={`relative rounded-full border-[2.5px] border-white transition-all shadow-[0_0_12px_rgba(0,0,0,0.3)] ${isPinSelected ? 'w-5 h-5 scale-110' : 'w-4 h-4 group-hover:scale-125'}`}
+                          className={`flex items-center justify-center rounded-2xl border-2 border-white shadow-xl transition-all duration-300 ${isActive ? 'w-10 h-10 -translate-y-2' : 'w-8 h-8 group-hover:w-9 group-hover:h-9 group-hover:-translate-y-1'}`}
                           style={{ 
                             backgroundColor: hexColor,
-                            boxShadow: `0 0 10px ${hexColor}` 
-                          }} 
+                          }}
+                        >
+                          <span className="text-lg">
+                            {categoryConfig[pin.category.toLowerCase()]?.icon || '📍'}
+                          </span>
+                        </div>
+                        {/* Custom Pointer Tail */}
+                        <div 
+                          className={`w-3 h-3 rotate-45 -mt-1.5 border-r border-b border-white transition-all ${isActive ? 'opacity-100' : 'opacity-0'}`}
+                          style={{ backgroundColor: hexColor }}
                         />
                       </div>
                     </Marker>
                   );
                 })}
 
-                {/* Popup */}
                 {selectedPin && (
                   <Popup
                     latitude={selectedPin.lat}
                     longitude={selectedPin.lng}
                     onClose={() => setSelected(null)}
-                    closeButton={true}
+                    closeButton={false}
                     closeOnClick={false}
                     anchor="bottom"
-                    offset={15}
-                    className="junta-mapbox-premium-popup z-[60]"
+                    offset={25}
+                    className="premium-mapbox-popup z-[60]"
                   >
-                    <div className="p-2 min-w-[220px]">
-                      <div className="flex items-start justify-between mb-2">
-                         <Badge
-                            variant="secondary"
-                            className={`text-[9px] px-2 py-0 border-0 font-black uppercase tracking-widest ${categoryBadge[selectedPin.category] || 'bg-slate-100 text-slate-600'}`}
-                          >
+                    <Card className="p-0 overflow-hidden border-0 shadow-2xl bg-white/95 backdrop-blur-md rounded-2xl w-[260px] animate-in fade-in zoom-in-95 duration-200">
+                      <div className="relative h-28 overflow-hidden">
+                        {/* Event Category Badge */}
+                        <div className="absolute top-2 left-2 z-10">
+                          <Badge className={`backdrop-blur-md border font-bold text-[10px] uppercase tracking-wider ${categoryBadge[selectedPin.category.toLowerCase()] || 'bg-slate-900/50 text-white border-0'}`}>
                             {selectedPin.category}
                           </Badge>
+                        </div>
+                        {/* Real cover photo or gradient fallback */}
+                        {selectedPin.coverImage ? (
+                          <img
+                            src={selectedPin.coverImage}
+                            alt={selectedPin.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <>
+                            <div className="absolute inset-0 opacity-30" style={{ backgroundColor: categoryColors[selectedPin.category.toLowerCase()] || '#10b981' }} />
+                            <div className="absolute inset-0 flex items-center justify-center text-4xl opacity-40">
+                              {categoryConfig[selectedPin.category.toLowerCase()]?.icon || '🌍'}
+                            </div>
+                          </>
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/50 border-none z-10"
+                          onClick={(e) => { e.stopPropagation(); setSelected(null); }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <h3 className="font-bold text-sm text-slate-900 leading-snug mb-3 line-clamp-2">
-                        {selectedPin.title}
-                      </h3>
-                      <div className="space-y-1.5 text-xs font-medium text-slate-500">
-                        <p className="flex items-center gap-2">
-                          <CalendarDays className="w-3.5 h-3.5 text-emerald-600" />
-                          {selectedPin.date}
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="truncate max-w-[170px]">{selectedPin.location}</span>
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <Users className="w-3.5 h-3.5 text-emerald-600" />
-                          {selectedPin.participants} participants
-                        </p>
+
+                      <div className="p-4">
+                        <h3 className="font-bold text-sm text-slate-900 leading-tight mb-3 line-clamp-2">
+                          {selectedPin.title}
+                        </h3>
+                        
+                        <div className="space-y-2.5 mb-4">
+                          <div className="flex items-center gap-2.5 text-xs font-semibold text-slate-600">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                               <CalendarDays className="w-4 h-4 text-emerald-600" />
+                            </div>
+                            <span>{selectedPin.date}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2.5 text-xs font-semibold text-slate-600">
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                               <MapPin className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <span className="truncate flex-1">{selectedPin.location}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2.5 text-xs font-semibold text-slate-600">
+                            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                               <Users className="w-4 h-4 text-amber-600" />
+                            </div>
+                            <span>{selectedPin.participants} Volunteers joined</span>
+                          </div>
+                        </div>
+
+                        <Button
+                          onClick={() => navigate(`/app/events/${selectedPin?.id}`)}
+                          className="w-full bg-slate-900 hover:bg-black text-white font-bold text-xs h-10 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                        >
+                          Details <ArrowRight className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <Button
-                        onClick={() => navigate(`/app/events/${selectedPin?.id}`)}
-                        className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 rounded-lg shadow-md shadow-emerald-600/20 group/btn transition-all"
-                      >
-                        View Details 
-                        <ArrowRight className="w-3.5 h-3.5 ml-1.5 transition-transform group-hover/btn:translate-x-1" />
-                      </Button>
-                    </div>
+                    </Card>
                   </Popup>
                 )}
               </Map>

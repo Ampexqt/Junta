@@ -1,8 +1,7 @@
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Bell } from 'lucide-react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
+import { NotificationsPopover } from '@/components/layout/NotificationsPopover';
 
 const PAGE_TITLES: Record<string, string> = {
   '/app/dashboard': 'Dashboard',
@@ -23,7 +22,6 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 export function AppLayout() {
-  const navigate = useNavigate();
   const location = useLocation();
 
   // Match exact path or prefix for detail pages (e.g. /app/events/xyz)
@@ -50,16 +48,7 @@ export function AppLayout() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative hover:bg-primary/5 hover:text-primary transition-all duration-200 rounded-xl h-9 w-9"
-              onClick={() => navigate('/app/notifications')}
-              aria-label="Notifications"
-            >
-              <Bell className="w-4.5 h-4.5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white shadow-sm" />
-            </Button>
+            <NotificationsPopover />
           </div>
         </header>
 

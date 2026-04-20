@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,183 +11,117 @@ import {
   Info,
   Users,
   Settings,
-  Check
-} from
-  'lucide-react';
+  Check,
+  LucideIcon
+} from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+
 type Notification = {
-  id: number;
-  type: 'event' | 'system' | 'reminder';
+  id: string;
+  type: 'event' | 'system' | 'reminder' | 'verification';
   title: string;
   description: string;
   time: string;
   read: boolean;
-  icon: any;
+  icon: LucideIcon;
   iconColor: string;
   iconBg: string;
 };
-const initialNotifications: Notification[] = [
-  {
-    id: 1,
-    type: 'event',
-    title: 'Beach Cleanup Drive Tomorrow',
-    description:
-      "Don't forget! The Sta. Cruz Beach Cleanup starts at 6:00 AM. Meet at the Port Area.",
-    time: '2 hours ago',
-    read: false,
-    icon: CalendarDays,
-    iconColor: 'text-blue-600',
-    iconBg: 'bg-blue-50'
-  },
-  {
-    id: 2,
-    type: 'system',
-    title: 'Account Verified',
-    description:
-      'Your identity has been verified. You now have full access to all Junta features.',
-    time: '5 hours ago',
-    read: false,
-    icon: CheckCircle,
-    iconColor: 'text-green-600',
-    iconBg: 'bg-green-50'
-  },
-  {
-    id: 3,
-    type: 'event',
-    title: 'New Event: Mangrove Planting',
-    description:
-      'A new planting event has been posted in your area. Check it out!',
-    time: '1 day ago',
-    read: false,
-    icon: CalendarDays,
-    iconColor: 'text-primary',
-    iconBg: 'bg-primary/10'
-  },
-  {
-    id: 4,
-    type: 'reminder',
-    title: 'Event Reminder: Eco Workshop',
-    description:
-      'The Marine Biodiversity Workshop is in 3 days. Make sure to prepare your materials.',
-    time: '1 day ago',
-    read: true,
-    icon: Bell,
-    iconColor: 'text-amber-600',
-    iconBg: 'bg-amber-50'
-  },
-  {
-    id: 5,
-    type: 'system',
-    title: 'Organizer Application Received',
-    description:
-      'Your application to become an organizer has been submitted and is under review.',
-    time: '2 days ago',
-    read: true,
-    icon: Info,
-    iconColor: 'text-purple-600',
-    iconBg: 'bg-purple-50'
-  },
-  {
-    id: 6,
-    type: 'event',
-    title: 'Event Completed: Awareness Walk',
-    description:
-      'Great job! The Paseo del Mar Awareness Walk has been completed. Check your impact score.',
-    time: '3 days ago',
-    read: true,
-    icon: CheckCircle,
-    iconColor: 'text-green-600',
-    iconBg: 'bg-green-50'
-  },
-  {
-    id: 7,
-    type: 'reminder',
-    title: 'Weekly Impact Summary',
-    description:
-      'You contributed 8 hours this week across 2 events. Keep up the great work!',
-    time: '4 days ago',
-    read: true,
-    icon: Users,
-    iconColor: 'text-blue-600',
-    iconBg: 'bg-blue-50'
-  },
-  {
-    id: 8,
-    type: 'system',
-    title: 'System Maintenance',
-    description:
-      'Junta will undergo scheduled maintenance on Jan 20 from 2:00 AM to 4:00 AM.',
-    time: '5 days ago',
-    read: true,
-    icon: Settings,
-    iconColor: 'text-muted-foreground',
-    iconBg: 'bg-muted'
-  }];
+
+const iconMap: Record<string, LucideIcon> = {
+  event: CalendarDays,
+  system: Info,
+  reminder: Bell,
+  verification: CheckCircle,
+  settings: Settings,
+  users: Users
+};
+
+const colorMap: Record<string, { color: string; bg: string }> = {
+  event: { color: 'text-blue-600', bg: 'bg-blue-50' },
+  system: { color: 'text-purple-600', bg: 'bg-purple-50' },
+  reminder: { color: 'text-amber-600', bg: 'bg-amber-50' },
+  verification: { color: 'text-green-600', bg: 'bg-green-50' },
+  default: { color: 'text-primary', bg: 'bg-primary/10' }
+};
 
 export function NotificationsPage() {
-  const [notifications, setNotifications] = useState(initialNotifications);
-  const markAllRead = () =>
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetched = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const type = data.type || 'system';
+        const colors = colorMap[type as keyof typeof colorMap] || colorMap.default;
+        
+        return {
+          id: doc.id,
+          title: data.title || 'Notification',
+          description: data.message || data.description || '',
+          type: type as Notification['type'],
+          time: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : 'Just now',
+          read: data.read || false,
+          icon: iconMap[type as keyof typeof iconMap] || Bell,
+          iconColor: colors.color,
+          iconBg: colors.bg
+        };
+      }) as Notification[];
+      setNotifications(fetched);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const markAllRead = () => {
+    // In a real app, this would update Firestore
     setNotifications((prev) =>
       prev.map((n) => ({
         ...n,
         read: true
       }))
     );
+  };
+
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const renderList = (items: Notification[]) =>
+
+  const renderList = (items: Notification[]) => (
     <div className="space-y-2">
-      {items.length > 0 ?
-        items.map((n, i) =>
+      {items.length > 0 ? (
+        items.map((n, i) => (
           <motion.div
             key={n.id}
-            initial={{
-              opacity: 0,
-              y: 5
-            }}
-            animate={{
-              opacity: 1,
-              y: 0
-            }}
-            transition={{
-              delay: i * 0.03
-            }}>
-
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.03 }}
+          >
             <Card
               className={`rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md overflow-hidden ${
                 !n.read 
                   ? 'bg-primary/[0.02] border-primary/15 shadow-primary/5' 
                   : 'hover:bg-muted/30'
               }`}
-              onClick={() =>
-                setNotifications((prev) =>
-                  prev.map((x) =>
-                    x.id === n.id ?
-                      {
-                        ...x,
-                        read: true
-                      } :
-                      x
-                  )
-                )
-              }>
+              onClick={() => {
+                // Update local state (should update Firestore in real app)
+                setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
+              }}
+            >
               {!n.read && (
                 <div className="h-0.5 w-full bg-gradient-to-r from-primary/60 to-primary/20" />
               )}
-                  <CardContent className="py-4 flex items-start gap-3">
-                <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${n.iconBg}`}>
-
+              <CardContent className="py-4 flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${n.iconBg}`}>
                   <n.icon className={`w-5 h-5 ${n.iconColor}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p
-                      className={`text-sm ${!n.read ? 'font-semibold' : 'font-medium'} text-foreground truncate`}>
-
+                    <p className={`text-sm ${!n.read ? 'font-semibold' : 'font-medium'} text-foreground truncate`}>
                       {n.title}
                     </p>
-                    {!n.read &&
-                      <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
-                    }
+                    {!n.read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                     {n.description}
@@ -199,16 +133,17 @@ export function NotificationsPage() {
               </CardContent>
             </Card>
           </motion.div>
-        ) :
-
+        ))
+      ) : (
         <div className="text-center py-12">
           <Bell className="w-12 h-12 text-muted-foreground/20 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">
-            No notifications in this category.
+            {isLoading ? 'Loading notifications...' : 'No notifications in this category.'}
           </p>
         </div>
-      }
-    </div>;
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -223,22 +158,22 @@ export function NotificationsPage() {
               'All caught up!'}
           </p>
         </div>
-        {unreadCount > 0 &&
+        {unreadCount > 0 && (
           <Button variant="outline" size="sm" onClick={markAllRead} className="hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all">
             <Check className="w-4 h-4 mr-1.5" /> Mark all read
           </Button>
-        }
+        )}
       </div>
 
       <Tabs defaultValue="all">
         <TabsList>
           <TabsTrigger value="all">
             All{' '}
-            {unreadCount > 0 &&
+            {unreadCount > 0 && (
               <Badge className="ml-1.5 bg-primary/10 text-primary border-0 text-[10px] px-1.5 h-4">
                 {unreadCount}
               </Badge>
-            }
+            )}
           </TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
@@ -257,6 +192,6 @@ export function NotificationsPage() {
           {renderList(notifications.filter((n) => n.type === 'reminder'))}
         </TabsContent>
       </Tabs>
-    </div>);
-
+    </div>
+  );
 }
