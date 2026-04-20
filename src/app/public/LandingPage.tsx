@@ -807,7 +807,7 @@ function MapPreviewSection() {
           <div className="text-center mt-6">
             <Button
               variant="outline"
-              onClick={() => navigate('/app/map')}
+              onClick={() => navigate('/register')}
               className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-8 font-bold text-sm h-11"
             >
               Open Full Map View <ArrowRight className="ml-2 w-4 h-4" />
