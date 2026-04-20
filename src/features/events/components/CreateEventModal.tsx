@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Map, { Marker } from 'react-map-gl/mapbox';
+import type { MapRef } from 'react-map-gl/mapbox';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,7 +38,8 @@ import {
   Clock,
   FileText,
   Calendar as CalendarIcon,
-  Loader2
+  Loader2,
+  Search
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -112,10 +114,76 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
     coordinates: null,
     aboutEvent: ''
   });
+
+const categoryEmoji: Record<string, string> = {
+  cleanup: '🧹',
+  planting: '🌱',
+  workshop: '🎓',
+  seminar: '🏛️',
+  research: '🧬',
+  other: '📍',
+};
   const [profile, setProfile] = useState<{ orgName?: string } | null>(null);
   const { token } = useMapboxToken();
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const mapRef = useRef<MapRef>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
+
+  // Reverse geocode: given lat/lng, auto-fill the location name field
+  const reverseGeocode = async (lat: number, lng: number) => {
+    if (!token) return;
+    setIsReverseGeocoding(true);
+    try {
+      const res = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&limit=1&types=poi,address,neighborhood,locality,place`
+      );
+      const data = await res.json();
+      if (data.features?.length > 0) {
+        // Use the most specific part of the place name (before the first comma)
+        const placeName = data.features[0].place_name.split(',')[0];
+        updateFormData('locationName', placeName);
+      }
+    } catch (e) {
+      console.error('Reverse geocode failed:', e);
+    } finally {
+      setIsReverseGeocoding(false);
+    }
+  };
+
+  // Forward geocode: search by name, biased toward Zamboanga (no strict bbox = wider coverage)
+  const searchLocation = async () => {
+    if (!formData.locationName || !token) return;
+    setIsGeocoding(true);
+    try {
+      // Use proximity bias toward Zamboanga City center instead of strict bbox
+      // This finds results anywhere but ranks Zamboanga results higher
+      const res = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(formData.locationName)}.json?access_token=${token}&limit=5&proximity=122.0650,6.9150&country=PH&types=poi,address,neighborhood,locality,place,region`
+      );
+      const data = await res.json();
+      if (data.features?.length > 0) {
+        // Pick the result closest to Zamboanga from the top 5
+        const best = data.features[0];
+        const [lng, lat] = best.center;
+        updateFormData('coordinates', { lat, lng });
+        updateFormData('locationName', best.place_name.split(',')[0]);
+        mapRef.current?.flyTo({ center: [lng, lat], zoom: 15, duration: 1500 });
+        sileo.success({ title: 'Location Found', description: best.place_name, duration: 2500 });
+      } else {
+        sileo.error({
+          title: 'Not Found',
+          description: 'Try a different spelling, or manually pin the location directly on the map below.',
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      sileo.error({ title: 'Network Error', description: 'Failed to search location.' });
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
 
   useEffect(() => {
     if (open) {
@@ -198,7 +266,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
   const handleNext = () => { if (step < 6) setStep(step + 1); };
   const handleBack = () => { if (step > 1) setStep(step - 1); };
 
-  const updateFormData = (field: keyof EventFormData, value: any) => {
+  const updateFormData = <K extends keyof EventFormData>(field: K, value: EventFormData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -294,8 +362,9 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       } else {
         updateFormData('coverImage', data.url);
       }
-    } catch (err: any) {
-      sileo.error({ title: 'Upload Failed', description: err.message });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Upload failed';
+      sileo.error({ title: 'Upload Failed', description: errorMsg });
     } finally {
       if (type === 'document') setIsUploadingDoc(false);
       else setIsUploadingImage(false);
@@ -362,11 +431,12 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       setIsSubmitting(false);
       setOpen(false);
       navigate('/app/organizer/submissions');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Submit error:', err);
+      const errorMsg = err instanceof Error ? err.message : 'An error occurred while creating your event.';
       sileo.error({ 
         title: 'Submission Failed', 
-        description: err.message || 'An error occurred while creating your event.' 
+        description: errorMsg 
       });
       setIsSubmitting(false);
     }
@@ -385,14 +455,14 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
           className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:ring-primary/20"
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-1.5">
           <Label className="text-[12px] font-bold text-slate-700 ml-1">Category <span className="text-rose-500">*</span></Label>
           <Select onValueChange={(v) => updateFormData('category', v)} value={formData.category}>
             <SelectTrigger className="h-10 rounded-xl bg-slate-50/50">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
-            <SelectContent position="popper" align="start" sideOffset={4}>
+            <SelectContent position="popper" sideOffset={4} className="z-[200]">
               <SelectItem value="cleanup">Cleanup Drive</SelectItem>
               <SelectItem value="workshop">Workshop</SelectItem>
               <SelectItem value="seminar">Seminar</SelectItem>
@@ -406,7 +476,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
             <SelectTrigger className="h-10 rounded-xl bg-slate-50/50">
               <SelectValue placeholder="Choose visibility" />
             </SelectTrigger>
-            <SelectContent position="popper" align="start" sideOffset={4}>
+            <SelectContent position="popper" sideOffset={4} className="z-[200]">
               <SelectItem value="public">Public</SelectItem>
               <SelectItem value="private">Private</SelectItem>
               <SelectItem value="invite-only">Invite Only</SelectItem>
@@ -439,29 +509,49 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
     <div className="space-y-4 py-2">
       <div className="grid gap-1.5">
         <Label className="text-[12px] font-bold text-slate-700 ml-1">Location Name <span className="text-rose-500">*</span></Label>
-        <Input 
-          placeholder="e.g., Sta. Cruz Island" 
-          value={formData.locationName}
-          onChange={(e) => updateFormData('locationName', e.target.value)}
-          className="h-10 rounded-xl bg-slate-50/50"
-        />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Input 
+              placeholder="e.g., Sta. Cruz Island" 
+              value={formData.locationName}
+              onChange={(e) => updateFormData('locationName', e.target.value)}
+              className="h-10 rounded-xl bg-slate-50/50 pr-8"
+            />
+            {isReverseGeocoding && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-slate-400" />
+            )}
+          </div>
+          <Button 
+            type="button" 
+            variant="secondary" 
+            className="h-10 rounded-xl font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4" 
+            onClick={searchLocation}
+            disabled={isGeocoding || !formData.locationName}
+          >
+            {isGeocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          </Button>
+        </div>
+        <p className="text-[10px] text-slate-400 ml-1">Can't find it? Manually pin the exact spot on the map below — then drag to fine-tune.</p>
       </div>
       
       <div className="grid gap-1.5">
         <Label className="text-[12px] font-bold text-slate-700 ml-1">Pin Location <span className="text-rose-500">*</span></Label>
         <div className="relative w-full h-48 rounded-xl overflow-hidden border border-slate-200 shadow-inner group">
           {token ? (
-            <Map
-              initialViewState={{
-                latitude: formData.coordinates?.lat || 6.9214,
-                longitude: formData.coordinates?.lng || 122.039,
-                zoom: 12
-              }}
-              style={{ width: '100%', height: '100%' }}
-              mapStyle="mapbox://styles/mapbox/streets-v12"
-              mapboxAccessToken={token}
+              <Map
+                ref={mapRef}
+                initialViewState={{
+                  latitude: formData.coordinates?.lat || 6.9214,
+                  longitude: formData.coordinates?.lng || 122.039,
+                  zoom: 12
+                }}
+                style={{ width: '100%', height: '100%' }}
+                mapStyle="mapbox://styles/mapbox/streets-v12"
+                mapboxAccessToken={token}
               onClick={(e) => {
-                updateFormData('coordinates', { lat: e.lngLat.lat, lng: e.lngLat.lng });
+                const { lat, lng } = e.lngLat;
+                updateFormData('coordinates', { lat, lng });
+                reverseGeocode(lat, lng);
               }}
             >
               {formData.coordinates && (
@@ -469,10 +559,22 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
                   latitude={formData.coordinates.lat} 
                   longitude={formData.coordinates.lng}
                   anchor="bottom"
+                  draggable
+                  onDragEnd={(e) => {
+                    const { lat, lng } = e.lngLat;
+                    updateFormData('coordinates', { lat, lng });
+                    reverseGeocode(lat, lng);
+                  }}
                 >
-                  <div className="relative flex flex-col items-center">
-                    <div className="absolute -top-1 w-2 h-2 bg-black/20 rounded-full blur-[1px]" />
-                    <MapPin className="w-8 h-8 text-primary fill-primary/20 stroke-[2.5px] drop-shadow-md animate-bounce" />
+                  <div className="relative flex flex-col items-center cursor-grab active:cursor-grabbing">
+                    <div className="absolute -top-1 w-10 h-10 rounded-full bg-primary/20 animate-ping" />
+                    <div className="relative w-10 h-10 rounded-2xl bg-primary border-2 border-white flex items-center justify-center shadow-xl transform transition-transform hover:scale-110 active:scale-95 animate-bounce">
+                      <span className="text-xl">
+                        {categoryEmoji[formData.category.toLowerCase()] || '📍'}
+                      </span>
+                    </div>
+                    {/* Custom Pointer Tail */}
+                    <div className="w-3 h-3 bg-primary rotate-45 -mt-1.5 border-r border-b border-white" />
                   </div>
                 </Marker>
               )}
@@ -484,17 +586,17 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
             </div>
           )}
           
-          <div className="absolute bottom-2 left-2 right-2 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/20 shadow-sm pointer-events-none transition-opacity duration-300 group-hover:opacity-100 opacity-80">
+          <div className="absolute top-2 left-2 right-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/30 shadow-sm pointer-events-none">
             <p className="text-[9px] font-bold text-slate-600 uppercase tracking-tighter">
               {formData.coordinates 
-                ? `Pinned: ${formData.coordinates.lat.toFixed(4)}, ${formData.coordinates.lng.toFixed(4)}`
-                : 'Click map to set exact event pin'}
+                ? `📍 ${formData.coordinates.lat.toFixed(5)}, ${formData.coordinates.lng.toFixed(5)} · Drag pin to adjust`
+                : 'Click anywhere on the map to drop a pin'}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-1.5">
           <Label className="text-[12px] font-bold text-slate-700 ml-1">Date <span className="text-rose-500">*</span></Label>
           <Popover>
@@ -510,7 +612,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
                 {formData.date ? format(new Date(formData.date), "PPP") : <span>Pick a date</span>}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[60]" align="start">
+            <PopoverContent className="w-auto p-0 z-[200]" align="start" sideOffset={4}>
               <Calendar
                 mode="single"
                 selected={formData.date ? new Date(formData.date) : undefined}
@@ -526,7 +628,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6 pt-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
         <div className="space-y-2">
           <Label className="text-[12px] font-bold text-slate-700 ml-1">Start Time <span className="text-rose-500">*</span></Label>
           <div className="flex items-center gap-1">
@@ -538,7 +640,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
                   <SelectTrigger className="border-none shadow-none bg-transparent h-9 text-[13px] px-3 focus:ring-0">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="max-h-[200px]">
+                  <SelectContent className="max-h-[200px] z-[200]" position="popper" sideOffset={4}>
                     {hours.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -550,7 +652,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
                   <SelectTrigger className="border-none shadow-none bg-transparent h-9 text-[13px] px-3 focus:ring-0">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[200]" position="popper" sideOffset={4}>
                     {minutes.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -562,7 +664,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
               <SelectTrigger className="w-[70px] h-10 rounded-xl bg-slate-900 text-white border-none text-[11px] font-black tracking-widest">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[200]" position="popper" sideOffset={4}>
                 {periods.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -580,7 +682,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
                   <SelectTrigger className="border-none shadow-none bg-transparent h-9 text-[13px] px-3 focus:ring-0">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="max-h-[200px]">
+                  <SelectContent className="max-h-[200px] z-[200]" position="popper" sideOffset={4}>
                     {hours.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -592,7 +694,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
                   <SelectTrigger className="border-none shadow-none bg-transparent h-9 text-[13px] px-3 focus:ring-0">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[200]" position="popper" sideOffset={4}>
                     {minutes.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -604,7 +706,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
               <SelectTrigger className="w-[70px] h-10 rounded-xl bg-slate-900 text-white border-none text-[11px] font-black tracking-widest">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[200]" position="popper" sideOffset={4}>
                 {periods.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -643,7 +745,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
               <SelectTrigger className="w-[124px] h-9 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white">
                 <SelectValue placeholder="Time" />
               </SelectTrigger>
-              <SelectContent className="max-h-[240px]" position="popper">
+              <SelectContent className="max-h-[240px] z-[200]" position="popper" sideOffset={4}>
                 {filteredTimeOptions.length > 0 ? (
                     filteredTimeOptions.map((time) => (
                       <SelectItem key={time} value={time} className="text-[11px] font-medium">{time}</SelectItem>
@@ -879,7 +981,7 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[540px] max-h-[90vh] p-0 overflow-hidden border-none shadow-[0_32px_128px_rgba(0,0,0,0.1)] rounded-[32px] bg-white flex flex-col">
+      <DialogContent className="w-[96vw] sm:w-full sm:max-w-[540px] max-h-[90vh] p-0 overflow-hidden border-none shadow-[0_32px_128px_rgba(0,0,0,0.1)] rounded-[32px] bg-white flex flex-col">
         <style dangerouslySetInnerHTML={{ __html: `
           .custom-scrollbar::-webkit-scrollbar { width: 4px; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }

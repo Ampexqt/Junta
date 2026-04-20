@@ -183,7 +183,7 @@ function ParticipantDashboard() {
       <motion.div
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
         {[
           {
@@ -345,6 +345,7 @@ function OrganizerDashboard() {
     date: string;
     status: string;
     participants: number;
+    averageRating: number;
   }
 
   const [events, setEvents] = useState<OrganizerEvent[]>([]);
@@ -384,7 +385,7 @@ function OrganizerDashboard() {
         ? (validRatings.reduce((acc, e) => acc + (e.averageRating || 0), 0) / validRatings.length).toFixed(1)
         : '0.0';
 
-      setEvents(fetched as any);
+      setEvents(fetched);
       setStats({
         total: total.toString(),
         pending: pending.toString(),
@@ -418,7 +419,7 @@ function OrganizerDashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={CalendarDays}
           label="My Events"
@@ -574,7 +575,7 @@ function AdminDashboard() {
         subtitle="Review system metrics and take necessary administrative actions." 
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={UserCheck}
           label="Pending Verifications"

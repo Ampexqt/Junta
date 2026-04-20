@@ -1,84 +1,125 @@
-import React, { useState, createContext, useContext } from 'react';
-import { AuthContextType, UserRole } from './types';
-
-export type { UserRole };
+import React, { useState, createContext, useContext, useEffect, useRef } from 'react';
+import { AuthContextType, UserRole, UserProfile } from './types';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const AuthContext = createContext<AuthContextType>({
     role: 'participant',
-    setRole: () => { /* Default role setter */ },
-    userName: 'Juan Dela Cruz',
-    setUserName: () => { /* Default userName setter */ },
+    setRole: () => undefined,
+    userName: 'Traveler',
+    setUserName: () => undefined,
     uid: null,
-    setUid: () => { /* Default uid setter */ },
-    logout: () => { /* Default logout */ }
+    setUid: () => undefined,
+    user: null,
+    profile: null,
+    logout: () => Promise.resolve()
 });
 
+const KEYS = {
+    ROLE: 'junta_user_role',
+    NAME: 'junta_user_name',
+    UID: 'junta_user_uid',
+    PROFILE: 'junta_user_profile'
+};
 
 export function AuthProvider({ children }: { children: React.ReactNode; }) {
-
+    const [user, setUser] = useState<FirebaseUser | null>(null);
+    const isFirstLoad = useRef(true);
+    
+    // 1. Immediate Hydration from Cache
+    const [profile, setProfile] = useState<UserProfile | null>(() => {
+        try {
+            const saved = localStorage.getItem(KEYS.PROFILE);
+            return saved ? JSON.parse(saved) : null;
+        } catch { return null; }
+    });
+    
     const [role, setRoleState] = useState<UserRole>(() => {
-        const storedRole = localStorage.getItem('user_role');
-        if (storedRole) return storedRole as UserRole;
-        
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            try {
-                const user = JSON.parse(storedUser);
-                return user.role || 'participant';
-            } catch (e) {
-                return 'participant';
-            }
-        }
-        return 'participant';
+        return (localStorage.getItem(KEYS.ROLE) as UserRole) || 'participant';
     });
-
+    
     const [userName, setUserNameState] = useState(() => {
-        const storedName = localStorage.getItem('user_name');
-        if (storedName) return storedName;
-
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            try {
-                const user = JSON.parse(storedUser);
-                return user.displayName || user.name || 'Juan Dela Cruz';
-            } catch (e) {
-                return 'Juan Dela Cruz';
-            }
-        }
-        return 'Juan Dela Cruz';
+        return localStorage.getItem(KEYS.NAME) || 'Traveler';
+    });
+    
+    const [uid, setUidState] = useState<string | null>(() => {
+        return localStorage.getItem(KEYS.UID) || null;
     });
 
-    const [uid, setUid] = useState<string | null>(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            try {
-                const user = JSON.parse(storedUser);
-                return user.uid || null;
-            } catch (e) {
-                return null;
-            }
-        }
-        return null;
-    });
+    useEffect(() => {
+        const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+            setUser(firebaseUser);
+            
+            if (firebaseUser) {
+                setUidState(firebaseUser.uid);
+                localStorage.setItem(KEYS.UID, firebaseUser.uid);
 
+                const profileRef = doc(db, 'users', firebaseUser.uid);
+                const unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const profileData = docSnap.data() as UserProfile;
+                        const fullName = `${profileData.firstName} ${profileData.lastName}`;
+                        
+                        setProfile(profileData);
+                        setRoleState(profileData.role || 'participant');
+                        setUserNameState(fullName);
+                        
+                        localStorage.setItem(KEYS.PROFILE, JSON.stringify(profileData));
+                        localStorage.setItem(KEYS.ROLE, profileData.role);
+                        localStorage.setItem(KEYS.NAME, fullName);
+                    }
+                    isFirstLoad.current = false;
+                }, (error) => {
+                    console.error("Firestore Profile Error:", error);
+                    isFirstLoad.current = false;
+                });
+                
+                return () => unsubscribeProfile();
+            } else {
+                // If this isn't the split-second first load check, then it's a real logout
+                if (!isFirstLoad.current) {
+                    clearAuthData();
+                }
+                isFirstLoad.current = false;
+            }
+        });
+
+        return () => unsubscribeAuth();
+    }, []);
+
+    const clearAuthData = () => {
+        setProfile(null);
+        setRoleState('participant');
+        setUserNameState('Traveler');
+        setUidState(null);
+        Object.values(KEYS).forEach(k => localStorage.removeItem(k));
+    };
 
     const setRole = (newRole: UserRole) => {
         setRoleState(newRole);
-        localStorage.setItem('user_role', newRole);
+        localStorage.setItem(KEYS.ROLE, newRole);
     };
 
     const setUserName = (newName: string) => {
         setUserNameState(newName);
-        localStorage.setItem('user_name', newName);
+        localStorage.setItem(KEYS.NAME, newName);
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('user_role');
-        setRoleState('participant');
-        setUserNameState('Juan Dela Cruz');
-        setUid(null);
+    const setUid = (newUid: string | null) => {
+        setUidState(newUid);
+        if (newUid) localStorage.setItem(KEYS.UID, newUid);
+        else localStorage.removeItem(KEYS.UID);
+    }
+
+    const logout = async () => {
+        try {
+            await auth.signOut();
+        } catch (e) {
+            console.error("Signout error:", e);
+        }
+        localStorage.clear();
+        clearAuthData();
     };
 
     return (
@@ -90,13 +131,14 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
                 setUserName,
                 uid,
                 setUid,
+                user,
+                profile,
                 logout
             }}>
             {children}
         </AuthContext.Provider>
     );
 }
-
 
 export function useAuth() {
     const context = useContext(AuthContext);

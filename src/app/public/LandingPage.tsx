@@ -52,12 +52,12 @@ const stagger = {
 function Navbar() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const links = ['Features', 'How It Works', 'Events', 'Map', 'Contact'];
+  const links = ['Map', 'Features', 'How It Works', 'Events', 'Contact'];
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-black/50 backdrop-blur-xl border-b border-primary/5 shadow-[0_10px_40px_rgba(31,122,99,0.06)] transition-all duration-500">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 h-20 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-9 h-9 bg-gradient-to-br from-primary to-[#06241d] rounded-xl flex items-center justify-center shadow-lg shadow-primary/25 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
+          <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary-950 rounded-xl flex items-center justify-center shadow-lg shadow-primary/25 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
             <Leaf className="w-5 h-5 text-white" />
           </div>
           <span className="font-['Lora'] font-bold text-[22px] text-foreground tracking-tight whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-500">
@@ -167,7 +167,7 @@ function HeroSection() {
   };
 
   return (
-    <section className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#F0F5F2] pt-28 md:pt-36 lg:pt-40 pb-20">
+    <section className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-background pt-28 md:pt-36 lg:pt-40 pb-20">
       {/* Background Soft Glow */}
       <div className="absolute top-0 left-1/4 -z-0 h-[400px] w-[600px] rounded-full bg-white/40 blur-[120px] pointer-events-none" />
 
@@ -184,7 +184,7 @@ function HeroSection() {
             {/* Badge */}
             <motion.div 
               variants={itemVariants}
-              className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#1B6B4A]/10 bg-white/60 backdrop-blur-sm px-4 py-2 text-[10px] font-bold tracking-[0.15em] text-[#1B6B4A] shadow-sm uppercase"
+              className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/10 bg-white/60 backdrop-blur-sm px-4 py-2 text-[10px] font-bold tracking-[0.15em] text-primary shadow-sm uppercase"
             >
               <Leaf className="h-3.5 w-3.5" />
               <span>Zamboanga City's Environmental Platform</span>
@@ -199,7 +199,7 @@ function HeroSection() {
               Activities in <span className="relative inline-block">
                 Your Community
                 {/* SVG Underline Curve */}
-                <svg className="absolute -bottom-2 left-0 w-full h-3 text-[#1B6B4A]/20" viewBox="0 0 300 12" fill="none" preserveAspectRatio="none">
+                <svg className="absolute -bottom-2 left-0 w-full h-3 text-primary/20" viewBox="0 0 300 12" fill="none" preserveAspectRatio="none">
                   <path d="M4 9C40 3 150 1.5 296 9" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
                 </svg>
               </span>
@@ -221,7 +221,7 @@ function HeroSection() {
               <Button
                 size="lg"
                 onClick={() => document.getElementById('events')?.scrollIntoView({ behavior: 'smooth' })}
-                className="h-14 min-w-[180px] rounded-full bg-[#1B6B4A] px-10 text-base font-bold text-white shadow-xl shadow-[#1B6B4A]/20 transition-all hover:bg-[#145339] hover:-translate-y-0.5"
+                className="h-14 min-w-[180px] rounded-full bg-primary px-10 text-base font-bold text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary-hover hover:-translate-y-0.5"
               >
                 Browse Events
               </Button>
@@ -229,7 +229,7 @@ function HeroSection() {
                 variant="outline"
                 size="lg"
                 onClick={() => navigate('/register')}
-                className="h-14 min-w-[180px] rounded-full border-2 border-[#1B6B4A]/20 bg-white px-10 text-base font-bold text-[#1B6B4A] transition-all hover:border-[#1B6B4A]/40"
+                className="h-14 min-w-[180px] rounded-full border-2 border-primary/20 bg-white px-10 text-base font-bold text-primary transition-all hover:border-primary/40"
               >
                 Create an Event
               </Button>
@@ -244,13 +244,13 @@ function HeroSection() {
             className="relative"
           >
             {/* Decorative Background Shapes */}
-            <div className="absolute -bottom-6 -left-6 -z-10 h-24 w-24 rounded-2xl bg-[#1B6B4A]/5" />
-            <div className="absolute -top-4 -right-4 -z-10 h-16 w-16 rounded-full bg-[#1B6B4A]/5" />
+            <div className="absolute -bottom-6 -left-6 -z-10 h-24 w-24 rounded-2xl bg-primary/5" />
+            <div className="absolute -top-4 -right-4 -z-10 h-16 w-16 rounded-full bg-primary/5" />
 
-            <div className="relative aspect-[4/3] lg:aspect-[3/4] xl:aspect-square overflow-hidden rounded-[2rem] border border-white/50 bg-white p-2 md:p-3 shadow-2xl shadow-[#1B6B4A]/10">
-              <div className="h-full w-full overflow-hidden rounded-2xl bg-[#E8F0EB] relative">
+            <div className="relative aspect-[4/3] lg:aspect-[3/4] xl:aspect-square overflow-hidden rounded-[2rem] border border-white/50 bg-white p-2 md:p-3 shadow-2xl shadow-primary/10">
+              <div className="h-full w-full overflow-hidden rounded-2xl bg-background-alt relative">
                 {/* Gradient Overlays */}
-                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#1B6B4A]/10 pointer-events-none z-10" />
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-primary/10 pointer-events-none z-10" />
                 <div className="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-white/20 pointer-events-none z-10" />
                 
                 <img 
@@ -701,7 +701,7 @@ function CTASection() {
         }}
         className="max-w-5xl mx-auto"
       >
-        <Card className="rounded-[2.5rem] bg-gradient-to-br from-primary via-[#0f513d] to-[#06241d] border-0 overflow-hidden shadow-2xl relative shadow-primary/30">
+        <Card className="rounded-[2.5rem] bg-gradient-to-br from-primary via-primary-800 to-primary-950 border-0 overflow-hidden shadow-2xl relative shadow-primary/30">
           <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl opacity-70 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary-foreground/10 rounded-full translate-y-1/3 -translate-x-1/3 blur-3xl opacity-50 pointer-events-none" />
           
@@ -740,7 +740,7 @@ function Footer() {
   return (
     <footer
       id="contact"
-      className="bg-[#0b241e] text-white py-16 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
+      className="bg-primary-950 text-white py-16 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
 
       <div className="max-w-7xl mx-auto">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
@@ -858,13 +858,13 @@ function Footer() {
 }
 export function LandingPage() {
   return (
-    <div className="w-full min-h-screen bg-[#F0F5F2]">
+    <div className="w-full min-h-screen bg-background">
       <Navbar />
       <HeroSection />
+      <MapPreviewSection />
       <FeaturesSection />
       <HowItWorksSection />
       <FeaturedEventsSection />
-      <MapPreviewSection />
       <CTASection />
       <Footer />
     </div>);

@@ -15,6 +15,7 @@ import {
     Settings,
     LogOut,
     ChevronsUpDown,
+    LucideIcon
 } from "lucide-react"
 
 import {
@@ -39,13 +40,13 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/features/auth/AuthContext"
 import type { UserRole } from "@/features/auth/AuthContext"
 
 type NavItem = {
     label: string
-    icon: any
+    icon: LucideIcon
     path: string
     badge?: number
 }
@@ -220,7 +221,7 @@ const roleLabels: Record<UserRole, string> = {
 }
 
 export function AppSidebar() {
-    const { role, userName, logout: handleLogout } = useAuth()
+    const { role, userName, profile, logout: handleLogout } = useAuth()
     const location = useLocation()
     const navigate = useNavigate()
     const groups = navByRole[role]
@@ -303,6 +304,7 @@ export function AppSidebar() {
                             className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground h-14 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
                         >
                             <Avatar className="h-9 w-9 rounded-lg shadow-sm group-data-[collapsible=icon]:mr-0">
+                                <AvatarImage src={profile?.photoURL} className="object-cover" />
                                 <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold rounded-lg">
                                     {initials}
                                 </AvatarFallback>

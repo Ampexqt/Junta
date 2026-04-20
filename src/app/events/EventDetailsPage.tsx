@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
 import { API_BASE_URL } from '@/lib/api';
+import { sileo } from 'sileo';
 
 interface EventData {
   id: string;
@@ -59,8 +60,9 @@ export function EventDetailsPage() {
           const data = await response.json();
           setEvent(data);
         }
-      } catch (err) {
-        console.error('Failed to fetch event:', err);
+      } catch (e: unknown) {
+        console.error('Error fetching event details:', e);
+        sileo.error({ title: 'Sync Error', description: 'Failed to load event details. Please try again later.' });
       } finally {
         setLoading(false);
       }
@@ -336,8 +338,10 @@ export function EventDetailsPage() {
                         const data = await response.json();
                         throw new Error(data.error || 'Failed to join');
                       }
-                    } catch (err: any) {
+                    } catch (err) {
                       console.error('Join error:', err);
+                      const errorMsg = err instanceof Error ? err.message : 'Failed to join';
+                      sileo.error({ title: 'Join Failed', description: errorMsg });
                     }
                   }}>
 

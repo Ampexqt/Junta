@@ -116,7 +116,6 @@ export function EventApprovalsPage() {
   }, []);
 
   const pending = events.filter((e) => e.status === 'pending').length;
-  // Note: Approved mapping to 'published' for backend consistency
   const approved = events.filter((e) => e.status === 'published').length;
   const rejected = events.filter((e) => e.status === 'rejected').length;
 
@@ -136,16 +135,11 @@ export function EventApprovalsPage() {
 
       if (!response.ok) throw new Error('Action failed');
       
-      // If rejected, we might want to store the reason in the future, 
-      // but for now we just log it or pass it if the API supports it
-      console.log(`Action: ${action}, Reason: ${confirmAction.reason}`);
-
       sileo.success({ 
         title: action === 'published' ? 'Event Approved' : 'Event Rejected', 
         description: `The event has been successfully ${action}.` 
       });
 
-      // Update local state and close dialogs
       setEvents(prev => prev.filter(e => e.id !== id));
       setDialogOpen(false);
       setConfirmAction(prev => ({ ...prev, open: false, reason: '' }));
@@ -288,7 +282,7 @@ export function EventApprovalsPage() {
                             (() => {
                                 try {
                                     return format(new Date(e.date), 'MMM dd, yyyy');
-                                } catch (e) {
+                                } catch (err) {
                                     return 'Invalid Date';
                                 }
                             })()
@@ -409,7 +403,7 @@ export function EventApprovalsPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                    {/* Timeline Section */}
                    <div className="space-y-4">
                         <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
@@ -423,7 +417,7 @@ export function EventApprovalsPage() {
                                     <div key={item.id} className="flex gap-3 group">
                                         <div className="flex flex-col items-center">
                                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1" />
-                                            {idx !== selectedEvent.timeline!.length - 1 && <div className="w-[1px] flex-1 bg-slate-200 my-1" />}
+                                            {idx !== (selectedEvent.timeline?.length || 0) - 1 && <div className="w-[1px] flex-1 bg-slate-200 my-1" />}
                                         </div>
                                         <div className="pb-4">
                                             <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tight leading-none mb-1">{item.time}</p>
