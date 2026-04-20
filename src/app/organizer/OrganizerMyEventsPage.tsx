@@ -16,50 +16,42 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from
-  '@/components/ui/table';
-import { Eye, MapPin, Users, CalendarDays, Plus, FolderOpen } from 'lucide-react';
+} from '@/components/ui/table';
+import { Eye, MapPin, Users, CalendarDays, Plus, FolderOpen, Loader2 } from 'lucide-react';
 import { CreateEventModal } from '../../features/events/components/CreateEventModal';
-
-const approvedEvents = [
-  {
-    id: 1,
-    name: 'Sta. Cruz Beach Cleanup Drive',
-    date: 'Jan 15, 2025',
-    location: 'Great Sta. Cruz Island',
-    participants: 45
-  },
-  {
-    id: 2,
-    name: 'Mangrove Planting Initiative',
-    date: 'Jan 22, 2025',
-    location: 'Sinunuc Mangrove Area',
-    participants: 32
-  },
-  {
-    id: 3,
-    name: 'Coral Reef Monitoring',
-    date: 'Mar 1, 2025',
-    location: 'Sta. Cruz Island Reef',
-    participants: 15
-  },
-  {
-    id: 4,
-    name: 'Youth Eco-Leadership Camp',
-    date: 'Mar 8, 2025',
-    location: 'Zamboanga Eco-Park',
-    participants: 40
-  },
-  {
-    id: 5,
-    name: 'Urban Garden Community Build',
-    date: 'Mar 15, 2025',
-    location: 'Barangay Tetuan',
-    participants: 22
-  }];
+import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '@/lib/api';
 
 export function OrganizerMyEventsPage() {
   const navigate = useNavigate();
+  const [approvedEvents, setApprovedEvents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMyEvents = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/events/my-events`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Failed to fetch events');
+        
+        const data = await response.json();
+        // Only show approved/published events here
+        const approved = data.filter((e: any) => e.status === 'published');
+        setApprovedEvents(approved);
+      } catch (error) {
+        console.error('Error fetching my events:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMyEvents();
+  }, []);
+
   return (
     <motion.div
       initial={{
@@ -124,7 +116,16 @@ export function OrganizerMyEventsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {approvedEvents.length === 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-36 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                        <p className="text-sm font-medium text-muted-foreground">Loading your events...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : approvedEvents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-36 text-center">
                       <div className="flex flex-col items-center justify-center gap-2">
@@ -141,7 +142,7 @@ export function OrganizerMyEventsPage() {
                     onClick={() => navigate(`/app/events/${e.id}`)}>
 
                     <TableCell>
-                      <p className="font-medium text-sm">{e.name}</p>
+                      <p className="font-medium text-sm">{e.name || e.title}</p>
                       <p className="text-xs text-muted-foreground sm:hidden">
                         {e.date}
                       </p>
@@ -161,7 +162,7 @@ export function OrganizerMyEventsPage() {
                     <TableCell>
                       <span className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Users className="w-3 h-3" />
-                        {e.participants}
+                        {e.participantsCount || 0}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">

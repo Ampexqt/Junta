@@ -14,6 +14,8 @@ export type UserProfile = {
     birthday?: string;
     photoURL?: string;
     kycStatus?: 'pending' | 'verified' | 'rejected' | 'none';
+    validIdUrl?: string;
+    selfieUrl?: string;
 };
 
 export type AuthContextType = {

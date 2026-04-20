@@ -20,106 +20,12 @@ import {
   Clock,
   MapPin,
   Trophy,
-  Eye
-} from
-  'lucide-react';
-const participations = [
-  {
-    id: 1,
-    title: 'Sta. Cruz Beach Cleanup Drive',
-    date: 'Jan 15, 2025',
-    location: 'Great Sta. Cruz Island',
-    status: 'Upcoming',
-    progress: 0
-  },
-  {
-    id: 2,
-    title: 'Mangrove Planting Initiative',
-    date: 'Jan 22, 2025',
-    location: 'Sinunuc Mangrove Area',
-    status: 'Upcoming',
-    progress: 0
-  },
-  {
-    id: 3,
-    title: 'Marine Biodiversity Workshop',
-    date: 'Feb 3, 2025',
-    location: 'Zamboanga City Hall',
-    status: 'Upcoming',
-    progress: 0
-  },
-  {
-    id: 4,
-    title: 'Paseo del Mar Awareness Walk',
-    date: 'Nov 20, 2024',
-    location: 'Paseo del Mar',
-    status: 'Completed',
-    progress: 100
-  },
-  {
-    id: 5,
-    title: 'Pasonanca Park Reforestation',
-    date: 'Nov 5, 2024',
-    location: 'Pasonanca Natural Park',
-    status: 'Completed',
-    progress: 100
-  },
-  {
-    id: 6,
-    title: 'Coastal Cleanup Month',
-    date: 'Oct 15, 2024',
-    location: 'Rio Hondo Coastline',
-    status: 'Completed',
-    progress: 100
-  },
-  {
-    id: 7,
-    title: 'Youth Eco-Leadership Camp',
-    date: 'Oct 1, 2024',
-    location: 'Zamboanga Eco-Park',
-    status: 'Completed',
-    progress: 100
-  },
-  {
-    id: 8,
-    title: 'Urban Garden Build',
-    date: 'Sep 20, 2024',
-    location: 'Barangay Tetuan',
-    status: 'Completed',
-    progress: 100
-  },
-  {
-    id: 9,
-    title: 'River Monitoring Day',
-    date: 'Sep 8, 2024',
-    location: 'Tumaga River',
-    status: 'Completed',
-    progress: 100
-  },
-  {
-    id: 10,
-    title: 'Coral Reef Survey',
-    date: 'Aug 25, 2024',
-    location: 'Sta. Cruz Island',
-    status: 'Completed',
-    progress: 100
-  },
-  {
-    id: 11,
-    title: 'Wetland Conservation Talk',
-    date: 'Aug 10, 2024',
-    location: 'City Library',
-    status: 'Completed',
-    progress: 100
-  },
-  {
-    id: 12,
-    title: 'Beach Nesting Site Protection',
-    date: 'Jul 28, 2024',
-    location: 'Bolong Beach',
-    status: 'Completed',
-    progress: 100
-  }];
+  Eye,
+  Loader2,
+  FolderOpen
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '@/lib/api';
 
 const statusStyles: Record<string, string> = {
   Completed: 'bg-green-50 text-green-700',
@@ -128,6 +34,32 @@ const statusStyles: Record<string, string> = {
 };
 export function MyParticipationPage() {
   const navigate = useNavigate();
+  const [participations, setParticipations] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchParticipations = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/events/my-participations`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Failed to fetch participations');
+        
+        const data = await response.json();
+        setParticipations(data);
+      } catch (error) {
+        console.error('Error fetching participations:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchParticipations();
+  }, []);
+
   const total = participations.length;
   const completed = participations.filter(
     (p) => p.status === 'Completed'
@@ -222,11 +154,30 @@ export function MyParticipationPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {participations.map((p) =>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-36 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                        <p className="text-sm font-medium text-muted-foreground">Loading your participation history...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : participations.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-36 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <FolderOpen className="w-8 h-8 text-muted-foreground/20" />
+                        <p className="text-sm font-medium text-muted-foreground">No participations yet</p>
+                        <p className="text-xs text-muted-foreground/60">Join an event to start your journey.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : participations.map((p) =>
                   <TableRow
                     key={p.id}
                     className="cursor-pointer"
-                    onClick={() => navigate(`/app/events/${p.id}`)}>
+                    onClick={() => navigate(`/app/events/${p.eventId}`)}>
 
                     <TableCell>
                       <p className="font-medium text-sm">{p.title}</p>

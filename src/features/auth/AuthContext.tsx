@@ -13,6 +13,7 @@ const AuthContext = createContext<AuthContextType>({
     setUid: () => undefined,
     user: null,
     profile: null,
+    isAuthLoading: true,
     logout: () => Promise.resolve()
 });
 
@@ -47,46 +48,38 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
         return localStorage.getItem(KEYS.UID) || null;
     });
 
+    // Firestore Profile Listener
     useEffect(() => {
-        const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
-            setUser(firebaseUser);
-            
-            if (firebaseUser) {
-                setUidState(firebaseUser.uid);
-                localStorage.setItem(KEYS.UID, firebaseUser.uid);
-
-                const profileRef = doc(db, 'users', firebaseUser.uid);
-                const unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const profileData = docSnap.data() as UserProfile;
-                        const fullName = `${profileData.firstName} ${profileData.lastName}`;
-                        
-                        setProfile(profileData);
-                        setRoleState(profileData.role || 'participant');
-                        setUserNameState(fullName);
-                        
-                        localStorage.setItem(KEYS.PROFILE, JSON.stringify(profileData));
-                        localStorage.setItem(KEYS.ROLE, profileData.role);
-                        localStorage.setItem(KEYS.NAME, fullName);
-                    }
-                    isFirstLoad.current = false;
-                }, (error) => {
-                    console.error("Firestore Profile Error:", error);
-                    isFirstLoad.current = false;
-                });
-                
-                return () => unsubscribeProfile();
-            } else {
-                // If this isn't the split-second first load check, then it's a real logout
-                if (!isFirstLoad.current) {
-                    clearAuthData();
-                }
-                isFirstLoad.current = false;
+        if (!uid) {
+            if (!isFirstLoad.current) {
+                clearAuthData();
             }
-        });
+            isFirstLoad.current = false;
+            return;
+        }
 
-        return () => unsubscribeAuth();
-    }, []);
+        const profileRef = doc(db, 'users', uid);
+        const unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const profileData = docSnap.data() as UserProfile;
+                const fullName = `${profileData.firstName} ${profileData.lastName}`;
+                
+                setProfile(profileData);
+                setRoleState(profileData.role || 'participant');
+                setUserNameState(fullName);
+                
+                localStorage.setItem(KEYS.PROFILE, JSON.stringify(profileData));
+                localStorage.setItem(KEYS.ROLE, profileData.role);
+                localStorage.setItem(KEYS.NAME, fullName);
+            }
+            isFirstLoad.current = false;
+        }, (error) => {
+            console.error("Firestore Profile Error:", error);
+            isFirstLoad.current = false;
+        });
+        
+        return () => unsubscribeProfile();
+    }, [uid]);
 
     const clearAuthData = () => {
         setProfile(null);
@@ -133,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
                 setUid,
                 user,
                 profile,
+                isAuthLoading: false, // Legacy field, JWT tokens are synchronous
                 logout
             }}>
             {children}

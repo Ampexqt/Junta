@@ -392,4 +392,32 @@ router.post('/sync-profile', authenticateUser, async (req: Request, res: Respons
     }
 });
 
+/**
+ * 6. Update Profile / KYC (Protected)
+ * Updates arbitrary profile fields like phone, firstName, KYC URLs, etc.
+ */
+router.put('/update-profile', authenticateUser, async (req: AuthRequest, res: Response) => {
+    const uid = req.user?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    try {
+        const updateData = req.body;
+        // Don't allow updating critical fields via this generic endpoint
+        delete updateData.uid;
+        delete updateData.email;
+        delete updateData.password;
+        delete updateData.role;
+
+        updateData.updatedAt = new Date().toISOString();
+
+        const userRef = db.collection('users').doc(uid);
+        await userRef.update(updateData);
+
+        res.json({ success: true, message: 'Profile updated successfully' });
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
 export const authRoutes = router;

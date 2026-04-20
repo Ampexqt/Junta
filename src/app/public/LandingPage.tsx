@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import MapImage from '@/assets/zamboanga_city_forest_20260413_010218.webp';
-import Map, { NavigationControl, Marker } from 'react-map-gl/mapbox';
+import Map, { NavigationControl, Marker, Popup } from 'react-map-gl/mapbox';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
 
 import { Link, useNavigate } from 'react-router-dom';
@@ -447,236 +447,376 @@ function HowItWorksSection() {
 }
 function FeaturedEventsSection() {
   const navigate = useNavigate();
-  const events = [
-    {
-      title: 'Sta. Cruz Beach Cleanup Drive',
-      date: 'Jan 15, 2025',
-      location: 'Great Sta. Cruz Island',
-      category: 'Cleanup'
-    },
-    {
-      title: 'Mangrove Planting Initiative',
-      date: 'Jan 22, 2025',
-      location: 'Sinunuc Mangrove Area',
-      category: 'Planting'
-    },
-    {
-      title: 'Marine Biodiversity Workshop',
-      date: 'Feb 3, 2025',
-      location: 'Zamboanga City Hall',
-      category: 'Workshop'
-    },
-    {
-      title: 'Paseo del Mar Awareness Walk',
-      date: 'Feb 10, 2025',
-      location: 'Paseo del Mar',
-      category: 'Awareness'
-    }];
+  const [events, setEvents] = useState<Array<{
+    id: string; title: string; date: string; location: string;
+    category: string; coverImage?: string;
+  }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const categoryColors: Record<string, string> = {
-    Cleanup: 'bg-primary/10 text-primary border-primary/20',
-    Planting: 'bg-primary/10 text-primary border-primary/20',
-    Workshop: 'bg-primary/10 text-primary border-primary/20',
-    Awareness: 'bg-primary/10 text-primary border-primary/20'
+    cleanup: 'bg-red-50 text-red-600 border-red-100',
+    planting: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    workshop: 'bg-amber-50 text-amber-600 border-amber-100',
+    seminar: 'bg-blue-50 text-blue-600 border-blue-100',
+    research: 'bg-purple-50 text-purple-600 border-purple-100',
+    awareness: 'bg-teal-50 text-teal-600 border-teal-100',
   };
+  const categoryIcons: Record<string, string> = {
+    cleanup: '🧹', planting: '🌱', workshop: '🎓',
+    seminar: '🏛️', research: '🧬', awareness: '📣', other: '📍',
+  };
+
+  useEffect(() => {
+    import('@/lib/firebase').then(({ db }) => {
+      import('firebase/firestore').then(({ collection, query, where, orderBy, limit, onSnapshot }) => {
+        import('date-fns').then(({ format }) => {
+          const q = query(
+            collection(db, 'events'),
+            where('visibility', '==', 'public'),
+            where('status', '==', 'published'),
+            orderBy('createdAt', 'desc'),
+            limit(4)
+          );
+          const unsub = onSnapshot(q, (snap) => {
+            setEvents(snap.docs.map(doc => {
+              const d = doc.data();
+              let formattedDate = 'TBD';
+              try { if (d.date) formattedDate = format(new Date(d.date), 'MMM d, yyyy'); } catch (_) { /* noop */ }
+              return {
+                id: doc.id,
+                title: d.title || 'Untitled Event',
+                date: formattedDate,
+                location: d.locationName || 'Zamboanga City',
+                category: (d.category || 'other').toLowerCase(),
+                coverImage: d.coverImageUrl || d.coverImage || null,
+              };
+            }));
+            setIsLoading(false);
+          }, () => setIsLoading(false));
+          return unsub;
+        });
+      });
+    });
+  }, []);
+
   return (
-    <section
-      id="events"
-      className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-
-      <motion.div
-        initial="hidden"
-        whileInView="visible"
-        viewport={{
-          once: true,
-          margin: '-100px'
-        }}
-        variants={stagger}
-        className="text-center mb-16">
-
-        <motion.p
-          variants={fadeUp}
-          custom={0}
-          className="text-sm font-medium text-primary mb-2">
-
-          Featured Events
-        </motion.p>
-        <motion.h2
-          variants={fadeUp}
-          custom={1}
-          className="font-heading font-semibold text-3xl sm:text-4xl text-foreground">
-
-          Upcoming Environmental Events
-        </motion.h2>
-        <motion.p
-          variants={fadeUp}
-          custom={2}
-          className="mt-4 text-muted-foreground">
-
-          Join these community-driven events and help protect Zamboanga's
-          environment.
-        </motion.p>
+    <section id="events" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-100px' }} variants={stagger} className="text-center mb-16">
+        <motion.p variants={fadeUp} custom={0} className="text-sm font-medium text-primary mb-2">Featured Events</motion.p>
+        <motion.h2 variants={fadeUp} custom={1} className="font-heading font-semibold text-3xl sm:text-4xl text-foreground">Upcoming Environmental Events</motion.h2>
+        <motion.p variants={fadeUp} custom={2} className="mt-4 text-muted-foreground">Join these community-driven events and help protect Zamboanga's environment.</motion.p>
       </motion.div>
-      <motion.div
-        initial="hidden"
-        whileInView="visible"
-        viewport={{
-          once: true,
-          margin: '-50px'
-        }}
-        variants={stagger}
-        className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
-        {events.map((e, i) =>
-          <motion.div key={e.title} variants={fadeUp} custom={i}>
-            <Card
-              className="rounded-3xl shadow-[0_10px_40px_-15px_rgba(31,122,99,0.08)] border-primary/5 hover:border-primary/20 hover:shadow-[0_20px_50px_-20px_rgba(31,122,99,0.15)] transition-all duration-500 group cursor-pointer overflow-hidden"
-              onClick={() => navigate('/app/events/1')}>
-
-              <div className="h-44 bg-gradient-to-br from-primary/20 via-primary/5 to-secondary/10 flex items-center justify-center relative">
-                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[length:12px_12px]" />
-                <TreePine className="w-12 h-12 text-primary/40 group-hover:text-primary/60 transition-all duration-500 group-hover:scale-110" />
+      {isLoading ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-3xl border border-primary/5 overflow-hidden animate-pulse">
+              <div className="h-44 bg-slate-100" />
+              <div className="p-5 space-y-3">
+                <div className="h-3 w-16 bg-slate-100 rounded-full" />
+                <div className="h-4 w-full bg-slate-100 rounded-full" />
+                <div className="h-3 w-3/4 bg-slate-100 rounded-full" />
+                <div className="h-3 w-2/3 bg-slate-100 rounded-full" />
               </div>
-              <CardContent className="pt-4">
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 mb-3 border ${categoryColors[e.category]}`}>
-                  {e.category}
-                </Badge>
-                <h3 className="font-heading font-semibold text-sm text-foreground mb-2 line-clamp-2">
-                  {e.title}
-                </h3>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <p className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {e.date}
-                  </p>
-                  <p className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {e.location}
-                  </p>
+            </div>
+          ))}
+        </div>
+      ) : events.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <TreePine className="w-12 h-12 mx-auto mb-4 text-primary/30" />
+          <p className="font-medium">No upcoming events yet. Check back soon!</p>
+        </div>
+      ) : (
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-50px' }} variants={stagger} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+          {events.map((e, i) => (
+            <motion.div key={e.id} variants={fadeUp} custom={i} className="h-full">
+              <Card
+                className="rounded-3xl shadow-[0_10px_40px_-15px_rgba(31,122,99,0.08)] border-primary/5 hover:border-primary/20 hover:shadow-[0_20px_50px_-20px_rgba(31,122,99,0.15)] transition-all duration-500 group cursor-pointer overflow-hidden flex flex-col h-full"
+                onClick={() => navigate('/login')}
+              >
+                {/* Fixed-height image area */}
+                <div className="h-44 flex-shrink-0 bg-gradient-to-br from-primary/20 via-primary/5 to-secondary/10 flex items-center justify-center relative overflow-hidden">
+                  {e.coverImage ? (
+                    <img src={e.coverImage} alt={e.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[length:12px_12px]" />
+                      <span className="text-4xl opacity-40 group-hover:scale-110 transition-transform duration-500">
+                        {categoryIcons[e.category] || '🌍'}
+                      </span>
+                    </>
+                  )}
                 </div>
-                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-4 w-full text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all duration-300 text-xs font-bold border border-emerald-600/10">
 
-                  View Details <ArrowRight className="ml-2 w-3.5 h-3.5" />
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </motion.div>
-    </section>);
+                {/* Content pinned with flex-col so button stays at bottom */}
+                <CardContent className="pt-4 flex flex-col flex-1 justify-between">
+                  <div>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 mb-3 border ${categoryColors[e.category] || 'bg-primary/10 text-primary border-primary/20'}`}
+                    >
+                      {e.category}
+                    </Badge>
+                    {/* Title always 2 lines tall */}
+                    <h3 className="font-heading font-semibold text-sm text-foreground mb-2 line-clamp-2 min-h-[2.5rem]">{e.title}</h3>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <p className="flex items-center gap-1.5 truncate">
+                        <Calendar className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{e.date}</span>
+                      </p>
+                      <p className="flex items-center gap-1.5 truncate">
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{e.location}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(ev) => { ev.stopPropagation(); navigate('/login'); }}
+                    className="mt-4 w-full text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all duration-300 text-xs font-bold border border-emerald-600/10"
+                  >
+                    View Details <ArrowRight className="ml-2 w-3.5 h-3.5" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+    </section>
+  );
 
 }
 function MapPreviewSection() {
+  const navigate = useNavigate();
   const { token } = useMapboxToken();
   const sectionRef = useRef<HTMLDivElement>(null);
   const [hasEnteredView, setHasEnteredView] = useState(false);
+  const [pins, setPins] = useState<Array<{
+    id: string; title: string; date: string; location: string;
+    category: string; participants: number; lat: number; lng: number; coverImage?: string;
+  }>>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [hoveredPin, setHoveredPin] = useState<string | null>(null);
+
+  const categoryColors: Record<string, string> = {
+    cleanup: '#ef4444', planting: '#10b981', workshop: '#f59e0b',
+    seminar: '#3b82f6', research: '#8b5cf6', other: '#64748b',
+  };
+  const categoryIcons: Record<string, string> = {
+    cleanup: '🧹', planting: '🌱', workshop: '🎓',
+    seminar: '🏛️', research: '🧬', other: '📍',
+  };
+  const categoryBadge: Record<string, string> = {
+    cleanup: 'bg-red-50 text-red-600 border-red-100',
+    planting: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    workshop: 'bg-amber-50 text-amber-600 border-amber-100',
+    seminar: 'bg-blue-50 text-blue-600 border-blue-100',
+    research: 'bg-purple-50 text-purple-600 border-purple-100',
+  };
 
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setHasEnteredView(true);
-        observer.disconnect();
-      }
-    }, {
-      threshold: 0.1
-    });
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
+      if (entry.isIntersecting) { setHasEnteredView(true); observer.disconnect(); }
+    }, { threshold: 0.1 });
+    if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!hasEnteredView) return;
+    import('@/lib/firebase').then(({ db }) => {
+      import('firebase/firestore').then(({ collection, query, where, onSnapshot }) => {
+        import('date-fns').then(({ format }) => {
+          const q = query(
+            collection(db, 'events'),
+            where('visibility', '==', 'public'),
+            where('status', '==', 'published')
+          );
+          const unsub = onSnapshot(q, (snap) => {
+            setPins(snap.docs.map(doc => {
+              const d = doc.data();
+              let formattedDate = 'TBD';
+              try { if (d.date) formattedDate = format(new Date(d.date), 'MMM d, yyyy'); } catch (_) { /* noop */ }
+              return {
+                id: doc.id, title: d.title || 'Untitled',
+                date: formattedDate, location: d.locationName || 'Unknown',
+                category: (d.category || 'other').toLowerCase(),
+                participants: d.participantsCount || 0,
+                lat: d.coordinates?.lat || 0, lng: d.coordinates?.lng || 0,
+                coverImage: d.coverImageUrl || d.coverImage || null,
+              };
+            }).filter(p => p.lat !== 0 && p.lng !== 0));
+          });
+          return unsub;
+        });
+      });
+    });
+  }, [hasEnteredView]);
+
+  const selectedPin = pins.find(p => p.id === selected);
 
   return (
     <section id="map" className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/50" ref={sectionRef}>
       <div className="max-w-7xl mx-auto">
-        <motion.div initial="hidden" whileInView="visible" viewport={{
-        once: true
-      }} variants={stagger} className="text-center mb-12">
-
-          <motion.p variants={fadeUp} custom={0} className="text-sm font-medium text-primary mb-2">
-
-            Map View
-          </motion.p>
-          <motion.h2 variants={fadeUp} custom={1} className="font-heading font-semibold text-3xl sm:text-4xl text-foreground">
-
-            Find Events Near You
-          </motion.h2>
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="text-center mb-12">
+          <motion.p variants={fadeUp} custom={0} className="text-sm font-medium text-primary mb-2">Map View</motion.p>
+          <motion.h2 variants={fadeUp} custom={1} className="font-heading font-semibold text-3xl sm:text-4xl text-foreground">Find Events Near You</motion.h2>
+          <motion.p variants={fadeUp} custom={2} className="mt-3 text-muted-foreground text-sm">Click any marker to see event details.</motion.p>
         </motion.div>
-        <motion.div initial={{
-        opacity: 0,
-        y: 20
-      }} whileInView={{
-        opacity: 1,
-        y: 0
-      }} viewport={{
-        once: true
-      }} transition={{
-        duration: 0.6
-      }}>
 
-          <div className="relative rounded-[2.5rem] overflow-hidden border border-emerald-600/10 shadow-[0_32px_64px_-16px_rgba(16,185,129,0.12)] h-[550px] group transition-all duration-700 hover:shadow-[0_40px_80px_-20px_rgba(16,185,129,0.18)]">
-            {/* Pure transparency for maximum clarity requested */}
-            <div className="absolute inset-0 z-10 pointer-events-none" />
-            
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+          <div className="relative rounded-[2.5rem] overflow-hidden border border-emerald-600/10 shadow-[0_32px_64px_-16px_rgba(16,185,129,0.12)] h-[550px] transition-all duration-700 hover:shadow-[0_40px_80px_-20px_rgba(16,185,129,0.18)]">
             {hasEnteredView && token ? (
               <Map
-                initialViewState={{
-                  latitude: 6.9150,
-                  longitude: 122.0650,
-                  zoom: 13.8,
-                  pitch: 0, // Flat vertical view
-                  bearing: 0
-                }}
-                style={{ 
-                  width: '100%', 
-                  height: '100%',
-                  filter: 'contrast(1.1) saturate(1.2) brightness(1.02)' 
-                }}
+                initialViewState={{ latitude: 6.9150, longitude: 122.0650, zoom: 12.8, pitch: 0, bearing: 0 }}
+                style={{ width: '100%', height: '100%', filter: 'contrast(1.1) saturate(1.2) brightness(1.02)' }}
                 mapStyle="mapbox://styles/mapbox/standard"
                 mapboxAccessToken={token}
                 attributionControl={false}
                 scrollZoom={true}
                 dragPan={true}
+                onClick={() => setSelected(null)}
               >
-                <div className="absolute top-4 left-4 z-40">
-                  <NavigationControl showCompass={false} />
+                <NavigationControl position="top-left" showCompass={false} />
+
+                {/* City label */}
+                <div className="absolute top-4 right-4 z-40 bg-white/90 backdrop-blur rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm pointer-events-none">
+                  Zamboanga City, Philippines
                 </div>
 
-                {/* Pulsing Activity Points */}
-                {[
-                  { lat: 6.9447, lng: 122.0033 },
-                  { lat: 6.9211, lng: 121.9687 },
-                  { lat: 6.9335, lng: 122.0421 },
-                ].map((pos, i) => (
-                  <Marker key={i} latitude={pos.lat} longitude={pos.lng}>
-                    <div className="relative flex items-center justify-center">
-                      <div className="absolute w-8 h-8 bg-emerald-500/40 rounded-full animate-ping" />
-                      <div className="relative w-3 h-3 bg-emerald-400 rounded-full border-2 border-white shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
-                    </div>
-                  </Marker>
-                ))}
+                {/* Event Markers */}
+                {pins.map(pin => {
+                  const hexColor = categoryColors[pin.category] || '#10b981';
+                  const isActive = selected === pin.id || hoveredPin === pin.id;
+                  return (
+                    <Marker
+                      key={pin.id}
+                      latitude={pin.lat}
+                      longitude={pin.lng}
+                      style={{ zIndex: isActive ? 50 : 30 }}
+                      onClick={(e) => { e.originalEvent.stopPropagation(); setSelected(pin.id); }}
+                    >
+                      <div
+                        className="relative flex flex-col items-center cursor-pointer group"
+                        onMouseEnter={() => setHoveredPin(pin.id)}
+                        onMouseLeave={() => setHoveredPin(null)}
+                      >
+                        {isActive && (
+                          <div className="absolute -top-1 w-8 h-8 rounded-full animate-ping" style={{ backgroundColor: `${hexColor}40` }} />
+                        )}
+                        <div
+                          className={`flex items-center justify-center rounded-2xl border-2 border-white shadow-xl transition-all duration-300 ${isActive ? 'w-10 h-10 -translate-y-2' : 'w-8 h-8 group-hover:w-9 group-hover:h-9 group-hover:-translate-y-1'}`}
+                          style={{ backgroundColor: hexColor }}
+                        >
+                          <span className="text-lg">{categoryIcons[pin.category] || '📍'}</span>
+                        </div>
+                        <div
+                          className={`w-3 h-3 rotate-45 -mt-1.5 border-r border-b border-white transition-all ${isActive ? 'opacity-100' : 'opacity-0'}`}
+                          style={{ backgroundColor: hexColor }}
+                        />
+                      </div>
+                    </Marker>
+                  );
+                })}
 
-                {/* Aesthetic Gradient "Shadow" for Depth */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-transparent pointer-events-none z-10" />
+                {/* Popup */}
+                {selectedPin && (
+                  <Popup
+                    latitude={selectedPin.lat}
+                    longitude={selectedPin.lng}
+                    onClose={() => setSelected(null)}
+                    closeButton={false}
+                    closeOnClick={false}
+                    anchor="bottom"
+                    offset={25}
+                    className="premium-mapbox-popup z-[60]"
+                  >
+                    <div className="p-0 overflow-hidden border-0 shadow-2xl bg-white/95 backdrop-blur-md rounded-2xl w-[260px] animate-in fade-in zoom-in-95 duration-200">
+                      <div className="relative h-28 overflow-hidden">
+                        <div className="absolute top-2 left-2 z-10">
+                          <Badge className={`backdrop-blur-md border font-bold text-[10px] uppercase tracking-wider ${categoryBadge[selectedPin.category] || 'bg-slate-900/50 text-white border-0'}`}>
+                            {selectedPin.category}
+                          </Badge>
+                        </div>
+                        {selectedPin.coverImage ? (
+                          <img src={selectedPin.coverImage} alt={selectedPin.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <>
+                            <div className="absolute inset-0 opacity-30" style={{ backgroundColor: categoryColors[selectedPin.category] || '#10b981' }} />
+                            <div className="absolute inset-0 flex items-center justify-center text-4xl opacity-40">
+                              {categoryIcons[selectedPin.category] || '🌍'}
+                            </div>
+                          </>
+                        )}
+                        <button
+                          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/50 flex items-center justify-center z-10"
+                          onClick={(e) => { e.stopPropagation(); setSelected(null); }}
+                        >
+                          <span className="text-xs font-bold leading-none">✕</span>
+                        </button>
+                      </div>
+
+                      <div className="p-4">
+                        <h3 className="font-bold text-sm text-slate-900 leading-tight mb-3 line-clamp-2">{selectedPin.title}</h3>
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center gap-2.5 text-xs font-semibold text-slate-600">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                              <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                            </div>
+                            <span>{selectedPin.date}</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-xs font-semibold text-slate-600">
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                              <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                            </div>
+                            <span className="truncate flex-1">{selectedPin.location}</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-xs font-semibold text-slate-600">
+                            <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                              <Users className="w-3.5 h-3.5 text-amber-600" />
+                            </div>
+                            <span>{selectedPin.participants} Volunteers joined</span>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => navigate('/login')}
+                          className="w-full bg-slate-900 hover:bg-black text-white font-bold text-xs h-9 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                        >
+                          Login to View Details <ArrowRight className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Popup>
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/10 via-transparent to-transparent pointer-events-none z-10" />
               </Map>
             ) : (
               <div className="flex flex-col items-center justify-center h-full bg-emerald-50/50">
                 <div className="w-10 h-10 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin" />
-                <p className="mt-4 text-xs font-bold text-emerald-800 tracking-widest uppercase">Initializing Canvas</p>
+                <p className="mt-4 text-xs font-bold text-emerald-800 tracking-widest uppercase">Initializing Map</p>
               </div>
             )}
-
             <div className="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.03)] pointer-events-none z-20" />
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background/40 to-transparent pointer-events-none z-20" />
+            <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background/30 to-transparent pointer-events-none z-20" />
+          </div>
+
+          {/* CTA below map */}
+          <div className="text-center mt-6">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/app/map')}
+              className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-8 font-bold text-sm h-11"
+            >
+              Open Full Map View <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
           </div>
         </motion.div>
       </div>
-    </section>);
+    </section>
+  );
 
 }
 function CTASection() {
