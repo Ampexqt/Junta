@@ -22,9 +22,19 @@ import { CreateEventModal } from '../../features/events/components/CreateEventMo
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '@/lib/api';
 
+interface EventItem {
+  id: string;
+  name?: string;
+  title?: string;
+  date: string;
+  location: string;
+  participantsCount?: number;
+  status: string;
+}
+
 export function OrganizerMyEventsPage() {
   const navigate = useNavigate();
-  const [approvedEvents, setApprovedEvents] = useState<any[]>([]);
+  const [approvedEvents, setApprovedEvents] = useState<EventItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -40,7 +50,7 @@ export function OrganizerMyEventsPage() {
         
         const data = await response.json();
         // Only show approved/published events here
-        const approved = data.filter((e: any) => e.status === 'published');
+        const approved = data.filter((e: EventItem) => e.status === 'published');
         setApprovedEvents(approved);
       } catch (error) {
         console.error('Error fetching my events:', error);

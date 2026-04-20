@@ -472,7 +472,7 @@ const categoryEmoji: Record<string, string> = {
         </div>
         <div className="grid gap-1.5">
           <Label className="text-[12px] font-bold text-slate-700 ml-1">Visibility <span className="text-rose-500">*</span></Label>
-          <Select onValueChange={(v) => updateFormData('visibility', v)} value={formData.visibility}>
+          <Select onValueChange={(v) => updateFormData('visibility', v as EventFormData['visibility'])} value={formData.visibility}>
             <SelectTrigger className="h-10 rounded-xl bg-slate-50/50">
               <SelectValue placeholder="Choose visibility" />
             </SelectTrigger>

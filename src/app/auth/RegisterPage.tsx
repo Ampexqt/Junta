@@ -39,9 +39,7 @@ import {
   X,
   Check,
   Image as ImageIcon,
-  ChevronDown,
-  Search,
-  GalleryVerticalEnd
+  ChevronDown
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -192,7 +190,7 @@ export function RegisterPage() {
     return formatted;
   };
 
-  const inputClass = "h-10 rounded-[12px] border-slate-200 bg-slate-50/30 text-[14px] focus-visible:ring-2 focus-visible:ring-primary/10 focus-visible:border-primary transition-all placeholder:text-slate-400";
+
 
   const handleStep2Continue = async () => {
     const { firstName, lastName, email, password, phone, barangay, orgName } = formData;
@@ -433,15 +431,6 @@ export function RegisterPage() {
     return () => stopCamera();
   }, [kycMode, idPreview, selfiePreview, startCamera, stopCamera]);
 
-  const [isScanning, setIsScanning] = useState(false);
-
-  useEffect(() => {
-    if (kycMode === 'selfie' && !selfiePreview && videoRef.current) {
-      setIsScanning(true);
-    } else {
-      setIsScanning(false);
-    }
-  }, [kycMode, selfiePreview]);
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2 relative overflow-hidden bg-white">

@@ -4,14 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Mail, Lock, Eye, EyeOff, Loader2, GalleryVerticalEnd } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { AuthNavigation } from '@/components/auth/AuthNavigation';
 import { sileo } from 'sileo';
 import { API_BASE_URL } from '@/lib/api';
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldSeparator,

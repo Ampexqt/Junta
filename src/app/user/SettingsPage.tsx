@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -19,9 +19,7 @@ import {
   Upload,
   CheckCircle,
   Shield,
-  Bell,
-  Newspaper,
-  Megaphone,
+
   Lock,
   UserPlus,
   Trash2,
@@ -48,8 +46,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/features/auth/AuthContext';
-import { auth, db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { auth } from '@/lib/firebase';
 import { sendPasswordResetEmail, deleteUser } from 'firebase/auth';
 import { uploadImage } from '@/lib/cloudinary';
 import { API_BASE_URL } from '@/lib/api';
@@ -67,7 +64,7 @@ export function SettingsPage() {
   const [firstName, setFirstName] = useState(profile?.firstName || '');
   const [lastName, setLastName] = useState(profile?.lastName || '');
   const [phone, setPhone] = useState(profile?.phone || '');
-  const [suffix, setSuffix] = useState(profile?.suffix || 'none');
+  const [suffix, setSuffix] = useState((profile as { suffix?: string })?.suffix || 'none');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingId, setIsUploadingId] = useState(false);
@@ -85,19 +82,14 @@ export function SettingsPage() {
       setFirstName(profile.firstName || '');
       setLastName(profile.lastName || '');
       setPhone(profile.phone || '');
-      setSuffix(profile.suffix || 'none');
+      setSuffix((profile as { suffix?: string })?.suffix || 'none');
       setPendingPhotoURL(profile.photoURL || null);
       setPendingValidIdUrl(profile.validIdUrl || null);
       setPendingSelfieUrl(profile.selfieUrl || null);
     }
   }, [profile]);
 
-  const [prefs, setPrefs] = useState({
-    eventReminders: true,
-    systemUpdates: true,
-    newsletter: false,
-    organizerNotifs: true
-  });
+
 
   const handleSave = async () => {
     if (!uid) {
@@ -107,7 +99,7 @@ export function SettingsPage() {
     setIsSaving(true);
     try {
       const token = localStorage.getItem('token');
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         firstName,
         lastName,
         phone,
@@ -263,8 +255,8 @@ export function SettingsPage() {
       sileo.success({ title: 'Account Deleted', description: 'Your account has been permanently deleted.' });
       await logout();
       navigate('/login');
-    } catch (error: any) {
-      if (error.code === 'auth/requires-recent-login') {
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'auth/requires-recent-login') {
         sileo.error({ 
           title: 'Recent Login Required', 
           description: 'For security reasons, please log out and log back in before deleting your account.' 

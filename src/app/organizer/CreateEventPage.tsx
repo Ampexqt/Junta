@@ -274,7 +274,7 @@ const { token } = useMapboxToken();
           </div>
           <div className="grid gap-2">
             <Label className="text-[13px] font-semibold text-slate-700">Visibility <span className="text-rose-500">*</span></Label>
-            <Select onValueChange={(v) => updateFormData('visibility', v)} value={formData.visibility}>
+            <Select onValueChange={(v) => updateFormData('visibility', v as EventFormData['visibility'])} value={formData.visibility}>
               <SelectTrigger className="h-11 rounded-xl">
                 <SelectValue placeholder="Choose visibility" />
               </SelectTrigger>
