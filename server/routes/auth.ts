@@ -149,21 +149,37 @@ router.post('/register', async (req, res) => {
     }
 
     try {
-        // 1. Create User in Firebase Authentication
-        const userRecord = await auth.createUser({
-            email,
-            password,
-            displayName: `${firstName} ${lastName}`,
-            phoneNumber: (phone && phone.startsWith('+')) ? phone.replace(/\s/g, '') : undefined, // Firebase requires E.164 format
-        });
+        let userRecord;
+        let isExistingAuthUser = false;
+
+        // Check if user already exists in Firebase Auth
+        try {
+            userRecord = await auth.getUserByEmail(email);
+            isExistingAuthUser = true;
+            console.log(`User ${email} already exists in Auth. Checking for profile...`);
+        } catch (e) {
+            // User does not exist, safe to create
+            console.log(`Creating new Auth record for ${email}`);
+        }
+
+        if (!isExistingAuthUser) {
+            // 1. Create User in Firebase Authentication (for manual registrations)
+            userRecord = await auth.createUser({
+                email,
+                password,
+                displayName: `${firstName} ${lastName}`,
+                phoneNumber: (phone && phone.startsWith('+')) ? phone.replace(/\s/g, '') : undefined,
+            });
+        }
 
         // 1.5 Hash password before storing in DB (for custom login logic)
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
         // 2. Store Profile details in Firestore
-        await db.collection('users').doc(userRecord.uid).set({
-            uid: userRecord.uid,
+        // Note: For Google users, userRecord.uid will be their existing Google UID
+        await db.collection('users').doc(userRecord!.uid).set({
+            uid: userRecord!.uid,
             email,
             password: hashedPassword, // Storing hashed password for custom login
             firstName,
@@ -181,12 +197,12 @@ router.post('/register', async (req, res) => {
         });
 
 
-        console.log(`Successfully registered new user: ${email} (${userRecord.uid})`);
+        console.log(`Successfully registered/synced profile for: ${email} (${userRecord!.uid})`);
 
         // Generate JWT for auto-login after registration
         const token = jwt.sign(
             { 
-                uid: userRecord.uid, 
+                uid: userRecord!.uid, 
                 email: email, 
                 role: role || 'participant',
                 name: `${firstName} ${lastName}${suffix ? ' ' + suffix : ''}`
@@ -197,10 +213,10 @@ router.post('/register', async (req, res) => {
 
         res.status(201).json({ 
             success: true, 
-            message: 'User registered successfully',
+            message: isExistingAuthUser ? 'Profile created successfully' : 'User registered successfully',
             token,
             user: {
-                uid: userRecord.uid,
+                uid: userRecord!.uid,
                 email,
                 displayName: `${firstName} ${lastName}${suffix ? ' ' + suffix : ''}`,
                 role: role || 'participant'
