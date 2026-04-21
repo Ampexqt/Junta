@@ -41,7 +41,7 @@ router.post('/send-otp', async (req, res) => {
         console.log('------------------------------------------');
 
         // Attempt to send email via Resend (plain HTML — no template required)
-        let sendError = null;
+        let sendError: any = null;
         try {
             const { error } = await resend.emails.send({
                 from: 'Junta <onboarding@resend.dev>',

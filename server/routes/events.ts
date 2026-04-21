@@ -95,7 +95,7 @@ router.get('/my-participations', authenticateUser, async (req, res) => {
             return res.json([]);
         }
 
-        const participations = [];
+        const participations: any[] = [];
         for (const doc of participationsSnapshot.docs) {
             const data = doc.data();
             const eventDoc = await db.collection('events').doc(data.eventId).get();
