@@ -12,7 +12,7 @@ export const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) 
 
   // If No UID and No Token (Double check for hydration/cache)
   if (!uid && !token) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // If specific roles are required
