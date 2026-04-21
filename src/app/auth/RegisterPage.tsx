@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sileo } from 'sileo';
 import { Button } from '@/components/ui/button';
@@ -70,21 +70,49 @@ import loginImg from '@/assets/Junta-Login-Register.png';
 export function RegisterPage() {
   const navigate = useNavigate();
   const { setRole, setUserName, setUid } = useAuth();
+  const location = useLocation();
+  const googleData = location.state as { email?: string; uid?: string; displayName?: string } | null;
+
   const [step, setStep] = useState(1);
   const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole>('participant');
+
+  // Logic to parse Google Name
+  const getInitialNames = () => {
+    if (!googleData?.displayName) return { first: '', last: '' };
+    const parts = googleData.displayName.trim().split(' ');
+    if (parts.length === 1) return { first: parts[0], last: '' };
+    const last = parts.pop() || '';
+    const first = parts.join(' ');
+    return { first, last };
+  };
+
+  const initialNames = getInitialNames();
+
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    firstName: initialNames.first,
+    lastName: initialNames.last,
     suffix: '',
     phone: '+63',
-    email: '',
-    password: '',
+    email: googleData?.email || '',
+    password: googleData?.uid ? `google_${googleData.uid}` : '', // Random internal pass for Google users
     orgName: '',
     barangay: ''
   });
+
+  useEffect(() => {
+    // If coming from Google, stay on Step 1 so they can pick their role,
+    // but show a friendly message.
+    if (googleData?.email) {
+      sileo.info({
+        title: 'Google Connected',
+        description: 'Please choose your role to continue.',
+        duration: 3000
+      });
+    }
+  }, [googleData]);
   const [idUploaded, setIdUploaded] = useState(false);
   const [selfieUploaded, setSelfieUploaded] = useState(false);
   const [kycMode, setKycMode] = useState<'none' | 'id' | 'selfie'>('none');
@@ -195,56 +223,46 @@ export function RegisterPage() {
   const handleStep2Continue = async () => {
     const { firstName, lastName, email, password, phone, barangay, orgName } = formData;
 
-    // ... existing validation ...
+    // Strict Validation for fields with *
     if (!firstName.trim() || !lastName.trim()) {
-      sileo.error({ 
-        title: 'Name Required', 
-        description: 'Please enter your first and last name.',
-        duration: 1500 
-      });
+      sileo.error({ title: 'Name Required', description: 'Please enter your first and last name.' });
       return;
     }
+    
     if (!barangay) {
-      sileo.error({ 
-        title: 'Barangay Required', 
-        description: 'Please select your barangay.',
-        duration: 1500 
-      });
+      sileo.error({ title: 'Location Required', description: 'Please select your barangay.' });
       return;
     }
-    const phoneDigits = phone.slice(4).replace(/\s/g, '');
-    if (phoneDigits.length > 0 && phoneDigits[0] !== '9') {
-      sileo.error({ 
-        title: 'Invalid Phone Format', 
-        description: 'Your phone number must start with 9 (e.g., +63 9XX XXX XXXX).',
-        duration: 2000
-      });
 
-      return;
-    }
+    const phoneDigits = phone.slice(4).replace(/\s/g, '');
     if (phoneDigits.length < 10) {
-      sileo.error({ 
-        title: 'Incomplete Phone', 
-        description: 'Please enter a complete 10-digit mobile number.' 
-      });
+      sileo.error({ title: 'Phone Required', description: 'Please enter a complete 10-digit mobile number.' });
       return;
     }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim() || !emailRegex.test(email)) {
-      sileo.error({ 
-        title: 'Invalid Email', 
-        description: 'Please enter a valid email address.',
-        duration: 1500 
-      });
+      sileo.error({ title: 'Email Required', description: 'Please enter a valid email address.' });
       return;
     }
-    const isPassValid = password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
-    if (!isPassValid) {
-      sileo.error({ title: 'Weak Password', description: 'Password must meet all security requirements.' });
-      return;
+
+    // Password validation (skipped for Google users as it's pre-filled)
+    if (!googleData?.uid) {
+      const isPassValid = password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
+      if (!isPassValid) {
+        sileo.error({ title: 'Secure Password Required', description: 'Password must meet all security requirements.' });
+        return;
+      }
     }
+
     if (selectedRole === 'organizer' && !orgName.trim()) {
-      sileo.error({ title: 'Organization Required', description: 'Please enter your organization name.' });
+      sileo.error({ title: 'Organization Required', description: 'Organizers must provide their organization name.' });
+      return;
+    }
+
+    // If Google user, go to Step 3 but skip sending an actual OTP
+    if (googleData?.uid) {
+      setStep(3);
       return;
     }
 
@@ -681,34 +699,37 @@ export function RegisterPage() {
                               type="email"
                               placeholder="name@example.com"
                               value={formData.email}
+                              disabled={!!googleData?.email}
                               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                              className="pl-10 h-10 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 transition-all"
+                              className="pl-10 h-10 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 transition-all disabled:opacity-70"
                             />
                           </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label className="text-[12px] font-bold text-slate-700 ml-1">Password <span className="text-red-500">*</span></Label>
-                          <div className="relative group">
-                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
-                            <Input
-                              type={showPassword ? 'text' : 'password'}
-                              placeholder="••••••••"
-                              value={formData.password}
-                              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                              className="pl-10 pr-10 h-10 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 transition-all"
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              type="button"
-                              onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-transparent transition-colors"
-                            >
-                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </Button>
+                        {!googleData?.uid && (
+                          <div className="space-y-2">
+                            <Label className="text-[12px] font-bold text-slate-700 ml-1">Password <span className="text-red-500">*</span></Label>
+                            <div className="relative group">
+                              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
+                              <Input
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                className="pl-10 pr-10 h-10 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 transition-all"
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-transparent transition-colors"
+                              >
+                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </Button>
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {selectedRole === 'organizer' && (
                           <motion.div
@@ -732,26 +753,28 @@ export function RegisterPage() {
                           </motion.div>
                         )}
 
-                        <div className="bg-slate-50 border border-slate-100 rounded-xl py-2 px-4 flex items-center gap-3">
-                          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-emerald-700 shrink-0">
-                            <Info className="w-3.5 h-3.5" />
-                            Guide
+                        {!googleData?.uid && (
+                          <div className="bg-slate-50 border border-slate-100 rounded-xl py-2 px-4 flex items-center gap-3">
+                            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-emerald-700 shrink-0">
+                              <Info className="w-3.5 h-3.5" />
+                              Guide
+                            </div>
+                            <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide">
+                              {[
+                                { label: '8+ chars', met: formData.password.length >= 8 },
+                                { label: 'Uppercase', met: /[A-Z]/.test(formData.password) },
+                                { label: 'Number', met: /[0-9]/.test(formData.password) },
+                              ].map((req, i) => (
+                                <div key={i} className="flex items-center gap-1.5 whitespace-nowrap">
+                                  <div className={`w-1.5 h-1.5 rounded-full transition-colors ${req.met ? 'bg-emerald-600' : 'bg-slate-200'}`} />
+                                  <span className={`text-[10px] font-bold uppercase tracking-tight transition-colors ${req.met ? 'text-emerald-700' : 'text-slate-400'}`}>
+                                    {req.label}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide">
-                            {[
-                              { label: '8+ chars', met: formData.password.length >= 8 },
-                              { label: 'Uppercase', met: /[A-Z]/.test(formData.password) },
-                              { label: 'Number', met: /[0-9]/.test(formData.password) },
-                            ].map((req, i) => (
-                              <div key={i} className="flex items-center gap-1.5 whitespace-nowrap">
-                                <div className={`w-1.5 h-1.5 rounded-full transition-colors ${req.met ? 'bg-emerald-600' : 'bg-slate-200'}`} />
-                                <span className={`text-[10px] font-bold uppercase tracking-tight transition-colors ${req.met ? 'text-emerald-700' : 'text-slate-400'}`}>
-                                  {req.label}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        )}
 
                         <div className="flex gap-3 pt-2">
                           <Button
@@ -794,71 +817,99 @@ export function RegisterPage() {
                       >
                         <div className="flex justify-center">
                           <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center shadow-inner">
-                            <Mail className="w-7 h-7 text-emerald-600" />
+                            {googleData?.uid ? (
+                              <CheckCircle className="w-8 h-8 text-emerald-600" />
+                            ) : (
+                              <Mail className="w-7 h-7 text-emerald-600" />
+                            )}
                           </div>
                         </div>
-                        <div className="text-center space-y-1">
-                          <p className="text-sm font-medium text-slate-500">
-                            We sent a 6-digit code to
-                          </p>
-                          <p className="text-sm font-bold text-slate-900 underline decoration-emerald-200">
-                            {formData.email || 'your email'}
-                          </p>
-                        </div>
-                        <div className="flex justify-center py-2">
-                          <InputOTP maxLength={6} value={otp} onChange={setOtp}>
-                            <InputOTPGroup className="gap-2">
-                              <InputOTPSlot index={0} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
-                              <InputOTPSlot index={1} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
-                              <InputOTPSlot index={2} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
-                            </InputOTPGroup>
-                            <InputOTPSeparator />
-                            <InputOTPGroup className="gap-2">
-                              <InputOTPSlot index={3} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
-                              <InputOTPSlot index={4} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
-                              <InputOTPSlot index={5} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
-                            </InputOTPGroup>
-                          </InputOTP>
-                        </div>
-                        <p className="text-center text-xs font-medium text-slate-400">
-                          Didn't receive the code?{' '}
-                          <Button 
-                            variant="link"
-                            className={cn(
-                              "h-auto p-0 text-emerald-600 font-bold hover:no-underline",
-                              isSendingOTP && "opacity-50 cursor-not-allowed"
-                            )}
-                            onClick={handleResendOTP}
-                            disabled={isSendingOTP}
-                          >
-                            {isSendingOTP ? 'Sending...' : 'Resend Code'}
-                          </Button>
-                        </p>
-                        <div className="flex gap-3">
-                          <Button
-                            variant="outline"
-                            className="flex-1 h-11 rounded-xl border-slate-200 text-sm font-bold shadow-sm"
-                            onClick={() => setStep(2)}
-                          >
-                            <ArrowLeft className="mr-2 w-4 h-4" /> Back
-                          </Button>
-                          <Button
-                            className="flex-1 bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white h-11 rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]"
-                            onClick={handleVerifyOTP}
-                            disabled={isVerifyingOTP}
-                          >
-                            {isVerifyingOTP ? (
-                              <>
-                                <RefreshCw className="mr-2 w-4 h-4 animate-spin" />
-                                Verifying...
-                              </>
-                            ) : (
-                              <>
-                                Verify <ArrowRight className="ml-2 w-4 h-4" />
-                              </>
-                            )}
-                          </Button>
-                        </div>
+
+                        {googleData?.uid ? (
+                          <div className="text-center space-y-4">
+                            <div className="space-y-1">
+                              <h3 className="text-lg font-bold text-slate-900">Identity Verified</h3>
+                              <p className="text-sm font-medium text-slate-500">
+                                Your email <span className="font-bold text-slate-900">{formData.email}</span> is verified via Google.
+                              </p>
+                            </div>
+                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 text-[11px] text-emerald-700 font-medium">
+                              You have successfully linked your Google identity. No further email verification code is required.
+                            </div>
+                            <Button
+                              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12 rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]"
+                              onClick={() => setStep(4)}
+                            >
+                              Continue to Final Step
+                              <ArrowRight className="ml-2 w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="text-center space-y-1">
+                              <p className="text-sm font-medium text-slate-500">
+                                We sent a 6-digit code to
+                              </p>
+                              <p className="text-sm font-bold text-slate-900 underline decoration-emerald-200">
+                                {formData.email || 'your email'}
+                              </p>
+                            </div>
+                            <div className="flex justify-center py-2">
+                              <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                                <InputOTPGroup className="gap-2">
+                                  <InputOTPSlot index={0} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
+                                  <InputOTPSlot index={1} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
+                                  <InputOTPSlot index={2} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
+                                </InputOTPGroup>
+                                <InputOTPSeparator />
+                                <InputOTPGroup className="gap-2">
+                                  <InputOTPSlot index={3} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
+                                  <InputOTPSlot index={4} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
+                                  <InputOTPSlot index={5} className="h-12 w-10 rounded-xl border-slate-200 bg-slate-50/50 text-lg font-bold" />
+                                </InputOTPGroup>
+                              </InputOTP>
+                            </div>
+                            <p className="text-center text-xs font-medium text-slate-400">
+                              Didn't receive the code?{' '}
+                              <Button 
+                                variant="link"
+                                className={cn(
+                                  "h-auto p-0 text-emerald-600 font-bold hover:no-underline",
+                                  isSendingOTP && "opacity-50 cursor-not-allowed"
+                                )}
+                                onClick={handleResendOTP}
+                                disabled={isSendingOTP}
+                              >
+                                {isSendingOTP ? 'Sending...' : 'Resend Code'}
+                              </Button>
+                            </p>
+                            <div className="flex gap-3">
+                              <Button
+                                variant="outline"
+                                className="flex-1 h-11 rounded-xl border-slate-200 text-sm font-bold shadow-sm"
+                                onClick={() => setStep(2)}
+                              >
+                                <ArrowLeft className="mr-2 w-4 h-4" /> Back
+                              </Button>
+                              <Button
+                                className="flex-1 bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white h-11 rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]"
+                                onClick={handleVerifyOTP}
+                                disabled={isVerifyingOTP}
+                              >
+                                {isVerifyingOTP ? (
+                                  <>
+                                    <RefreshCw className="mr-2 w-4 h-4 animate-spin" />
+                                    Verifying...
+                                  </>
+                                ) : (
+                                  <>
+                                    Verify <ArrowRight className="ml-2 w-4 h-4" />
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </motion.div>
                     )}
 
