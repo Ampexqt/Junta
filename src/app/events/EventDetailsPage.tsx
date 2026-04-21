@@ -55,10 +55,21 @@ export function EventDetailsPage() {
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/events/${id}`);
+        const token = localStorage.getItem('token');
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/events/${id}`, {
+          headers
+        });
         if (response.ok) {
           const data = await response.json();
           setEvent(data);
+        } else if (response.status === 403 || response.status === 401) {
+          // If forbidden, they might not be the owner
+          setEvent(null);
         }
       } catch (e: unknown) {
         console.error('Error fetching event details:', e);
