@@ -1,0 +1,29 @@
+services:
+  # Backend Service
+  - type: web
+    name: junta-api
+    env: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: FIREBASE_PROJECT_ID
+        fromConfigVar: FIREBASE_PROJECT_ID
+      - key: FIREBASE_PRIVATE_KEY
+        fromConfigVar: FIREBASE_PRIVATE_KEY
+      - key: FIREBASE_CLIENT_EMAIL
+        fromConfigVar: FIREBASE_CLIENT_EMAIL
+      - key: CLOUDINARY_CLOUD_NAME
+        fromConfigVar: CLOUDINARY_CLOUD_NAME
+      - key: CLOUDINARY_API_KEY
+        fromConfigVar: CLOUDINARY_API_KEY
+      - key: CLOUDINARY_API_SECRET
+        fromConfigVar: CLOUDINARY_API_SECRET
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://junta-app.web.app # Update this with your final firebase URL
