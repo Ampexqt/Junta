@@ -12,18 +12,18 @@ services:
       - key: NODE_ENV
         value: production
       - key: FIREBASE_PROJECT_ID
-        fromConfigVar: FIREBASE_PROJECT_ID
+        sync: false
       - key: FIREBASE_PRIVATE_KEY
-        fromConfigVar: FIREBASE_PRIVATE_KEY
+        sync: false
       - key: FIREBASE_CLIENT_EMAIL
-        fromConfigVar: FIREBASE_CLIENT_EMAIL
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
-        fromConfigVar: CLOUDINARY_CLOUD_NAME
+        sync: false
       - key: CLOUDINARY_API_KEY
-        fromConfigVar: CLOUDINARY_API_KEY
+        sync: false
       - key: CLOUDINARY_API_SECRET
-        fromConfigVar: CLOUDINARY_API_SECRET
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        value: https://junta-app.web.app # Update this with your final firebase URL
+        value: https://junta-app.web.app
