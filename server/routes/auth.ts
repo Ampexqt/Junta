@@ -39,12 +39,14 @@ router.post('/send-otp', async (req, res) => {
         console.log('------------------------------------------');
         console.log(`[AUTH] Verification Code for ${email}: ${otp}`);
         console.log('------------------------------------------');
-
-        // Attempt to send email via Resend (plain HTML — no template required)
+        // 3. Attempt to send email via Resend
         let sendError: any = null;
         try {
+            const isProd = process.env.NODE_ENV === 'production';
+            const fromEmail = process.env.RESEND_FROM_EMAIL || 'Junta <onboarding@resend.dev>';
+            
             const { error } = await resend.emails.send({
-                from: 'Junta <onboarding@resend.dev>',
+                from: fromEmail,
                 to: email,
                 subject: `Your Junta Verification Code: ${otp}`,
                 html: `
@@ -62,18 +64,25 @@ router.post('/send-otp', async (req, res) => {
         } catch (e) {
             sendError = e;
         }
-
+ 
         if (sendError) {
-            // Resend free tier only allows sending to the account owner's email.
-            // If blocked, we still succeed — the OTP is in Firestore and the terminal.
-            const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
-            console.warn(`[AUTH] Resend failed for ${email}:`, errorMessage);
-            console.warn('[AUTH] OTP is still valid — user can enter the code shown in the server terminal.');
-            // Return success so the frontend can proceed to the OTP step
-            return res.json({
-                message: 'OTP generated. Check your email or the server terminal for the code.',
-                devMode: true,
-            });
+             const isProd = process.env.NODE_ENV === 'production';
+             const errorMessage = sendError instanceof Error ? sendError.message : JSON.stringify(sendError);
+             console.warn(`[AUTH] Email delivery failed for ${email}:`, errorMessage);
+
+             // IMPORTANT: In production, we fail strictly. In dev, we allow bypass.
+             if (isProd) {
+                 return res.status(500).json({ 
+                     error: 'Email delivery failed. Please check your domain configuration.',
+                     details: errorMessage
+                 });
+             } else {
+                 console.log('[AUTH] [DEV MODE] Email failed but allowing bypass. Code is logged above.');
+                 return res.json({
+                     message: 'OTP generated. [DEV MODE] Check terminal for code.',
+                     devMode: true
+                 });
+             }
         }
 
         res.json({ message: 'OTP sent successfully!' });
