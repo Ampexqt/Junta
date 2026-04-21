@@ -61,7 +61,11 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
         const profileRef = doc(db, 'users', uid);
         const unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
             if (docSnap.exists()) {
-                const profileData = docSnap.data() as UserProfile;
+                const data = docSnap.data();
+                const profileData = {
+                    ...data,
+                    organizationName: data.organizationName || data.orgName || ''
+                } as UserProfile;
                 const fullName = `${profileData.firstName} ${profileData.lastName}`;
                 
                 setProfile(profileData);
