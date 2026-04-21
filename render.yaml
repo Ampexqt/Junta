@@ -26,4 +26,4 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        value: https://junta-app.web.app
+        value: https://junta-a4eca.web.app
