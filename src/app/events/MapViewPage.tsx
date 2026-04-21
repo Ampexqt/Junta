@@ -18,7 +18,7 @@ import {
 import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
 
@@ -76,9 +76,10 @@ export function MapViewPage() {
 
   useEffect(() => {
     const q = query(
-      collection(db, 'events'),
-      where('visibility', '==', 'public'),
-      where('status', '==', 'published')
+      collection(db, 'events')
+      // Temporarily relaxed for debug:
+      // where('visibility', '==', 'public'),
+      // where('status', '==', 'published')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -97,13 +98,14 @@ export function MapViewPage() {
           title: data.title || 'Untitled',
           date: formattedDate,
           location: data.locationName || 'Unknown Location',
-          category: data.category || 'Other',
+          category: data.category || 'other',
           participants: data.participantsCount || 0,
-          lat: data.coordinates?.lat || 0,
-          lng: data.coordinates?.lng || 0,
+          lat: Number(data.coordinates?.lat) || Number(data.lat) || 0,
+          lng: Number(data.coordinates?.lng) || Number(data.lng) || 0,
           coverImage: data.coverImageUrl || data.coverImage || null,
         };
-      });
+      }).filter(p => p.lat !== 0 && p.lng !== 0);
+
       setPins(fetched);
       setIsLoading(false);
     }, (error) => {
@@ -159,9 +161,9 @@ export function MapViewPage() {
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 lg:h-[calc(100vh-220px)]">
+      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-180px)] lg:h-[calc(100vh-220px)]">
         {/* Sidebar */}
-        <Card className="rounded-2xl shadow-sm border lg:w-[340px] flex-shrink-0 flex flex-col h-[350px] lg:h-full overflow-hidden">
+        <Card className="rounded-2xl shadow-sm border lg:w-[340px] flex-shrink-0 flex flex-col h-[240px] lg:h-full overflow-hidden">
           <div className="p-4 border-b">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -238,7 +240,7 @@ export function MapViewPage() {
         </Card>
 
         {/* Map */}
-        <Card className="rounded-2xl shadow-sm border flex-1 h-[400px] lg:h-full overflow-hidden relative bg-slate-50 flex items-center justify-center">
+        <Card className="rounded-2xl shadow-sm border flex-1 h-full lg:h-full overflow-hidden relative bg-slate-50 flex items-center justify-center">
           <div className="absolute inset-0 shadow-[inset_0_0_80px_rgba(0,0,0,0.03)] pointer-events-none z-20" />
           {token ? (
             <div className="w-full h-full relative" style={{ filter: 'contrast(1.1) saturate(1.2) brightness(1.02)' }}>
@@ -347,23 +349,33 @@ export function MapViewPage() {
                       }}
                     >
                       <div className="relative flex flex-col items-center cursor-pointer group">
-                        {isActive && (
-                          <div className="absolute -top-1 w-8 h-8 rounded-full animate-ping" style={{ backgroundColor: `${hexColor}40` }} />
-                        )}
+                        {/* Sophisticated Glow/Pulse */}
                         <div 
-                          className={`flex items-center justify-center rounded-2xl border-2 border-white shadow-xl transition-all duration-300 ${isActive ? 'w-10 h-10 -translate-y-2' : 'w-8 h-8 group-hover:w-9 group-hover:h-9 group-hover:-translate-y-1'}`}
-                          style={{ 
-                            backgroundColor: hexColor,
-                          }}
-                        >
-                          <span className="text-lg">
-                            {categoryConfig[pin.category.toLowerCase()]?.icon || '📍'}
-                          </span>
-                        </div>
-                        {/* Custom Pointer Tail */}
-                        <div 
-                          className={`w-3 h-3 rotate-45 -mt-1.5 border-r border-b border-white transition-all ${isActive ? 'opacity-100' : 'opacity-0'}`}
+                          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full animate-pulse opacity-20 duration-[2000ms] ${isActive ? 'scale-125' : 'scale-0'}`} 
                           style={{ backgroundColor: hexColor }}
+                        />
+                        
+                        {/* Noticeable Minimalist Target */}
+                        <div className="relative flex items-center justify-center">
+                           <div 
+                             className={`absolute rounded-full border transition-all duration-500 ${isActive ? 'w-10 h-10 border-white/50 bg-white/10' : 'w-8 h-8 border-transparent'}`} 
+                             style={{ borderColor: isActive ? undefined : `${hexColor}30` }}
+                           />
+                           
+                           <div 
+                             className={`relative rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] flex items-center justify-center border-2 border-white transition-all duration-300 ${isActive ? 'w-8 h-8 -translate-y-1' : 'w-6 h-6 group-hover:scale-110'}`}
+                           >
+                             <div 
+                               className={`rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)] transition-all ${isActive ? 'w-4 h-4' : 'w-3 h-3'}`}
+                               style={{ backgroundColor: hexColor }} 
+                             />
+                           </div>
+                        </div>
+                        
+                        {/* Subtler Link/Tail */}
+                        <div 
+                          className={`w-[1.5px] h-2 bg-slate-300/50 -mt-0.5 rounded-full transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`}
+                          style={{ backgroundColor: isActive ? hexColor : undefined }}
                         />
                       </div>
                     </Marker>
@@ -464,7 +476,7 @@ export function MapViewPage() {
           )}
 
           {/* City label overlay */}
-          <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm pointer-events-none">
+          <div className="absolute top-3 right-3 z-[1000] bg-white/90 backdrop-blur rounded-lg px-2.5 py-1 text-[10px] font-bold text-muted-foreground shadow-sm pointer-events-none border border-slate-200/50 uppercase tracking-tight">
             Zamboanga City, Philippines
           </div>
         </Card>
