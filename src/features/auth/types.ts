@@ -16,6 +16,8 @@ export type UserProfile = {
     kycStatus?: 'pending' | 'verified' | 'rejected' | 'none';
     validIdUrl?: string;
     selfieUrl?: string;
+    lastOrgNameUpdate?: string;
+    organizationLogo?: string;
 };
 
 export type AuthContextType = {
