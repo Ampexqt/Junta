@@ -25,7 +25,8 @@ router.post('/', authenticateUser, async (req, res) => {
         // Fetch user's organization name to attach to the event
         const userDoc = await db.collection('users').doc(organizerId).get();
         const userData = userDoc.data();
-        const organizationName = userData?.orgName || '';
+        const organizationName = userData?.organizationName || userData?.orgName || '';
+        const organizationLogo = userData?.organizationLogo || userData?.photoURL || '';
 
         // Add metadata
         const newEvent = {
@@ -33,6 +34,7 @@ router.post('/', authenticateUser, async (req, res) => {
             organizerId,
             organizerName: authReq.user?.name || 'Anonymous Organizer', // Store name for easy display
             organizationName,
+            organizationLogo,
             status: 'pending',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -157,7 +159,14 @@ router.get('/:id', async (req, res) => {
         
         // If the event is public and published, anyone can see it
         if (eventData?.visibility === 'public' && eventData?.status === 'published') {
-            return res.json({ id: eventDoc.id, ...eventData });
+            // Enrich with latest organization logo
+            const organizerDoc = await db.collection('users').doc(eventData.organizerId).get();
+            const organizerData = organizerDoc.data();
+            return res.json({ 
+                id: eventDoc.id, 
+                ...eventData, 
+                organizationLogo: organizerData?.organizationLogo || eventData.organizationLogo || organizerData?.photoURL 
+            });
         }
 
         // Otherwise, we need to check who is asking (Authorization Check)
@@ -176,7 +185,14 @@ router.get('/:id', async (req, res) => {
             const isAdmin = decoded.role === 'admin';
 
             if (isOwner || isAdmin) {
-                return res.json({ id: eventDoc.id, ...eventData });
+                // Enrich with latest organization logo
+                const organizerDoc = await db.collection('users').doc(eventData.organizerId).get();
+                const organizerData = organizerDoc.data();
+                return res.json({ 
+                    id: eventDoc.id, 
+                    ...eventData, 
+                    organizationLogo: organizerData?.organizationLogo || eventData.organizationLogo || organizerData?.photoURL 
+                });
             } else {
                 return res.status(403).json({ error: 'You do not have permission to view this event' });
             }
