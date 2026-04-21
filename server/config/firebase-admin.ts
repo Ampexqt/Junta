@@ -13,19 +13,22 @@ const serviceAccountPath = path.join(process.cwd(), 'serviceAccountKey.json');
 if (!admin.apps.length) {
     try {
         let initialized = false;
-        if (fs.existsSync(serviceAccountPath)) {
-            const stat = fs.statSync(serviceAccountPath);
-            if (stat.size > 0) {
-                admin.initializeApp({
-                    credential: admin.credential.cert(serviceAccountPath)
-                });
-                console.log('Firebase Admin initialized with service account file.');
-                initialized = true;
-            } else {
-                console.warn('serviceAccountKey.json is empty. Falling back to default credentials.');
-            }
-        } else {
-            console.warn('serviceAccountKey.json not found. Falling back to default credentials.');
+        if (fs.existsSync(serviceAccountPath) && fs.statSync(serviceAccountPath).size > 0) {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccountPath)
+            });
+            console.log('Firebase Admin initialized with local service account file.');
+            initialized = true;
+        } else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+            admin.initializeApp({
+                credential: admin.credential.cert({
+                    projectId: process.env.FIREBASE_PROJECT_ID,
+                    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+                })
+            });
+            console.log('Firebase Admin initialized with environment variables.');
+            initialized = true;
         }
 
         if (!initialized) {
@@ -36,10 +39,11 @@ if (!admin.apps.length) {
         }
     } catch (error) {
         console.error('Failed to initialize Firebase Admin:', error);
-        // Fallback or exit
-        admin.initializeApp({
-            credential: admin.credential.applicationDefault()
-        });
+        if (!admin.apps.length) {
+            admin.initializeApp({
+                credential: admin.credential.applicationDefault()
+            });
+        }
     }
 }
 
