@@ -17,14 +17,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Camera,
   Upload,
-  CheckCircle,
+
   Shield,
   Lock,
-  UserPlus,
+
   Trash2,
   Mail,
   Loader2,
-  XCircle,
+
   Clock,
   User,
   Fingerprint,
@@ -181,10 +181,10 @@ export function SettingsPage() {
     }
   };
 
-  const handlePhotoDelete = async () => {
-    setPendingPhotoURL('');
-    sileo.success({ title: 'Photo Removed', description: 'Click "Save Changes" to confirm removal.' });
-  };
+
+
+
+
 
   const handleOrgLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
