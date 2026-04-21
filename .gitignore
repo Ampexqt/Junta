@@ -38,6 +38,7 @@ serviceAccountKey.json
 .claude/
 .continue/
 .windsurf/
+skills-lock.json
 
 # Build and Config Negations
 *.json
