@@ -20,6 +20,8 @@ import { EventApprovalsPage } from './app/admin/EventApprovalsPage';
 import { UserVerificationPage } from './app/admin/UserVerificationPage';
 import { OrganizerRequestsPage } from './app/admin/OrganizerRequestsPage';
 import { AdminAllEventsPage } from './app/admin/AdminAllEventsPage';
+import { ProtectedRoute } from './features/auth/ProtectedRoute';
+import { PublicRoute } from './features/auth/PublicRoute';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from 'sileo';
@@ -35,9 +37,15 @@ export function App() {
           }}>
           <Routes>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/app" element={<AppLayout />}>
+            
+            {/* Public-Only Routes (Redirect to dashboard if logged in) */}
+            <Route element={<PublicRoute />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+            </Route>
+            
+            {/* Protected App Routes */}
+            <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="events" element={<EventsPage />} />
               <Route path="events/:id" element={<EventDetailsPage />} />
@@ -46,31 +54,22 @@ export function App() {
               <Route path="participation" element={<MyParticipationPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="settings" element={<SettingsPage />} />
-              {/* Organizer routes */}
-              <Route
-                path="organizer/my-events"
-                element={<OrganizerMyEventsPage />} />
+              
+              {/* Organizer Routes */}
+              <Route element={<ProtectedRoute allowedRoles={['organizer', 'admin']} />}>
+                <Route path="organizer/my-events" element={<OrganizerMyEventsPage />} />
+                <Route path="organizer/submissions" element={<EventSubmissionsPage />} />
+                <Route path="organizer/create-event" element={<CreateEventPage />} />
+              </Route>
 
-              <Route
-                path="organizer/submissions"
-                element={<EventSubmissionsPage />} />
-
-              <Route
-                path="organizer/create-event"
-                element={<CreateEventPage />} />
-
-              <Route path="admin/approvals" element={<EventApprovalsPage />} />
-
-              <Route
-                path="admin/verification"
-                element={<UserVerificationPage />} />
-
-              <Route
-                path="admin/organizer-requests"
-                element={<OrganizerRequestsPage />} />
-
-              <Route path="admin/all-events" element={<AdminAllEventsPage />} />
-              <Route path="admin/users" element={<AdminUsersPage />} />
+              {/* Admin Routes */}
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route path="admin/approvals" element={<EventApprovalsPage />} />
+                <Route path="admin/verification" element={<UserVerificationPage />} />
+                <Route path="admin/organizer-requests" element={<OrganizerRequestsPage />} />
+                <Route path="admin/all-events" element={<AdminAllEventsPage />} />
+                <Route path="admin/users" element={<AdminUsersPage />} />
+              </Route>
             </Route>
           </Routes>
         </BrowserRouter>
