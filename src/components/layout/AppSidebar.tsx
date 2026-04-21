@@ -12,7 +12,7 @@ import {
     Users,
     Leaf,
     User,
-    Settings,
+
     LogOut,
     ChevronsUpDown,
     LucideIcon
@@ -151,8 +151,8 @@ export function AppSidebar() {
     const location = useLocation()
     const navigate  = useNavigate()
     const groups    = navByRole[role]
-    const { state } = useSidebar()
-    const isExpanded = state === "expanded"
+    const { state, isMobile, openMobile, setOpenMobile } = useSidebar()
+    const isExpanded = state === "expanded" || (isMobile && openMobile)
 
     const initials = userName
         .split(" ")
@@ -160,6 +160,11 @@ export function AppSidebar() {
         .join("")
         .slice(0, 2)
         .toUpperCase()
+
+    const handleNav = (path: string) => {
+        navigate(path)
+        if (isMobile) setOpenMobile(false)
+    }
 
     return (
         <Sidebar collapsible="icon" variant="inset" className="border-r-0">
@@ -193,7 +198,7 @@ export function AppSidebar() {
                                     return (
                                         <SidebarMenuItem key={item.path}>
                                             <SidebarMenuButton
-                                                onClick={() => navigate(item.path)}
+                                                onClick={() => handleNav(item.path)}
                                                 isActive={isActive}
                                                 tooltip={item.label}
                                                 size="sm"
@@ -265,14 +270,11 @@ export function AppSidebar() {
                         align="end"
                         sideOffset={6}
                     >
-                        <DropdownMenuItem onClick={() => navigate('/app/settings')} className="rounded-lg">
+                        <DropdownMenuItem onClick={() => handleNav('/app/settings')} className="rounded-lg">
                             <User className="w-4 h-4 mr-2 text-muted-foreground" />
                             Profile
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate('/app/settings')} className="rounded-lg">
-                            <Settings className="w-4 h-4 mr-2 text-muted-foreground" />
-                            Settings
-                        </DropdownMenuItem>
+
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             onClick={() => { handleLogout(); navigate('/login'); }}
