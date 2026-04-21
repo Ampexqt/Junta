@@ -25,7 +25,8 @@ import {
   Trash2,
   Mail,
   Loader2,
-  XCircle
+  XCircle,
+  Clock
 } from 'lucide-react';
 import {
   Select,
@@ -57,6 +58,7 @@ export function SettingsPage() {
   const { user, profile, role, logout, uid } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const orgLogoInputRef = useRef<HTMLInputElement>(null);
   const idInputRef = useRef<HTMLInputElement>(null);
   const selfieInputRef = useRef<HTMLInputElement>(null);
   
@@ -64,15 +66,18 @@ export function SettingsPage() {
   const [firstName, setFirstName] = useState(profile?.firstName || '');
   const [lastName, setLastName] = useState(profile?.lastName || '');
   const [phone, setPhone] = useState(profile?.phone || '');
+  const [organizationName, setOrganizationName] = useState(profile?.organizationName || '');
   const [suffix, setSuffix] = useState((profile as { suffix?: string })?.suffix || 'none');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingOrgLogo, setIsUploadingOrgLogo] = useState(false);
   const [isUploadingId, setIsUploadingId] = useState(false);
   const [isUploadingSelfie, setIsUploadingSelfie] = useState(false);
   const [isSubmittingKYC, setIsSubmittingKYC] = useState(false);
 
   // Staged URLs
   const [pendingPhotoURL, setPendingPhotoURL] = useState<string | null>(profile?.photoURL || null);
+  const [pendingOrgLogoURL, setPendingOrgLogoURL] = useState<string | null>(profile?.organizationLogo || null);
   const [pendingValidIdUrl, setPendingValidIdUrl] = useState<string | null>(profile?.validIdUrl || null);
   const [pendingSelfieUrl, setPendingSelfieUrl] = useState<string | null>(profile?.selfieUrl || null);
 
@@ -82,8 +87,10 @@ export function SettingsPage() {
       setFirstName(profile.firstName || '');
       setLastName(profile.lastName || '');
       setPhone(profile.phone || '');
+      setOrganizationName(profile.organizationName || '');
       setSuffix((profile as { suffix?: string })?.suffix || 'none');
       setPendingPhotoURL(profile.photoURL || null);
+      setPendingOrgLogoURL(profile.organizationLogo || null);
       setPendingValidIdUrl(profile.validIdUrl || null);
       setPendingSelfieUrl(profile.selfieUrl || null);
     }
@@ -103,11 +110,16 @@ export function SettingsPage() {
         firstName,
         lastName,
         phone,
+        organizationName,
         suffix: suffix === 'none' ? '' : suffix
       };
 
       if (pendingPhotoURL !== (profile?.photoURL || null)) {
         updateData.photoURL = pendingPhotoURL;
+      }
+
+      if (pendingOrgLogoURL !== (profile?.organizationLogo || null)) {
+        updateData.organizationLogo = pendingOrgLogoURL;
       }
       
       const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
@@ -163,6 +175,29 @@ export function SettingsPage() {
   const handlePhotoDelete = async () => {
     setPendingPhotoURL('');
     sileo.success({ title: 'Photo Removed', description: 'Click "Save Changes" to confirm removal.' });
+  };
+
+  const handleOrgLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uid) return;
+
+    if (!file.type.startsWith('image/')) {
+      sileo.error({ title: 'Invalid File', description: 'Please upload an image file.' });
+      return;
+    }
+
+    setIsUploadingOrgLogo(true);
+    try {
+      const result = await uploadImage(file);
+      setPendingOrgLogoURL(result.url);
+      sileo.success({ title: 'Logo Uploaded', description: 'Organization logo staged. Save changes to apply.' });
+    } catch (error) {
+      console.error('Upload error:', error);
+      sileo.error({ title: 'Upload Failed', description: 'Could not upload logo.' });
+    } finally {
+      setIsUploadingOrgLogo(false);
+      if (orgLogoInputRef.current) orgLogoInputRef.current.value = '';
+    }
   };
 
   const handleIdUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -277,6 +312,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+      <input type="file" ref={orgLogoInputRef} className="hidden" accept="image/*" onChange={handleOrgLogoUpload} />
       <input type="file" ref={idInputRef} className="hidden" accept="image/*" onChange={handleIdUpload} />
       <input type="file" ref={selfieInputRef} className="hidden" accept="image/*" onChange={handleSelfieUpload} />
 
@@ -300,7 +336,7 @@ export function SettingsPage() {
               Profile Information
             </CardTitle>
             <CardDescription>
-              Update your personal details and profile photo.
+              Update your personal details and {role === 'organizer' ? 'organization logo' : 'profile photo'}.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -435,6 +471,112 @@ export function SettingsPage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Organization Profile (Only for Organizers) */}
+      {role === 'organizer' && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="rounded-2xl shadow-sm border border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="font-heading text-lg flex items-center gap-2">
+                <Shield className="w-5 h-5 text-primary" />
+                Organizer Profile
+              </CardTitle>
+              <CardDescription>
+                This information is displayed publicly on your events.
+              </CardDescription>
+            </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center gap-6 pb-2">
+              <div className="relative group/logo">
+                <Avatar className="w-16 h-16 rounded-xl border-2 border-slate-100 transition-all group-hover/logo:border-primary/20">
+                  <AvatarImage src={pendingOrgLogoURL || profile?.organizationLogo} className="object-cover" />
+                  <AvatarFallback className="bg-primary/5 text-primary text-lg font-bold rounded-xl">
+                    {organizationName?.substring(0, 2).toUpperCase() || 'OG'}
+                  </AvatarFallback>
+                </Avatar>
+                <Button
+                  size="icon"
+                  type="button"
+                  onClick={() => orgLogoInputRef.current?.click()}
+                  className="absolute -bottom-2 -right-2 w-7 h-7 bg-white rounded-lg border border-slate-100 shadow-sm text-primary hover:bg-slate-50 flex items-center justify-center"
+                >
+                  {isUploadingOrgLogo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                </Button>
+              </div>
+              <div className="flex-1 space-y-1">
+                <h4 className="text-[13px] font-bold text-foreground">Organization Logo / Profile Picture</h4>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Recommended: Square JPG or PNG, max 2MB. This represents your group on event pages.
+                </p>
+              </div>
+            </div>
+
+            <Separator className="opacity-40" />
+
+            <div className="space-y-2">
+              <Label htmlFor="settings-orgname">Organizer / Organization Name</Label>
+                <div className="relative">
+                  <Input
+                    id="settings-orgname"
+                    value={organizationName}
+                    onChange={(e) => setOrganizationName(e.target.value)} 
+                    placeholder="e.g. Green Earth Foundation"
+                    className="bg-white"
+                  />
+                </div>
+                <div className="flex flex-col gap-1 px-1">
+                  <p className="text-[10px] text-muted-foreground italic">
+                    This name will appear as the "Organizer" on all your published events.
+                  </p>
+                  {(() => {
+                    const lastUpdate = profile?.lastOrgNameUpdate;
+                    if (!lastUpdate) return null;
+                    const hoursPassed = (Date.now() - new Date(lastUpdate).getTime()) / (1000 * 3600);
+                    if (hoursPassed < 24) {
+                      return (
+                        <p className="text-[10px] text-amber-600 font-bold flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          Cooldown active: {Math.ceil(24 - hoursPassed)} hours remaining.
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  className="bg-white hover:bg-primary/5 border-primary/20 text-primary"
+                  onClick={async () => {
+                    // Pre-check for cooldown to show a friendly error
+                    const lastUpdate = profile?.lastOrgNameUpdate;
+                    const hoursPassed = lastUpdate ? (Date.now() - new Date(lastUpdate).getTime()) / (1000 * 3600) : 25;
+                    
+                    if (organizationName !== profile?.organizationName && hoursPassed < 24) {
+                      sileo.error({ 
+                        title: 'Cooldown Active', 
+                        description: `You can only change your organization name once every 24 hours. Please wait ${Math.ceil(24 - hoursPassed)} more hours.` 
+                      });
+                      return;
+                    }
+                    await handleSave();
+                  }}
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Updating...' : 'Update Organizer Info'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Verification */}
       <motion.div
