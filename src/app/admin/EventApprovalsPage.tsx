@@ -461,7 +461,9 @@ export function EventApprovalsPage() {
                                     selectedEvent.documents.map((doc) => (
                                         <a 
                                             key={doc.id} 
-                                            href={doc.url} 
+                                            href={(/\.(docx|doc|xlsx|xls|pptx|ppt)$/i.test(doc.url) || /\.(docx|doc|xlsx|xls|pptx|ppt)$/i.test(doc.name || ''))
+                                                ? `https://docs.google.com/viewer?url=${encodeURIComponent(doc.url)}&embedded=true`
+                                                : doc.url} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                             className="block p-3 rounded-xl bg-white border border-slate-100 flex items-center justify-between group hover:border-emerald-300 hover:bg-emerald-50/30 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
