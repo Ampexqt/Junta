@@ -1,4 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { Leaf } from 'lucide-react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { NotificationsPopover } from '@/components/layout/NotificationsPopover';
@@ -36,7 +37,18 @@ export function AppLayout() {
         <header className="h-16 bg-white/80 backdrop-blur-md border-b border-border/40 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 shadow-[0_1px_0_0_rgba(0,0,0,0.04)]">
           <div className="flex items-center gap-3">
             <SidebarTrigger className="hover:text-primary transition-colors h-9 w-9" />
-            <div className="w-[1px] h-5 bg-border/60 mx-0.5 hidden sm:block" />
+            <div className="w-[1px] h-5 bg-border/60 mx-0.5" />
+            
+            {/* Mobile Logo Branding */}
+            <div className="flex items-center gap-2 sm:hidden">
+              <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                <Leaf className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-['Lora'] font-bold text-[16px] text-foreground tracking-tight">
+                Junta
+              </span>
+            </div>
+
             <div className="hidden sm:flex flex-col">
               <span className="text-[11px] font-semibold text-muted-foreground/50 tracking-[0.12em] uppercase leading-none">
                 Workspace
