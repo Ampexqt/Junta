@@ -18,6 +18,14 @@ import {
 import loginImg from '@/assets/Junta-Login-Register.png';
 
 
+import { 
+  GoogleAuthProvider, 
+  signInWithPopup,
+  signOut
+} from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
 export function LoginPage() {
   const navigate = useNavigate();
   const { setRole, setUserName, setUid } = useAuth();
@@ -26,9 +34,10 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showNewUserAlert, setShowNewUserAlert] = useState<{show: boolean, email: string, uid: string, displayName: string} | null>(null);
 
   useEffect(() => {
-    // Auto-login if token already exists
+    // Auto-login check
     const token = localStorage.getItem('token');
     const userRole = localStorage.getItem('user_role');
     if (token && userRole) {
@@ -46,6 +55,63 @@ export function LoginPage() {
       setRememberMe(true);
     }
   }, [navigate]);
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    const provider = new GoogleAuthProvider();
+    
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // 1. Check if user exists in Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const fullName = `${userData.firstName} ${userData.lastName}`;
+        
+        // Success! Set up session
+        localStorage.setItem('junta_user_uid', user.uid);
+        localStorage.setItem('junta_user_name', fullName);
+        localStorage.setItem('junta_user_role', userData.role);
+        localStorage.setItem('junta_user_profile', JSON.stringify(userData));
+        
+        setRole(userData.role);
+        setUserName(fullName);
+        setUid(user.uid);
+
+        sileo.success({
+          title: 'Welcome Back',
+          description: `Good to see you, ${userData.firstName}!`,
+          duration: 2000
+        });
+
+        setTimeout(() => navigate('/app/dashboard'), 800);
+      } else {
+        // User is new! Show the alert
+        setIsLoading(false);
+        setShowNewUserAlert({ 
+          show: true, 
+          email: user.email || '', 
+          uid: user.uid,
+          displayName: user.displayName || ''
+        });
+        
+        // We log them out of Firebase Auth for now so they don't count as "logged in" 
+        // without a profile
+        await signOut(auth);
+      }
+    } catch (error) {
+      setIsLoading(false);
+      console.error('Google Auth Error:', error);
+      sileo.error({
+        title: 'Authentication Failed',
+        description: 'Could not connect to Google. Please try again.',
+        duration: 3000
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +165,7 @@ export function LoginPage() {
 
       sileo.success({
         title: 'Welcome Back',
-        description: `Good to see you, ${data.user.displayName.split(' ').slice(0, 2).join(' ')}!`,
+        description: `Good to see you, ${data.user.displayName?.split(' ')[0] || data.user.firstName}!`,
         duration: 2000
       });
 
@@ -199,6 +265,49 @@ export function LoginPage() {
             >
               <h3 className="text-slate-900 font-bold text-lg tracking-tight">Authenticating</h3>
               <p className="text-slate-500 text-sm font-medium mt-1">Preparing your dashboard...</p>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showNewUserAlert?.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-3xl p-8 max-w-[400px] w-full shadow-2xl text-center"
+            >
+              <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <span className="text-3xl">👋</span>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">No Account Found</h3>
+              <p className="text-slate-500 text-sm leading-relaxed mb-8">
+                We've connected your Google account, but you don't have a **Junta** profile yet. Would you like to create one now?
+              </p>
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={() => navigate('/register', { 
+                    state: { 
+                      email: showNewUserAlert.email, 
+                      uid: showNewUserAlert.uid,
+                      displayName: showNewUserAlert.displayName
+                    } 
+                  })}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl"
+                >
+                  Yes, Create Profile
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowNewUserAlert(null)}
+                  className="text-slate-400 font-bold hover:text-slate-600"
+                >
+                  Maybe Later
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -310,10 +419,7 @@ export function LoginPage() {
                     type="button"
                     disabled={isLoading}
                     className="h-11 rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-sm font-bold text-slate-700 gap-3 shadow-sm transition-all active:scale-[0.98]"
-                    onClick={() => {
-                      setIsLoading(true);
-                      setTimeout(() => navigate('/app/dashboard'), 800);
-                    }}
+                    onClick={handleGoogleLogin}
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
