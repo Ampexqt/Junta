@@ -174,6 +174,7 @@ router.post('/register', async (req, res) => {
             role: role || 'participant',
             barangay: barangay || '',
             orgName: orgName || '',
+            organizationName: orgName || '',
             kycVerified: false,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -402,6 +403,33 @@ router.put('/update-profile', authenticateUser, async (req: AuthRequest, res: Re
 
     try {
         const updateData = req.body;
+        const userRef = db.collection('users').doc(uid);
+
+        // Rate limit organization name changes (every 24 hours)
+        if (updateData.organizationName) {
+            const userDoc = await userRef.get();
+            const userData = userDoc.data();
+            
+            // If the name is actually being changed
+            if (userData?.organizationName !== updateData.organizationName) {
+                const lastUpdate = userData?.lastOrgNameUpdate;
+                if (lastUpdate) {
+                    const lastDate = new Date(lastUpdate);
+                    const diffMs = Date.now() - lastDate.getTime();
+                    const hoursPassed = diffMs / (1000 * 60 * 60);
+                    
+                    if (hoursPassed < 24) {
+                        const remaining = Math.ceil(24 - hoursPassed);
+                        return res.status(429).json({ 
+                            error: `Organization name can only be changed every 24 hours. Please wait ${remaining} hour(s).` 
+                        });
+                    }
+                }
+                // Record the timestamp of this change
+                updateData.lastOrgNameUpdate = new Date().toISOString();
+            }
+        }
+
         // Don't allow updating critical fields via this generic endpoint
         delete updateData.uid;
         delete updateData.email;
@@ -410,7 +438,6 @@ router.put('/update-profile', authenticateUser, async (req: AuthRequest, res: Re
 
         updateData.updatedAt = new Date().toISOString();
 
-        const userRef = db.collection('users').doc(uid);
         await userRef.update(updateData);
 
         res.json({ success: true, message: 'Profile updated successfully' });
