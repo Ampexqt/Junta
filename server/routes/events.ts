@@ -156,9 +156,12 @@ router.get('/:id', async (req, res) => {
         }
 
         const eventData = eventDoc.data();
+        if (!eventData) {
+            return res.status(404).json({ error: 'Event data is missing' });
+        }
         
         // If the event is public and published, anyone can see it
-        if (eventData?.visibility === 'public' && eventData?.status === 'published') {
+        if (eventData.visibility === 'public' && eventData.status === 'published') {
             // Enrich with latest organization logo
             const organizerDoc = await db.collection('users').doc(eventData.organizerId).get();
             const organizerData = organizerDoc.data();
@@ -181,7 +184,7 @@ router.get('/:id', async (req, res) => {
         
         try {
             const decoded = jwt.verify(token, JWT_SECRET) as any;
-            const isOwner = eventData?.organizerId === decoded.uid;
+            const isOwner = eventData.organizerId === decoded.uid;
             const isAdmin = decoded.role === 'admin';
 
             if (isOwner || isAdmin) {
