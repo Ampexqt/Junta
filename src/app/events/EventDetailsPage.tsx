@@ -6,7 +6,7 @@ import Map, { Marker } from 'react-map-gl/mapbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import {
   ArrowLeft,
@@ -42,6 +42,7 @@ interface EventData {
   timeline: { id: string; time: string; activity: string }[];
   requirements: string[];
   documents?: { id: string; name: string; url: string }[];
+  organizationLogo?: string;
 }
 
 export function EventDetailsPage() {
@@ -384,7 +385,7 @@ export function EventDetailsPage() {
             <CardContent>
               <div className="flex items-center gap-3">
                 <Avatar className="w-12 h-12 border-2 border-slate-100 shadow-sm">
-                  <AvatarImage src={event.organizerLogo || event.organizationLogo} className="object-cover" />
+                  <AvatarImage src={event.organizationLogo} className="object-cover" />
                   <AvatarFallback className="bg-emerald-50 text-emerald-700 font-black">
                     {event.organizationName?.substring(0, 2).toUpperCase() || 'OG'}
                   </AvatarFallback>
