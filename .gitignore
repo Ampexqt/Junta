@@ -23,9 +23,26 @@ dist-ssr
 *.sln
 *.sw?
 
+# Local environment files
 .env
+.env.local
+.env.*.local
+server/.env
+
+# Sensitive credentials
 serviceAccountKey.json
+**/serviceAccountKey.json
+
+# Skills and Agents
+.agents/
+.claude/
+.continue/
+.windsurf/
+
+# Build and Config Negations
 *.json
 !package.json
+!package-lock.json
 !tsconfig.json
 !firebase.json
+!components.json
