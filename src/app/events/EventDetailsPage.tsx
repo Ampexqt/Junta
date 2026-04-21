@@ -237,8 +237,19 @@ export function EventDetailsPage() {
                   className="mt-3 hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-all duration-200"
                   disabled={!event.documents?.length}
                   onClick={() => {
-                    const url = event.documents?.[0]?.url;
-                    if (url) window.open(url, '_blank');
+                    const doc = event.documents?.[0];
+                    if (doc?.url) {
+                      const url = doc.url;
+                      const name = doc.name || '';
+                      // Use Google Docs / Office viewer for Office files to force preview in tab instead of download
+                      const isOfficeDoc = /\.(docx|doc|xlsx|xls|pptx|ppt)$/i.test(url) || /\.(docx|doc|xlsx|xls|pptx|ppt)$/i.test(name);
+                      
+                      if (isOfficeDoc) {
+                        window.open(`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`, '_blank');
+                      } else {
+                        window.open(url, '_blank');
+                      }
+                    }
                   }}
                 >
                   View Docs/PDF
@@ -372,9 +383,10 @@ export function EventDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-3">
-                <Avatar className="w-12 h-12">
+                <Avatar className="w-12 h-12 border-2 border-slate-100 shadow-sm">
+                  <AvatarImage src={event.organizerLogo || event.organizationLogo} className="object-cover" />
                   <AvatarFallback className="bg-emerald-50 text-emerald-700 font-black">
-                    {event.organizationName?.substring(0, 2).toUpperCase() || 'ORG'}
+                    {event.organizationName?.substring(0, 2).toUpperCase() || 'OG'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
