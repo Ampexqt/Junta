@@ -40,7 +40,7 @@ router.post('/send-otp', async (req, res) => {
         console.log(`[AUTH] Verification Code for ${email}: ${otp}`);
         console.log('------------------------------------------');
         // 3. Attempt to send email via Resend
-        let sendError: any = null;
+        let sendError: unknown = null;
         const isProd = process.env.NODE_ENV === 'production';
         const customFrom = process.env.RESEND_FROM_EMAIL;
         const fromEmail = customFrom || 'Junta <onboarding@resend.dev>';
@@ -188,10 +188,14 @@ router.post('/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
+        if (!userRecord) {
+            return res.status(500).json({ error: 'Failed to create or retrieve user record' });
+        }
+
         // 2. Store Profile details in Firestore
         // Note: For Google users, userRecord.uid will be their existing Google UID
-        await db.collection('users').doc(userRecord!.uid).set({
-            uid: userRecord!.uid,
+        await db.collection('users').doc(userRecord.uid).set({
+            uid: userRecord.uid,
             email,
             password: hashedPassword, // Storing hashed password for custom login
             firstName,
@@ -209,12 +213,12 @@ router.post('/register', async (req, res) => {
         });
 
 
-        console.log(`Successfully registered/synced profile for: ${email} (${userRecord!.uid})`);
+        console.log(`Successfully registered/synced profile for: ${email} (${userRecord.uid})`);
 
         // Generate JWT for auto-login after registration
         const token = jwt.sign(
             { 
-                uid: userRecord!.uid, 
+                uid: userRecord.uid, 
                 email: email, 
                 role: role || 'participant',
                 name: `${firstName} ${lastName}${suffix ? ' ' + suffix : ''}`
@@ -228,7 +232,7 @@ router.post('/register', async (req, res) => {
             message: isExistingAuthUser ? 'Profile created successfully' : 'User registered successfully',
             token,
             user: {
-                uid: userRecord!.uid,
+                uid: userRecord.uid,
                 email,
                 displayName: `${firstName} ${lastName}${suffix ? ' ' + suffix : ''}`,
                 role: role || 'participant'

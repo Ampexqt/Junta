@@ -115,7 +115,7 @@ export default {
 					'sans-serif'
 				],
 				mono: [
-					'Geist Mono"',
+					'Geist Mono',
 					'monospace'
 				]
 			}
