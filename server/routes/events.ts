@@ -95,7 +95,16 @@ router.get('/my-participations', authenticateUser, async (req, res) => {
             return res.json([]);
         }
 
-        const participations: any[] = [];
+        const participations: Array<{
+            id: string;
+            eventId: string;
+            title: string;
+            date: string;
+            location: string;
+            status: string;
+            progress: number;
+            joinedAt: string;
+        }> = [];
         for (const doc of participationsSnapshot.docs) {
             const data = doc.data();
             const eventDoc = await db.collection('events').doc(data.eventId).get();
@@ -183,7 +192,13 @@ router.get('/:id', async (req, res) => {
         const JWT_SECRET = process.env.JWT_SECRET || 'junta_fallback_secret';
         
         try {
-            const decoded = jwt.verify(token, JWT_SECRET) as any;
+            interface DecodedToken {
+                uid: string;
+                role: string;
+                email: string;
+                name: string;
+            }
+            const decoded = jwt.verify(token, JWT_SECRET) as unknown as DecodedToken;
             const isOwner = eventData.organizerId === decoded.uid;
             const isAdmin = decoded.role === 'admin';
 

@@ -267,4 +267,169 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
+}
+
+/* ============================================================
+   DAYFLOW CALENDAR — JUNTA THEME OVERRIDES
+   Full-page layout matching calendar.dayflow.studio demo
+   ============================================================ */
+
+/* ── Base container ── */
+.df-calendar-container {
+  border-radius: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Full-screen wrapper — fills viewport below the page header */
+.junta-calendar-wrap .df-calendar-container {
+  height: calc(100vh - 220px) !important;
+  min-height: 580px !important;
+}
+
+@media (max-width: 768px) {
+  .junta-calendar-wrap .df-calendar-container {
+    height: calc(100vh - 200px) !important;
+    min-height: 480px !important;
+  }
+}
+
+/* ── Toolbar / Header ── */
+.df-calendar-header,
+.df-calendar-toolbar {
+  background: #ffffff !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  font-family: 'Geist Variable', sans-serif !important;
+}
+
+.df-calendar-nav-button,
+.df-calendar-view-button {
+  border-radius: 0.5rem !important;
+  font-family: 'Sora', sans-serif !important;
+  font-weight: 500 !important;
+  transition: background 0.15s, color 0.15s !important;
+}
+
+.df-calendar-nav-button:hover,
+.df-calendar-view-button:hover {
+  background: hsl(var(--primary) / 0.08) !important;
+  color: hsl(var(--primary)) !important;
+}
+
+.df-calendar-view-button.active,
+.df-calendar-view-button[aria-selected="true"],
+.df-calendar-view-button.df-active {
+  background: hsl(var(--primary)) !important;
+  color: #ffffff !important;
+  border-radius: 0.5rem !important;
+}
+
+.df-calendar-title {
+  font-family: 'Geist Variable', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 1.05rem !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* ── Calendar body ── */
+.df-calendar-body,
+.df-calendar-week-grid,
+.df-calendar-month-grid {
+  background: #f8faf9 !important;
+  font-family: 'Sora', sans-serif !important;
+}
+
+.df-calendar-day-header,
+.df-calendar-day-name {
+  color: hsl(var(--text-secondary)) !important;
+  font-weight: 600 !important;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+/* Today */
+.df-calendar-day.today .df-calendar-day-number,
+.df-calendar-today .df-calendar-day-number {
+  background: hsl(var(--primary)) !important;
+  color: #ffffff !important;
+  border-radius: 50% !important;
+  font-weight: 700 !important;
+}
+
+/* ── Event pills ── */
+.df-event {
+  border-radius: 0.375rem !important;
+  font-family: 'Sora', sans-serif !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+  transition: transform 0.1s, box-shadow 0.1s !important;
+}
+
+.df-event:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+}
+
+/* Time labels */
+.df-calendar-time-label {
+  color: hsl(var(--text-muted)) !important;
+  font-size: 0.65rem !important;
+  font-weight: 600 !important;
+}
+
+.df-calendar-grid-line {
+  border-color: hsl(var(--border)) !important;
+}
+
+.df-calendar-day.selected {
+  background: hsl(var(--primary) / 0.06) !important;
+}
+
+.df-calendar-day.out-of-month {
+  opacity: 0.4 !important;
+}
+
+/* ── Sidebar plugin ── */
+.df-sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid hsl(var(--border)) !important;
+  font-family: 'Sora', sans-serif !important;
+}
+
+.df-sidebar-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid hsl(var(--border) / 0.6) !important;
+  font-family: 'Geist Variable', sans-serif !important;
+  font-weight: 700 !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.df-sidebar-calendar-item {
+  border-radius: 0.5rem !important;
+  font-size: 0.8rem !important;
+  font-weight: 500 !important;
+  transition: background 0.1s !important;
+}
+
+.df-sidebar-calendar-item:hover {
+  background: hsl(var(--primary) / 0.06) !important;
+}
+
+.df-sidebar-section-title {
+  font-family: 'Geist Variable', sans-serif !important;
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: hsl(var(--text-muted)) !important;
+}
+
+/* Year-view heatmap — brand green palette */
+.df-year-grid-month {
+  --heat-1: hsl(165 54% 92%);
+  --heat-2: hsl(165 54% 80%);
+  --heat-3: hsl(165 54% 65%);
+  --heat-4: hsl(165 54% 50%);
+  --heat-5: hsl(165 54% 41%);
+}

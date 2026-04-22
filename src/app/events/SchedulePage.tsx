@@ -1,222 +1,137 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import {
+  useCalendarApp,
+  DayFlowCalendar,
+  createDayView,
+  createWeekView,
+  createMonthView,
+  createYearView,
+  createEventsPlugin,
+  ViewType,
+} from '@dayflow/react';
+import { createSidebarPlugin } from '@dayflow/plugin-sidebar';
+
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarDays, Clock, MapPin } from 'lucide-react';
-const scheduleEvents: Record<
-  string,
-  Array<{
-    title: string;
-    time: string;
-    location: string;
-    category: string;
-    color: string;
-  }>> =
-{
-  '2025-01-15': [
-  {
-    title: 'Sta. Cruz Beach Cleanup',
-    time: '6:00 AM – 12:00 PM',
-    location: 'Great Sta. Cruz Island',
-    category: 'Cleanup',
-    color: 'bg-blue-500'
-  }],
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
-  '2025-01-22': [
-  {
-    title: 'Mangrove Planting Initiative',
-    time: '7:00 AM – 11:00 AM',
-    location: 'Sinunuc Mangrove Area',
-    category: 'Planting',
-    color: 'bg-green-500'
-  }],
+import { useAuth } from '@/features/auth/AuthContext';
+import {
+  useScheduleEvents,
+  CALENDAR_DEFINITIONS,
+} from '@/hooks/useScheduleEvents';
+import { useDayflowStyles } from '@/hooks/useDayflowStyles';
 
-  '2025-02-03': [
-  {
-    title: 'Marine Biodiversity Workshop',
-    time: '9:00 AM – 4:00 PM',
-    location: 'Zamboanga City Hall',
-    category: 'Workshop',
-    color: 'bg-purple-500'
-  },
-  {
-    title: 'Eco Film Screening',
-    time: '6:00 PM – 8:00 PM',
-    location: 'City Library',
-    category: 'Awareness',
-    color: 'bg-amber-500'
-  }],
+// ─── Role subtitle config ────────────────────────────────────────────────────
 
-  '2025-02-10': [
-  {
-    title: 'Paseo del Mar Awareness Walk',
-    time: '5:30 AM – 8:00 AM',
-    location: 'Paseo del Mar',
-    category: 'Awareness',
-    color: 'bg-amber-500'
-  }],
-
-  '2025-02-18': [
-  {
-    title: 'Pasonanca Reforestation',
-    time: '6:00 AM – 12:00 PM',
-    location: 'Pasonanca Natural Park',
-    category: 'Planting',
-    color: 'bg-green-500'
-  }]
-
+const ROLE_SUBTITLE: Record<string, string> = {
+  admin:       'Viewing all system events across all organizers.',
+  organizer:   'Viewing your own events and their schedules.',
+  participant: 'Viewing approved public environmental events.',
 };
-export function SchedulePage() {
-  const navigate = useNavigate();
-  const [date, setDate] = useState<Date | undefined>(new Date(2025, 0, 15));
-  const dateKey = date ?
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` :
-  '';
-  const dayEvents = dateKey ? scheduleEvents[dateKey] || [] : [];
-  const eventDates = Object.keys(scheduleEvents).map((d) => new Date(d));
+
+// ─── Loading skeleton ────────────────────────────────────────────────────────
+
+function ScheduleSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Skeleton className="h-7 w-36" />
+        <Skeleton className="h-4 w-64" />
+      </div>
+      <Skeleton className="w-full rounded-2xl" style={{ height: '680px' }} />
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+
+export function SchedulePage() {
+  useDayflowStyles(); // Injects DayFlow CSS via <link> tags (bypasses PostCSS)
+  const navigate = useNavigate();
+  const { role } = useAuth();
+  const { calendarEvents, isLoading, error, refresh } = useScheduleEvents();
+
+  const subtitle = ROLE_SUBTITLE[role] ?? ROLE_SUBTITLE.participant;
+
+  // ── Sidebar plugin ──
+  const sidebarPlugin = useMemo(
+    () =>
+      createSidebarPlugin({
+        width: 260,
+        initialCollapsed: false,
+        createCalendarMode: 'modal',
+      }),
+    []
+  );
+
+  // ── Dayflow calendar instance ──
+  const calendar = useCalendarApp({
+    views: [
+      createDayView({ timeFormat: '12h', scrollToCurrentTime: true }),
+      createWeekView({ timeFormat: '12h', scrollToCurrentTime: true }),
+      createMonthView({ scroll: { disabled: true, transition: 'fade' } }),
+      createYearView({ mode: 'grid', showTimedEventsInYearView: true }),
+    ],
+    defaultView: ViewType.MONTH,
+    plugins: [createEventsPlugin(), sidebarPlugin],
+    events: calendarEvents,
+    calendars: CALENDAR_DEFINITIONS,
+    initialDate: new Date(),
+    callbacks: {
+      onEventClick: (event) => {
+        const firestoreId = (event as { meta?: { firestoreId?: string } }).meta?.firestoreId;
+        if (firestoreId) navigate(`/app/events/${firestoreId}`);
+      },
+    },
+  });
+
+  // ─── Loading ────────────────────────────────────────────────────────────
+  if (isLoading) return <ScheduleSkeleton />;
+
+  // ─── Error ──────────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="space-y-6">
         <div>
-          <h1 className="font-heading font-semibold text-2xl text-foreground">
-            Schedule
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            View your event calendar and upcoming activities.
-          </p>
+          <h1 className="font-heading font-semibold text-2xl text-foreground">Schedule</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{subtitle}</p>
         </div>
-        <Badge
-          variant="outline"
-          className="bg-green-50 text-green-700 border-0 gap-1.5">
-          
-          <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />{' '}
-          Synced
-        </Badge>
+        <Alert variant="destructive" className="rounded-2xl">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Failed to load schedule</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={refresh} className="ml-4 gap-1.5">
+              <RefreshCw className="w-3.5 h-3.5" /> Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // ─── Main ───────────────────────────────────────────────────────────────
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col gap-4"
+    >
+      {/* ── Page header ── */}
+      <div>
+        <h1 className="font-heading font-semibold text-2xl text-foreground">Schedule</h1>
+        <p className="text-muted-foreground mt-0.5 text-sm">{subtitle}</p>
       </div>
 
-      <div className="grid lg:grid-cols-[auto_1fr] gap-6">
-        <Card className="rounded-2xl shadow-sm border">
-          <CardHeader className="pb-2">
-            <CardTitle className="font-heading text-base flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-primary" />
-              Calendar
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              modifiers={{
-                event: eventDates
-              }}
-              modifiersClassNames={{
-                event: 'bg-primary/10 text-primary font-semibold'
-              }}
-              className="rounded-xl" />
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl shadow-sm border">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="font-heading text-lg flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-primary" />
-                {date ?
-                date.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric'
-                }) :
-                'Select a date'}
-              </CardTitle>
-              <Badge variant="outline" className="text-xs">
-                {dayEvents.length} event{dayEvents.length !== 1 ? 's' : ''}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {dayEvents.length > 0 ?
-            <motion.div
-              initial={{
-                opacity: 0
-              }}
-              animate={{
-                opacity: 1
-              }}
-              className="space-y-3">
-              
-                {dayEvents.map((e, i) =>
-              <motion.div
-                key={i}
-                initial={{
-                  opacity: 0,
-                  x: -10
-                }}
-                animate={{
-                  opacity: 1,
-                  x: 0
-                }}
-                transition={{
-                  delay: i * 0.1
-                }}
-                className="flex items-start gap-3 p-4 rounded-xl border hover:bg-muted/50 transition-colors cursor-pointer"
-                onClick={() => navigate('/app/events/1')}>
-                
-                    <div
-                  className={`w-1 h-full min-h-[60px] rounded-full ${e.color}`} />
-                
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-heading font-semibold text-sm text-foreground">
-                          {e.title}
-                        </h3>
-                        <Badge variant="outline" className="text-[10px]">
-                          {e.category}
-                        </Badge>
-                      </div>
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <p className="flex items-center gap-1.5">
-                          <Clock className="w-3 h-3" />
-                          {e.time}
-                        </p>
-                        <p className="flex items-center gap-1.5">
-                          <MapPin className="w-3 h-3" />
-                          {e.location}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs flex-shrink-0 hover:bg-primary hover:text-white hover:border-primary transition-colors">
-                      View
-                    </Button>
-                  </motion.div>
-              )}
-              </motion.div> :
-
-            <div className="text-center py-12">
-                <CalendarDays className="w-12 h-12 text-muted-foreground/20 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">
-                  No events scheduled for this date.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4 text-primary border-primary/20 hover:bg-primary/10 hover:border-primary/30 transition-all font-medium"
-                  onClick={() => navigate('/app/events')}>
-                  Browse Events
-                </Button>
-              </div>
-            }
-          </CardContent>
-        </Card>
+      {/* ── Full-width DayFlow calendar (sidebar built-in) ── */}
+      <div className="rounded-2xl overflow-hidden border border-border/60 shadow-sm bg-white junta-calendar-wrap">
+        <DayFlowCalendar calendar={calendar} />
       </div>
-    </div>);
-
+    </motion.div>
+  );
 }

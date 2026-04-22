@@ -84,6 +84,7 @@ interface EventFormData {
   coverImage: string | null;
   coordinates: { lat: number; lng: number } | null;
   aboutEvent: string;
+  customCategory?: string;
 }
 
 interface CreateEventModalProps {
@@ -112,7 +113,8 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
     documents: [],
     coverImage: null,
     coordinates: null,
-    aboutEvent: ''
+    aboutEvent: '',
+    customCategory: ''
   });
 
 
@@ -406,7 +408,12 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          category: formData.category === 'other' && formData.customCategory 
+            ? formData.customCategory 
+            : formData.category
+        })
       });
 
       const data = await response.json();
@@ -445,23 +452,40 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
           placeholder="e.g., Zamboanga Beach Cleanup 2025" 
           value={formData.title}
           onChange={(e) => updateFormData('title', e.target.value)}
+          maxLength={80}
           className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:ring-primary/20"
         />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-1.5">
           <Label className="text-[12px] font-bold text-slate-700 ml-1">Category <span className="text-rose-500">*</span></Label>
-          <Select onValueChange={(v) => updateFormData('category', v)} value={formData.category}>
-            <SelectTrigger className="h-10 rounded-xl bg-slate-50/50">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent position="popper" sideOffset={4} className="z-[200]">
-              <SelectItem value="cleanup">Cleanup Drive</SelectItem>
-              <SelectItem value="workshop">Workshop</SelectItem>
-              <SelectItem value="seminar">Seminar</SelectItem>
-              <SelectItem value="planting">Tree Planting</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Select onValueChange={(v) => updateFormData('category', v)} value={formData.category}>
+              <SelectTrigger className="h-10 rounded-xl bg-slate-50/50">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent position="popper" sideOffset={4} className="z-[200]">
+                <SelectItem value="cleanup">Cleanup Drive</SelectItem>
+                <SelectItem value="workshop">Workshop</SelectItem>
+                <SelectItem value="seminar">Seminar</SelectItem>
+                <SelectItem value="planting">Tree Planting</SelectItem>
+                <SelectItem value="awareness">Awareness Campaign</SelectItem>
+                <SelectItem value="recycling">Recycling Drive</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {formData.category === 'other' && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                <Input
+                  placeholder="Specify category..."
+                  value={formData.customCategory || ''}
+                  onChange={(e) => updateFormData('customCategory', e.target.value)}
+                  maxLength={40}
+                  className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:ring-primary/20 mt-1"
+                />
+              </motion.div>
+            )}
+          </div>
         </div>
         <div className="grid gap-1.5">
           <Label className="text-[12px] font-bold text-slate-700 ml-1">Visibility <span className="text-rose-500">*</span></Label>
