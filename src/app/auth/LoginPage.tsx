@@ -285,7 +285,7 @@ export function LoginPage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">No Account Found</h3>
               <p className="text-slate-500 text-sm leading-relaxed mb-8">
-                We've connected your Google account, but you don't have a **Junta** profile yet. Would you like to create one now?
+                We've connected your Google account, but you don't have a **Junta** profile yet. Create one now to finish your setup and **set a backup password** for direct login.
               </p>
               <div className="flex flex-col gap-3">
                 <Button

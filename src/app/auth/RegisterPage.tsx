@@ -97,7 +97,7 @@ export function RegisterPage() {
     suffix: '',
     phone: '+63',
     email: googleData?.email || '',
-    password: googleData?.uid ? `google_${googleData.uid}` : '', // Random internal pass for Google users
+    password: '', // Empty by default, users should set one for fallback
     orgName: '',
     barangay: ''
   });
@@ -246,13 +246,16 @@ export function RegisterPage() {
       return;
     }
 
-    // Password validation (skipped for Google users as it's pre-filled)
-    if (!googleData?.uid) {
-      const isPassValid = password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
-      if (!isPassValid) {
-        sileo.error({ title: 'Secure Password Required', description: 'Password must meet all security requirements.' });
-        return;
-      }
+    // Password validation (Always required for fallback login)
+    const isPassValid = password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
+    if (!isPassValid) {
+      sileo.error({ 
+        title: 'Secure Password Required', 
+        description: googleData?.uid 
+          ? 'Please set a password for email/password login fallback.' 
+          : 'Password must meet all security requirements.' 
+      });
+      return;
     }
 
     if (selectedRole === 'organizer' && !orgName.trim()) {
@@ -706,30 +709,35 @@ export function RegisterPage() {
                           </div>
                         </div>
 
-                        {!googleData?.uid && (
-                          <div className="space-y-2">
-                            <Label className="text-[12px] font-bold text-slate-700 ml-1">Password <span className="text-red-500">*</span></Label>
-                            <div className="relative group">
-                              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
-                              <Input
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder="••••••••"
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                className="pl-10 pr-10 h-10 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 transition-all"
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-transparent transition-colors"
-                              >
-                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </Button>
-                            </div>
+                        <div className="space-y-2">
+                          <Label className="text-[12px] font-bold text-slate-700 ml-1">
+                            {googleData?.uid ? 'Backup Password (for direct login)' : 'Password'} <span className="text-red-500">*</span>
+                          </Label>
+                          <div className="relative group">
+                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
+                            <Input
+                              type={showPassword ? 'text' : 'password'}
+                              placeholder="••••••••"
+                              value={formData.password}
+                              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                              className="pl-10 pr-10 h-10 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 transition-all"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-transparent transition-colors"
+                            >
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </Button>
                           </div>
-                        )}
+                          {googleData?.uid && (
+                            <p className="text-[10px] text-slate-400 px-1 font-medium leading-tight">
+                              Set a password so you can still login even if Google is unavailable.
+                            </p>
+                          )}
+                        </div>
 
                         {selectedRole === 'organizer' && (
                           <motion.div
@@ -753,28 +761,26 @@ export function RegisterPage() {
                           </motion.div>
                         )}
 
-                        {!googleData?.uid && (
-                          <div className="bg-slate-50 border border-slate-100 rounded-xl py-2 px-4 flex items-center gap-3">
-                            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-emerald-700 shrink-0">
-                              <Info className="w-3.5 h-3.5" />
-                              Guide
-                            </div>
-                            <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide">
-                              {[
-                                { label: '8+ chars', met: formData.password.length >= 8 },
-                                { label: 'Uppercase', met: /[A-Z]/.test(formData.password) },
-                                { label: 'Number', met: /[0-9]/.test(formData.password) },
-                              ].map((req, i) => (
-                                <div key={i} className="flex items-center gap-1.5 whitespace-nowrap">
-                                  <div className={`w-1.5 h-1.5 rounded-full transition-colors ${req.met ? 'bg-emerald-600' : 'bg-slate-200'}`} />
-                                  <span className={`text-[10px] font-bold uppercase tracking-tight transition-colors ${req.met ? 'text-emerald-700' : 'text-slate-400'}`}>
-                                    {req.label}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl py-2 px-4 flex items-center gap-3">
+                          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-emerald-700 shrink-0">
+                            <Info className="w-3.5 h-3.5" />
+                            Guide
                           </div>
-                        )}
+                          <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide">
+                            {[
+                              { label: '8+ chars', met: formData.password.length >= 8 },
+                              { label: 'Uppercase', met: /[A-Z]/.test(formData.password) },
+                              { label: 'Number', met: /[0-9]/.test(formData.password) },
+                            ].map((req, i) => (
+                              <div key={i} className="flex items-center gap-1.5 whitespace-nowrap">
+                                <div className={`w-1.5 h-1.5 rounded-full transition-colors ${req.met ? 'bg-emerald-600' : 'bg-slate-200'}`} />
+                                <span className={`text-[10px] font-bold uppercase tracking-tight transition-colors ${req.met ? 'text-emerald-700' : 'text-slate-400'}`}>
+                                  {req.label}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
 
                         <div className="flex gap-3 pt-2">
                           <Button

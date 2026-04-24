@@ -184,6 +184,12 @@ router.post('/register', async (req, res) => {
                 displayName: `${firstName} ${lastName}`,
                 phoneNumber: (phone && phone.startsWith('+')) ? phone.replace(/\s/g, '') : undefined,
             });
+        } else if (password) {
+            // 1.1 Update existing user (e.g. Google login) with the provided password for fallback
+            console.log(`Updating Auth record for ${email} with fallback password`);
+            await auth.updateUser(userRecord.uid, {
+                password: password,
+            });
         }
 
         // 1.5 Hash password before storing in DB (for custom login logic)
