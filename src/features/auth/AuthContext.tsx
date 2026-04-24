@@ -45,6 +45,21 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
     });
     
     const [uid, setUidState] = useState<string | null>(() => {
+        // Check for session expiration (7 days)
+        const loginDate = localStorage.getItem('junta_login_date');
+        if (loginDate) {
+            const now = new Date().getTime();
+            const loginTime = new Date(loginDate).getTime();
+            const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+            
+            if (now - loginTime > sevenDaysInMs) {
+                console.log("Session expired. Logging out...");
+                Object.values(KEYS).forEach(k => localStorage.removeItem(k));
+                localStorage.removeItem('token');
+                localStorage.removeItem('junta_login_date');
+                return null;
+            }
+        }
         return localStorage.getItem(KEYS.UID) || null;
     });
 
@@ -105,8 +120,13 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
 
     const setUid = (newUid: string | null) => {
         setUidState(newUid);
-        if (newUid) localStorage.setItem(KEYS.UID, newUid);
-        else localStorage.removeItem(KEYS.UID);
+        if (newUid) {
+            localStorage.setItem(KEYS.UID, newUid);
+            localStorage.setItem('junta_login_date', new Date().toISOString());
+        } else {
+            localStorage.removeItem(KEYS.UID);
+            localStorage.removeItem('junta_login_date');
+        }
     }
 
     const logout = async () => {

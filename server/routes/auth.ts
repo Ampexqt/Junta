@@ -5,6 +5,7 @@ import { authenticateUser, AuthRequest } from '../middleware/auth';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcryptjs';
+import { Request, Response } from 'express';
 
 const router = Router();
 
@@ -224,7 +225,7 @@ router.post('/register', async (req, res) => {
                 name: `${firstName} ${lastName}${suffix ? ' ' + suffix : ''}`
             },
             process.env.JWT_SECRET || 'junta_fallback_secret',
-            { expiresIn: '24h' }
+            { expiresIn: '7d' }
         );
 
         res.status(201).json({ 
@@ -298,7 +299,7 @@ router.post('/login', async (req, res) => {
                 name: userData.displayName
             },
             process.env.JWT_SECRET || 'junta_fallback_secret',
-            { expiresIn: '24h' }
+            { expiresIn: '7d' }
         );
 
         console.log(`User logged in: ${email}`);
@@ -386,7 +387,6 @@ router.post('/send-login-link', async (req, res) => {
  * 4. Sync Profile / Registration (Protected)
  * Call this after the user successfully logs in on the frontend.
  */
-import { Request, Response } from 'express';
 
 router.post('/sync-profile', authenticateUser, async (req: Request, res: Response) => {
     const authReq = req as AuthRequest;
@@ -476,6 +476,166 @@ router.put('/update-profile', authenticateUser, async (req: AuthRequest, res: Re
     } catch (error) {
         console.error('Error updating profile:', error);
         res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
+/**
+ * 7. Forgot Password - Request OTP
+ */
+router.post('/forgot-password', async (req, res) => {
+    let { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+
+    email = email.toLowerCase().trim();
+
+    try {
+        // Check if user exists first
+        const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
+        if (userSnapshot.empty) {
+            // Security best practice: don't reveal if email exists or not, 
+            // but for this app's context, a clear error might be better.
+            return res.status(404).json({ error: 'No account found with this email' });
+        }
+
+        const otp = generateOTP();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        await db.collection('otps').doc(email).set({
+            otp,
+            expiresAt,
+            email,
+            type: 'password_reset',
+            createdAt: new Date(),
+        });
+
+        console.log(`[AUTH] Password Reset Code for ${email}: ${otp}`);
+
+        const isProd = process.env.NODE_ENV === 'production';
+        const customFrom = process.env.RESEND_FROM_EMAIL;
+        const fromEmail = customFrom || 'Junta <onboarding@resend.dev>';
+
+        try {
+            await resend.emails.send({
+                from: fromEmail,
+                to: email,
+                subject: `Reset Your Junta Password`,
+                html: `
+                    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 12px;">
+                        <h2 style="color: #064e3b; margin-bottom: 8px;">Reset Your Password</h2>
+                        <p style="color: #374151; margin-bottom: 24px;">Use the code below to reset your password. It expires in 10 minutes.</p>
+                        <div style="background: #fff; border: 2px solid #d1fae5; border-radius: 12px; padding: 24px; text-align: center;">
+                            <span style="font-size: 40px; font-weight: 700; letter-spacing: 12px; color: #064e3b;">${otp}</span>
+                        </div>
+                    </div>
+                `,
+            });
+        } catch (e) {
+            console.error('Email send failed:', e);
+            if (!isProd) {
+                return res.json({ 
+                    message: 'Reset code generated (Dev Mode)', 
+                    otp,
+                    devMode: true 
+                });
+            }
+        }
+
+        res.json({ message: 'Reset code sent to your email' });
+    } catch (error) {
+        console.error('Error in forgot-password:', error);
+        res.status(500).json({ error: 'Failed to initiate password reset' });
+    }
+});
+
+/**
+ * 8. Reset Password - Verify OTP & Update
+ */
+router.post('/reset-password', async (req, res) => {
+    let { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+        return res.status(400).json({ error: 'Email, OTP, and new password are required' });
+    }
+
+    email = email.toLowerCase().trim();
+
+    try {
+        const otpDoc = await db.collection('otps').doc(email).get();
+        if (!otpDoc.exists) {
+            return res.status(400).json({ error: 'Invalid or expired reset code' });
+        }
+
+        const otpData = otpDoc.data();
+        if (otpData?.otp !== otp) {
+            return res.status(400).json({ error: 'Invalid reset code' });
+        }
+
+        const now = new Date();
+        if (now > otpData?.expiresAt.toDate()) {
+            return res.status(400).json({ error: 'Reset code has expired' });
+        }
+
+        // 1. Update Password in Firebase Auth
+        const userRecord = await auth.getUserByEmail(email);
+        await auth.updateUser(userRecord.uid, {
+            password: newPassword,
+        });
+
+        // 2. Update Hashed Password in Firestore
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+        await db.collection('users').doc(userRecord.uid).update({
+            password: hashedPassword,
+            updatedAt: new Date().toISOString(),
+        });
+
+        // 3. Cleanup OTP
+        await db.collection('otps').doc(email).delete();
+
+        res.json({ success: true, message: 'Password reset successfully' });
+    } catch (error) {
+        console.error('Error in reset-password:', error);
+        res.status(500).json({ error: 'Failed to reset password' });
+    }
+});
+
+/**
+ * 8.5 Verify Reset Code (Without Deleting)
+ */
+router.post('/verify-reset-code', async (req, res) => {
+    let { email, otp } = req.body;
+
+    if (!email || !otp) {
+        return res.status(400).json({ error: 'Email and reset code are required' });
+    }
+
+    email = email.toLowerCase().trim();
+
+    try {
+        const otpDoc = await db.collection('otps').doc(email).get();
+        if (!otpDoc.exists) {
+            console.log(`[AUTH] No OTP found for ${email}`);
+            return res.status(400).json({ error: 'Invalid or expired reset code' });
+        }
+
+        const data = otpDoc.data();
+
+        if (data?.otp !== otp) {
+            return res.status(400).json({ error: 'Invalid reset code' });
+        }
+
+        const now = new Date();
+        if (now > data?.expiresAt.toDate()) {
+            return res.status(400).json({ error: 'Reset code has expired' });
+        }
+
+        res.json({ success: true, message: 'Code verified' });
+    } catch (error) {
+        console.error('Error in verify-reset-code:', error);
+        res.status(500).json({ error: 'Failed to verify reset code' });
     }
 });
 

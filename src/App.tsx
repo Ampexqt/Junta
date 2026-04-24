@@ -3,6 +3,7 @@ import { AuthProvider } from './features/auth/AuthContext';
 import { LandingPage } from './app/public/LandingPage';
 import { LoginPage } from './app/auth/LoginPage';
 import { RegisterPage } from './app/auth/RegisterPage';
+import { ForgotPasswordPage } from './app/auth/ForgotPasswordPage';
 import { AppLayout } from './components/layout/AppLayout';
 import { DashboardPage } from './app/DashboardPage';
 import { EventsPage } from './app/events/EventsPage';
@@ -42,6 +43,7 @@ export function App() {
             <Route element={<PublicRoute />}>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             </Route>
             
             {/* Protected App Routes */}
