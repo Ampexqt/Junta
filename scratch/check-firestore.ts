@@ -1,17 +1,18 @@
+import { db } from '../server/config/firebase-admin';
 
-import { db } from './src/lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
-
-async function checkEvents() {
-  try {
-    const querySnapshot = await getDocs(collection(db, 'events'));
-    console.log(`Found ${querySnapshot.size} events in Firestore.`);
-    querySnapshot.forEach((doc) => {
-      console.log(doc.id, ' => ', doc.data());
-    });
-  } catch (e) {
-    console.error('Error fetching events:', e);
-  }
+async function checkUsers() {
+    try {
+        const snapshot = await db.collection('users').get();
+        console.log(`Total users found: ${snapshot.size}`);
+        snapshot.docs.forEach(doc => {
+            console.log(`ID: ${doc.id}, Name: ${doc.data().displayName}, KYC: ${doc.data().kycStatus}`);
+        });
+        
+        const pending = await db.collection('users').where('kycStatus', '==', 'pending').get();
+        console.log(`Pending users: ${pending.size}`);
+    } catch (error) {
+        console.error('Firestore check failed:', error);
+    }
 }
 
-checkEvents();
+checkUsers();

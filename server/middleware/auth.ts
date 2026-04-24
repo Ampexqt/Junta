@@ -45,3 +45,9 @@ export const authenticateUser = async (req: AuthRequest, res: Response, next: Ne
         return res.status(403).json({ error: 'Invalid or expired token' });
     }
 };
+export const isAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+    next();
+};

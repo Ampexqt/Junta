@@ -18,7 +18,7 @@ import {
 import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
 import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
 
@@ -76,10 +76,9 @@ export function MapViewPage() {
 
   useEffect(() => {
     const q = query(
-      collection(db, 'events')
-      // Temporarily relaxed for debug:
-      // where('visibility', '==', 'public'),
-      // where('status', '==', 'published')
+      collection(db, 'events'),
+      where('visibility', '==', 'public'),
+      where('status', '==', 'published')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {

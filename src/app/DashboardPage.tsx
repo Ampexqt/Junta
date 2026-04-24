@@ -41,6 +41,7 @@ import {
   LucideIcon
 } from
   'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface EventData {
   id: string;
@@ -102,33 +103,51 @@ function StatCard({
   label,
   value,
   trend,
-  color
-}: { icon: LucideIcon; label: string; value: string; trend?: string; color: string; }) {
+  color,
+  subtext
+}: { 
+  icon: LucideIcon; 
+  label: string; 
+  value: string; 
+  trend?: string; 
+  color: string;
+  subtext?: string;
+}) {
   return (
-    <Card className="rounded-2xl shadow-sm border border-border/50 bg-white hover:shadow-md transition-all duration-300 group overflow-hidden">
-      <CardContent className="pt-5 pb-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.08em]">{label}</p>
-            <p className="text-2xl font-heading font-bold text-foreground mt-1 group-hover:text-primary transition-colors">
+    <Card className="rounded-[24px] shadow-sm border border-slate-100 bg-white hover:shadow-md transition-all duration-300 group overflow-hidden relative">
+      {/* Decorative background element */}
+      <div className={cn("absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-5 transition-transform group-hover:scale-125 duration-700", color.split(' ')[0])} />
+      
+      <CardContent className="p-5 relative z-10">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5">{label}</p>
+            <h3 className="text-3xl font-black text-slate-900 tracking-tight group-hover:text-primary transition-colors">
               {value}
-            </p>
-            {trend &&
-              <div className="flex items-center gap-1.5 mt-2">
-                <TrendingUp className="w-3 h-3 text-primary" />
-                <span className="text-[10px] font-bold text-primary">
-                  {trend}
-                </span>
-              </div>
-            }
+            </h3>
+            
+            <div className="flex items-center gap-2 mt-2">
+              {trend ? (
+                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-100/50">
+                  <TrendingUp className="w-2.5 h-2.5 text-emerald-600" />
+                  <span className="text-[9px] font-bold text-emerald-700">{trend}</span>
+                </div>
+              ) : subtext && (
+                <span className="text-[10px] font-bold text-slate-400 italic">{subtext}</span>
+              )}
+            </div>
           </div>
-          <div
-            className={`w-13 h-13 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 duration-300 flex-shrink-0 ${color}`}>
-            <Icon className="w-6 h-6" />
+
+          <div className={cn(
+            "w-11 h-11 rounded-2xl flex items-center justify-center transition-all group-hover:rotate-6 duration-300 shadow-sm",
+            color
+          )}>
+            <Icon className="w-5 h-5" />
           </div>
         </div>
       </CardContent>
-    </Card>);
+    </Card>
+  );
 }
 function ParticipantDashboard() {
   const navigate = useNavigate();
@@ -188,30 +207,31 @@ function ParticipantDashboard() {
         {[
           {
             icon: CalendarDays,
-            label: 'Events Joined',
+            label: 'Total Impact',
             value: stats.joined,
-            trend: '+0 this month',
-            color: 'bg-primary/10 text-primary'
+            subtext: 'Lifetime events',
+            color: 'bg-emerald-600/10 text-emerald-600'
           },
           {
             icon: Clock,
-            label: 'Upcoming',
+            label: 'Next Sessions',
             value: stats.upcoming,
-            color: 'bg-blue-50 text-blue-600'
+            subtext: 'Active schedule',
+            color: 'bg-blue-600/10 text-blue-600'
           },
           {
             icon: Users,
-            label: 'Hours Contributed',
+            label: 'Volunteer Hours',
             value: stats.hours,
             trend: '+0 this month',
-            color: 'bg-green-50 text-green-600'
+            color: 'bg-indigo-600/10 text-indigo-600'
           },
           {
             icon: Star,
-            label: 'Impact Score',
+            label: 'Community Points',
             value: stats.impact,
-            trend: '+0 points',
-            color: 'bg-amber-50 text-amber-600'
+            trend: '+0 pts earned',
+            color: 'bg-amber-500/10 text-amber-500'
           }].
           map((s, i) =>
             <motion.div key={s.label} variants={fadeUp} custom={i}>

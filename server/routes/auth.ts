@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { auth, db } from '../config/firebase-admin';
 import { resend } from '../config/resend';
-import { authenticateUser, AuthRequest } from '../middleware/auth';
+import { authenticateUser, AuthRequest, isAdmin } from '../middleware/auth';
+import { FaceVerificationService } from '../services/face-verification';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcryptjs';
@@ -636,6 +637,110 @@ router.post('/verify-reset-code', async (req, res) => {
     } catch (error) {
         console.error('Error in verify-reset-code:', error);
         res.status(500).json({ error: 'Failed to verify reset code' });
+    }
+});
+
+/**
+ * 9. Submit Identity Verification (KYC)
+ * Calls Face++ for automated analysis and marks user as pending.
+ */
+router.post('/submit-verification', authenticateUser, async (req: AuthRequest, res) => {
+    const uid = req.user?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { validIdUrl, validIdBackUrl, selfieUrl } = req.body;
+
+    if (!validIdUrl || !selfieUrl) {
+        return res.status(400).json({ error: 'Front ID and Selfie are required' });
+    }
+
+    try {
+        console.log(`[KYC] Processing verification for user ${uid}`);
+
+        // 1. Automated Face Comparison
+        let verificationResult: { confidence: number; threshold: number } | null = null;
+        try {
+            verificationResult = await FaceVerificationService.compareFaces(validIdUrl, selfieUrl);
+        } catch (apiError) {
+            console.warn('[KYC] Face++ API error or missing keys. Proceeding with manual review only.');
+        }
+
+        // 2. Update Firestore
+        const userRef = db.collection('users').doc(uid);
+        const updatePayload: any = {
+            kycStatus: 'pending',
+            validIdUrl,
+            validIdBackUrl: validIdBackUrl || '',
+            selfieUrl,
+            verificationScore: verificationResult?.confidence || 0,
+            verificationThreshold: verificationResult?.threshold || 80,
+            kycSubmittedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        await userRef.update(updatePayload);
+
+        res.json({ 
+            success: true, 
+            message: 'Verification submitted successfully. Automated analysis complete.',
+            automatedResult: verificationResult 
+        });
+    } catch (error) {
+        console.error('Error in submit-verification:', error);
+        res.status(500).json({ error: 'Failed to process verification' });
+    }
+});
+
+/**
+ * 10. Get Pending Verifications (Admin Only)
+ */
+router.get('/admin/pending-verifications', authenticateUser, isAdmin, async (req, res) => {
+    try {
+        const snapshot = await db.collection('users')
+            .where('kycStatus', '==', 'pending')
+            .get();
+
+        const pending = snapshot.docs.map(doc => ({
+            uid: doc.id,
+            ...doc.data()
+        }));
+
+        res.json(pending);
+    } catch (error: any) {
+        console.error('Error fetching pending verifications:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch pending verifications',
+            details: error.message,
+            code: error.code
+        });
+    }
+});
+
+/**
+ * 11. Verify User (Admin Only)
+ */
+router.post('/admin/verify-user', authenticateUser, isAdmin, async (req, res) => {
+    const { uid, status, notes } = req.body;
+
+    if (!uid || !['verified', 'rejected'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid UID or status' });
+    }
+
+    try {
+        const userRef = db.collection('users').doc(uid);
+        
+        await userRef.update({
+            kycStatus: status,
+            isVerified: status === 'verified',
+            kycNotes: notes || '',
+            kycProcessedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        });
+
+        res.json({ success: true, message: `User verification ${status}` });
+    } catch (error) {
+        console.error('Error in verify-user:', error);
+        res.status(500).json({ error: 'Failed to update verification status' });
     }
 });
 
