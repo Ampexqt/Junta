@@ -1,5 +1,8 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 
 import { Button } from '@/components/ui/button';
@@ -22,79 +25,7 @@ import {
   XCircle,
   Eye } from
 'lucide-react';
-const verifications = [
-{
-  name: 'Maria Santos',
-  email: 'maria.santos@email.com',
-  idStatus: 'Submitted',
-  date: 'Jan 10, 2025',
-  initials: 'MS'
-},
-{
-  name: 'Pedro Reyes',
-  email: 'pedro.reyes@email.com',
-  idStatus: 'Submitted',
-  date: 'Jan 11, 2025',
-  initials: 'PR'
-},
-{
-  name: 'Ana Garcia',
-  email: 'ana.garcia@email.com',
-  idStatus: 'Submitted',
-  date: 'Jan 12, 2025',
-  initials: 'AG'
-},
-{
-  name: 'Carlos Mendoza',
-  email: 'carlos.m@email.com',
-  idStatus: 'Resubmitted',
-  date: 'Jan 12, 2025',
-  initials: 'CM'
-},
-{
-  name: 'Sofia Cruz',
-  email: 'sofia.cruz@email.com',
-  idStatus: 'Submitted',
-  date: 'Jan 13, 2025',
-  initials: 'SC'
-}];
 
-const organizerRequests = [
-{
-  name: 'Roberto Lim',
-  email: 'roberto.lim@email.com',
-  reason: 'Leading local beach cleanup group for 3 years',
-  date: 'Jan 8, 2025',
-  initials: 'RL'
-},
-{
-  name: 'Elena Tan',
-  email: 'elena.tan@email.com',
-  reason:
-  'Environmental Science teacher, wants to organize student activities',
-  date: 'Jan 10, 2025',
-  initials: 'ET'
-}];
-
-const eventApprovals = [
-{
-  name: 'Coral Reef Survey 2025',
-  organizer: 'Roberto Lim',
-  date: 'Feb 20, 2025',
-  category: 'Research'
-},
-{
-  name: 'Wetland Bird Watching',
-  organizer: 'Elena Tan',
-  date: 'Mar 5, 2025',
-  category: 'Awareness'
-},
-{
-  name: 'School Recycling Drive',
-  organizer: 'Maria Santos',
-  date: 'Mar 12, 2025',
-  category: 'Cleanup'
-}];
 
 const categoryBadge: Record<string, string> = {
   Research: 'bg-cyan-50 text-cyan-700',
@@ -103,7 +34,103 @@ const categoryBadge: Record<string, string> = {
   Planting: 'bg-green-50 text-green-700',
   Workshop: 'bg-purple-50 text-purple-700'
 };
+
+interface VerificationData {
+  email: string;
+  name: string;
+  idStatus: string;
+  date: string;
+  initials: string;
+}
+
+interface OrganizerRequestData {
+  email: string;
+  name: string;
+  reason: string;
+  date: string;
+  initials: string;
+}
+
+interface EventApprovalData {
+  name: string;
+  organizer: string;
+  date: string;
+  category: string;
+}
+
 export function AdminPanelPage() {
+  const [verifications, setVerifications] = useState<VerificationData[]>([]);
+  const [organizerRequests, setOrganizerRequests] = useState<OrganizerRequestData[]>([]);
+  const [eventApprovals, setEventApprovals] = useState<EventApprovalData[]>([]);
+
+  useEffect(() => {
+    const unsubVerifications = onSnapshot(query(collection(db, 'users'), where('kycStatus', '==', 'pending')), (snapshot) => {
+      setVerifications(snapshot.docs.map(doc => {
+        const data = doc.data();
+        let formattedDate = 'TBD';
+        if (data.kycSubmittedAt) {
+          try {
+            formattedDate = format(new Date(data.kycSubmittedAt), 'MMM dd, yyyy');
+          } catch (e) { console.error('Date parse error', e); }
+        }
+        const fullName = (data.firstName && data.lastName) ? `${data.firstName} ${data.lastName}` : '';
+        const resolvedName = fullName || data.displayName || data.name || 'Anonymous User';
+        return {
+          email: data.email || doc.id,
+          name: resolvedName,
+          idStatus: 'Submitted',
+          date: formattedDate,
+          initials: resolvedName.substring(0, 2).toUpperCase()
+        };
+      }));
+    });
+
+    const unsubOrganizer = onSnapshot(query(collection(db, 'users'), where('organizerRequestStatus', '==', 'pending')), (snapshot) => {
+      setOrganizerRequests(snapshot.docs.map(doc => {
+        const data = doc.data();
+        let formattedDate = 'TBD';
+        if (data.organizerRequestDate) {
+          try {
+            formattedDate = format(data.organizerRequestDate.toDate(), 'MMM dd, yyyy');
+          } catch (e) { console.error('Date parse error', e); }
+        }
+        const fullName = (data.firstName && data.lastName) ? `${data.firstName} ${data.lastName}` : '';
+        const resolvedName = fullName || data.displayName || data.name || 'Anonymous User';
+        return {
+          email: data.email || doc.id,
+          name: resolvedName,
+          reason: data.organizerRequestReason || 'No reason',
+          date: formattedDate,
+          initials: resolvedName.substring(0, 2).toUpperCase()
+        };
+      }));
+    });
+
+    const unsubEvents = onSnapshot(query(collection(db, 'events'), where('status', '==', 'pending')), (snapshot) => {
+      setEventApprovals(snapshot.docs.map(doc => {
+        const data = doc.data();
+        let formattedDate = 'TBD';
+        if (data.date) {
+          try {
+            formattedDate = format(new Date(data.date), 'MMM dd, yyyy');
+          } catch (e) { console.error('Date parse error', e); }
+        }
+        return {
+          name: data.title || 'Event',
+          organizer: data.organizerName || 'Organizer',
+          date: formattedDate,
+          category: data.category || 'Uncategorized'
+        };
+      }));
+    });
+
+    return () => {
+      unsubVerifications();
+      unsubOrganizer();
+      unsubEvents();
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       <div>

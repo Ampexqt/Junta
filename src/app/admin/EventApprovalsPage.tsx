@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { collection, query, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import {
   Card,
   CardContent,
@@ -32,7 +34,7 @@ import {
   ClipboardCheck,
   CheckCircle,
   XCircle,
-  Eye,
+  ArrowRight,
   CalendarDays,
   MapPin,
   Users,
@@ -93,26 +95,23 @@ export function EventApprovalsPage() {
     reason: string;
   }>({ open: false, type: 'published', id: '', reason: '' });
 
-  const fetchPendingEvents = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/events/pending`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch');
-      const data = await response.json();
-      setEvents(data);
-    } catch (err) {
-      console.error('Fetch error:', err);
-      sileo.error({ title: 'Fetch Error', description: 'Could not load pending events.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchPendingEvents();
+    setLoading(true);
+    const q = query(collection(db, 'events'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as PendingEvent[];
+      setEvents(data);
+      setLoading(false);
+    }, (error) => {
+      console.error(error);
+      sileo.error({ title: 'Fetch Error', description: 'Could not load events.' });
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const pending = events.filter((e) => e.status === 'pending').length;
@@ -140,7 +139,7 @@ export function EventApprovalsPage() {
         description: `The event has been successfully ${action}.` 
       });
 
-      setEvents(prev => prev.filter(e => e.id !== id));
+      // UI is updated by onSnapshot natively
       setDialogOpen(false);
       setConfirmAction(prev => ({ ...prev, open: false, reason: '' }));
     } catch (err) {
@@ -257,8 +256,8 @@ export function EventApprovalsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {events.map((e) =>
-                  <TableRow key={e.id}>
+                {events.filter(e => e.status !== 'pending').map((e) =>
+                  <TableRow key={e.id} className="group hover:bg-slate-50/50 transition-colors">
                     <TableCell className="font-medium">{e.title}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -294,30 +293,27 @@ export function EventApprovalsPage() {
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={`text-xs border-0 ${categoryBadge[e.category] || ''}`}>
-
+                        className={`border-none px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter ${categoryBadge[e.category] || 'bg-slate-100 text-slate-600'}`}>
                         {e.category}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={`text-xs border-0 ${statusBadge[e.status]}`}>
-
+                        className={`border-none px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter ${statusBadge[e.status]}`}>
                         {e.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        className="h-8 text-[10px] font-black uppercase tracking-widest border-slate-200 text-slate-400 hover:text-slate-900 hover:border-slate-900 transition-all rounded-lg gap-2"
+                        className="h-9 px-4 rounded-xl text-primary font-bold hover:bg-primary/5 transition-all flex items-center gap-1.5 ml-auto"
                         onClick={() => {
                           setSelectedEvent(e);
                           setDialogOpen(true);
                         }}>
-                        <Eye className="w-3.5 h-3.5" />
-                        Review
+                        View Details <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
                     </TableCell>
                   </TableRow>

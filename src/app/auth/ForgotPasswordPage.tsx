@@ -32,7 +32,7 @@ export function ForgotPasswordPage() {
     }
   }, [countdown]);
 
-  const handleRequestOTP = async (e: React.FormEvent) => {
+  const handleRequestOTP = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!email) return;
 
@@ -240,7 +240,7 @@ export function ForgotPasswordPage() {
                     <div className="text-center">
                       <button
                         type="button"
-                        onClick={() => handleRequestOTP(null as any)}
+                        onClick={() => handleRequestOTP()}
                         disabled={countdown > 0 || isLoading}
                         className="text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors disabled:text-slate-400 disabled:cursor-not-allowed"
                       >
