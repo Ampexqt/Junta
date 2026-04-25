@@ -97,7 +97,7 @@ export function SettingsPage() {
   const [pendingPhotoURL, setPendingPhotoURL] = useState<string | null>(profile?.photoURL || null);
   const [pendingOrgLogoURL, setPendingOrgLogoURL] = useState<string | null>(profile?.organizationLogo || null);
   const [pendingValidIdUrl, setPendingValidIdUrl] = useState<string | null>(profile?.validIdUrl || null);
-  const [pendingValidIdBackUrl, setPendingValidIdBackUrl] = useState<string | null>((profile as any)?.validIdBackUrl || null);
+  const [pendingValidIdBackUrl, setPendingValidIdBackUrl] = useState<string | null>((profile as { validIdBackUrl?: string })?.validIdBackUrl || null);
   const [pendingSelfieUrl, setPendingSelfieUrl] = useState<string | null>(profile?.selfieUrl || null);
 
   // Sync local state when profile loads/updates

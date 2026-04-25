@@ -1,4 +1,11 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
+import { API_BASE_URL } from '@/lib/api';
+import { sileo } from 'sileo';
+import { Loader2 } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -18,31 +25,83 @@ import {
   TableRow
 } from
   '@/components/ui/table';
-const requests = [
-  {
-    name: 'Roberto Lim',
-    email: 'roberto.lim@email.com',
-    reason: 'Leading local beach cleanup group for 3 years',
-    date: 'Jan 8, 2025',
-    initials: 'RL'
-  },
-  {
-    name: 'Elena Tan',
-    email: 'elena.tan@email.com',
-    reason:
-      'Environmental Science teacher, wants to organize student activities',
-    date: 'Jan 10, 2025',
-    initials: 'ET'
-  },
-  {
-    name: 'Marco Villanueva',
-    email: 'marco.v@email.com',
-    reason: 'Runs a community garden project in Barangay Tetuan',
-    date: 'Jan 13, 2025',
-    initials: 'MV'
-  }];
+interface OrganizerRequestData {
+  uid: string;
+  name: string;
+  email: string;
+  reason: string;
+  date: string;
+  initials: string;
+}
 
 export function OrganizerRequestsPage() {
+  const [requests, setRequests] = useState<OrganizerRequestData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    const q = query(collection(db, 'users'), where('organizerRequestStatus', '==', 'pending'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => {
+        const docData = doc.data();
+        let formattedDate = 'Unknown';
+        if (docData.organizerRequestDate) {
+           try {
+             formattedDate = format(docData.organizerRequestDate.toDate(), 'MMM dd, yyyy');
+           } catch (e) { console.error('Date parse error', e); }
+        }
+        const fullName = (docData.firstName && docData.lastName) ? `${docData.firstName} ${docData.lastName}` : '';
+        const resolvedName = fullName || docData.displayName || docData.name || 'Anonymous User';
+
+        return {
+          uid: doc.id,
+          name: resolvedName,
+          email: docData.email || 'No Email',
+          reason: docData.organizerRequestReason || 'No reason provided',
+          date: formattedDate,
+          initials: resolvedName.substring(0, 2).toUpperCase()
+        };
+      });
+      setRequests(data);
+      setLoading(false);
+    }, (error) => {
+      console.error(error);
+      sileo.error({ title: 'Error', description: 'Failed to load requests.' });
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleAction = async (uid: string, status: 'approved' | 'rejected') => {
+    setActionLoading(uid);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/auth/admin/organizer-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ uid, status })
+      });
+
+      if (!response.ok) throw new Error('Failed');
+      sileo.success({ title: 'Success', description: `Request ${status} successfully.` });
+    } catch (err) {
+      sileo.error({ title: 'Error', description: 'Failed to process request.' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   return (
     <motion.div
       initial={{
@@ -91,8 +150,14 @@ export function OrganizerRequestsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {requests.map((r) =>
-                  <TableRow key={r.email}>
+                {requests.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No pending requests.
+                    </TableCell>
+                  </TableRow>
+                ) : requests.map((r) =>
+                  <TableRow key={r.uid} className="group hover:bg-slate-50/50 transition-colors">
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
@@ -118,16 +183,21 @@ export function OrganizerRequestsPage() {
                       {r.date}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <Button
                           size="sm"
-                          className="bg-green-500 hover:bg-green-600 text-white text-xs h-8 shadow-sm shadow-green-200/60 transition-all duration-200">
+                          variant="ghost"
+                          disabled={actionLoading === r.uid}
+                          onClick={() => handleAction(r.uid, 'approved')}
+                          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 text-xs h-8 font-bold transition-all px-3">
                           Approve
                         </Button>
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="text-red-500 border-red-200 hover:bg-red-500 hover:text-white hover:border-red-500 text-xs h-8 transition-all duration-200">
+                          variant="ghost"
+                          disabled={actionLoading === r.uid}
+                          onClick={() => handleAction(r.uid, 'rejected')}
+                          className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 text-xs h-8 font-bold transition-all px-3">
                           Reject
                         </Button>
                       </div>

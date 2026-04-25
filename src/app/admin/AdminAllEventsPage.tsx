@@ -1,5 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { collection, query, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
+import { Loader2, Search, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -24,88 +28,7 @@ import {
   TableHeader,
   TableRow } from
 '@/components/ui/table';
-import { Search } from 'lucide-react';
-const allEvents = [
-{
-  name: 'Sta. Cruz Beach Cleanup Drive',
-  organizer: 'Juan Dela Cruz',
-  date: 'Jan 15, 2025',
-  category: 'Cleanup',
-  status: 'Approved',
-  participants: 45
-},
-{
-  name: 'Mangrove Planting Initiative',
-  organizer: 'Juan Dela Cruz',
-  date: 'Jan 22, 2025',
-  category: 'Planting',
-  status: 'Approved',
-  participants: 32
-},
-{
-  name: 'Marine Biodiversity Workshop',
-  organizer: 'Elena Tan',
-  date: 'Feb 3, 2025',
-  category: 'Workshop',
-  status: 'Approved',
-  participants: 28
-},
-{
-  name: 'Paseo del Mar Awareness Walk',
-  organizer: 'Roberto Lim',
-  date: 'Feb 10, 2025',
-  category: 'Awareness',
-  status: 'Completed',
-  participants: 60
-},
-{
-  name: 'Coral Reef Survey 2025',
-  organizer: 'Roberto Lim',
-  date: 'Feb 20, 2025',
-  category: 'Research',
-  status: 'Pending',
-  participants: 0
-},
-{
-  name: 'Wetland Bird Watching Day',
-  organizer: 'Elena Tan',
-  date: 'Mar 5, 2025',
-  category: 'Awareness',
-  status: 'Pending',
-  participants: 0
-},
-{
-  name: 'School Recycling Drive',
-  organizer: 'Maria Santos',
-  date: 'Mar 12, 2025',
-  category: 'Cleanup',
-  status: 'Pending',
-  participants: 0
-},
-{
-  name: 'Youth Eco-Leadership Camp',
-  organizer: 'Juan Dela Cruz',
-  date: 'Mar 8, 2025',
-  category: 'Workshop',
-  status: 'Approved',
-  participants: 40
-},
-{
-  name: 'River Cleanup Initiative',
-  organizer: 'Pedro Reyes',
-  date: 'Feb 15, 2025',
-  category: 'Cleanup',
-  status: 'Rejected',
-  participants: 0
-},
-{
-  name: 'Urban Garden Community Build',
-  organizer: 'Juan Dela Cruz',
-  date: 'Mar 15, 2025',
-  category: 'Planting',
-  status: 'Approved',
-  participants: 22
-}];
+
 
 const categoryStyles: Record<string, string> = {
   Cleanup: 'bg-blue-50 text-blue-700',
@@ -115,14 +38,70 @@ const categoryStyles: Record<string, string> = {
   Research: 'bg-cyan-50 text-cyan-700'
 };
 const statusStyles: Record<string, string> = {
-  Approved: 'bg-green-50 text-green-700',
-  Pending: 'bg-amber-50 text-amber-700',
-  Rejected: 'bg-red-50 text-red-700',
-  Completed: 'bg-blue-50 text-blue-700'
+  Approved: 'bg-emerald-50 text-emerald-700 font-bold uppercase tracking-tighter text-[9px]',
+  Pending: 'bg-amber-50 text-amber-700 font-bold uppercase tracking-tighter text-[9px]',
+  Rejected: 'bg-rose-50 text-rose-700 font-bold uppercase tracking-tighter text-[9px]',
+  Completed: 'bg-blue-50 text-blue-700 font-bold uppercase tracking-tighter text-[9px]'
 };
+
+interface EventData {
+  id: string;
+  name: string;
+  organizer: string;
+  date: string;
+  category: string;
+  status: string;
+  participants: number;
+  createdAt: Date;
+}
+
 export function AdminAllEventsPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
+  const [allEvents, setAllEvents] = useState<EventData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(collection(db, 'events'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const eventsData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        let formattedDate = 'TBD';
+        if (data.date) {
+            try {
+                formattedDate = format(new Date(data.date), 'MMM dd, yyyy');
+            } catch (e) {
+                formattedDate = 'Invalid Date';
+            }
+        }
+        
+        let statusDisplay = 'Pending';
+        if (data.status === 'published') statusDisplay = 'Approved';
+        else if (data.status === 'rejected') statusDisplay = 'Rejected';
+        else if (data.status === 'completed') statusDisplay = 'Completed';
+        
+        return {
+            id: doc.id,
+            name: data.title || 'Untitled Event',
+            organizer: data.organizerName || 'Anonymous',
+            date: formattedDate,
+            category: data.category || 'Uncategorized',
+            status: statusDisplay,
+            participants: data.participantsCount || 0,
+            createdAt: data.createdAt?.toDate?.() || new Date(0)
+        };
+      }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      
+      setAllEvents(eventsData);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching all events:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const filtered = allEvents.filter((e) => {
     const matchSearch =
     e.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -130,6 +109,14 @@ export function AdminAllEventsPage() {
     const matchCat = category === 'all' || e.category === category;
     return matchSearch && matchCat;
   });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   return (
     <motion.div
       initial={{
@@ -194,30 +181,28 @@ export function AdminAllEventsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((e, i) =>
-                <TableRow key={i}>
+                {filtered.map((e) =>
+                  <TableRow key={e.id} className="group hover:bg-slate-50/50 transition-colors">
                     <TableCell className="font-medium text-sm">
                       {e.name}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
                       {e.organizer}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
+                    <TableCell className="hidden md:table-cell text-muted-foreground text-[13px] font-medium">
                       {e.date}
                     </TableCell>
                     <TableCell>
                       <Badge
-                      variant="outline"
-                      className={`text-xs border-0 ${categoryStyles[e.category]}`}>
-                      
+                        variant="outline"
+                        className={`border-none px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter ${categoryStyles[e.category]}`}>
                         {e.category}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
-                      variant="outline"
-                      className={`text-xs border-0 ${statusStyles[e.status]}`}>
-                      
+                        variant="outline"
+                        className={`border-none px-2 py-0.5 rounded-lg ${statusStyles[e.status]}`}>
                         {e.status}
                       </Badge>
                     </TableCell>
@@ -228,9 +213,9 @@ export function AdminAllEventsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-muted-foreground hover:text-primary hover:bg-primary/5 h-8 px-3 rounded-lg transition-colors font-medium"
+                        className="h-9 px-4 rounded-xl text-primary font-bold hover:bg-primary/5 transition-all flex items-center gap-1.5 ml-auto"
                       >
-                        View
+                        View Details <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
                     </TableCell>
                   </TableRow>

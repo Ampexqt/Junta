@@ -1,4 +1,7 @@
 import { useLocation, useNavigate, Link } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { collection, query, where, onSnapshot } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 import {
     LayoutDashboard,
     CalendarDays,
@@ -150,9 +153,41 @@ export function AppSidebar() {
     const { role, userName, profile, logout: handleLogout } = useAuth()
     const location = useLocation()
     const navigate  = useNavigate()
-    const groups    = navByRole[role]
     const { state, isMobile, openMobile, setOpenMobile } = useSidebar()
     const isExpanded = state === "expanded" || (isMobile && openMobile)
+
+    const [adminBadges, setAdminBadges] = useState({ approvals: 0, verification: 0, organizer: 0 })
+
+    useEffect(() => {
+        if (role !== 'admin') return;
+        
+        const unsub1 = onSnapshot(query(collection(db, 'events'), where('status', '==', 'pending')), (snap) => {
+            setAdminBadges(p => ({ ...p, approvals: snap.size }))
+        });
+        const unsub2 = onSnapshot(query(collection(db, 'users'), where('kycStatus', '==', 'pending')), (snap) => {
+            setAdminBadges(p => ({ ...p, verification: snap.size }))
+        });
+        const unsub3 = onSnapshot(query(collection(db, 'users'), where('organizerRequestStatus', '==', 'pending')), (snap) => {
+            setAdminBadges(p => ({ ...p, organizer: snap.size }))
+        });
+        
+        return () => { unsub1(); unsub2(); unsub3(); }
+    }, [role])
+
+    const groups = navByRole[role].map(group => {
+        if (role === 'admin' && group.title === "MODERATION") {
+            return {
+                ...group,
+                items: group.items.map(item => {
+                    if (item.label === "Event Approvals") return { ...item, badge: adminBadges.approvals || undefined }
+                    if (item.label === "User Verification") return { ...item, badge: adminBadges.verification || undefined }
+                    if (item.label === "Organizer Requests") return { ...item, badge: adminBadges.organizer || undefined }
+                    return item
+                })
+            }
+        }
+        return group
+    })
 
     const initials = userName
         .split(" ")

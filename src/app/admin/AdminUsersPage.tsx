@@ -1,5 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { collection, query, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
+import { Loader2, Search, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,97 +17,95 @@ import {
   TableHeader,
   TableRow } from
 '@/components/ui/table';
-import { Search } from 'lucide-react';
-const users = [
-{
-  name: 'Juan Dela Cruz',
-  email: 'juan.dc@email.com',
-  role: 'Organizer',
-  joined: 'Oct 5, 2024',
-  status: 'Verified',
-  events: 12,
-  initials: 'JD'
-},
-{
-  name: 'Maria Santos',
-  email: 'maria.santos@email.com',
-  role: 'Participant',
-  joined: 'Nov 10, 2024',
-  status: 'Pending',
-  events: 3,
-  initials: 'MS'
-},
-{
-  name: 'Pedro Reyes',
-  email: 'pedro.reyes@email.com',
-  role: 'Participant',
-  joined: 'Nov 15, 2024',
-  status: 'Verified',
-  events: 7,
-  initials: 'PR'
-},
-{
-  name: 'Roberto Lim',
-  email: 'roberto.lim@email.com',
-  role: 'Organizer',
-  joined: 'Sep 20, 2024',
-  status: 'Verified',
-  events: 15,
-  initials: 'RL'
-},
-{
-  name: 'Elena Tan',
-  email: 'elena.tan@email.com',
-  role: 'Organizer',
-  joined: 'Oct 1, 2024',
-  status: 'Verified',
-  events: 9,
-  initials: 'ET'
-},
-{
-  name: 'Ana Garcia',
-  email: 'ana.garcia@email.com',
-  role: 'Participant',
-  joined: 'Dec 5, 2024',
-  status: 'Pending',
-  events: 1,
-  initials: 'AG'
-},
-{
-  name: 'Carlos Mendoza',
-  email: 'carlos.m@email.com',
-  role: 'Participant',
-  joined: 'Dec 10, 2024',
-  status: 'Pending',
-  events: 0,
-  initials: 'CM'
-},
-{
-  name: 'Sofia Cruz',
-  email: 'sofia.cruz@email.com',
-  role: 'Participant',
-  joined: 'Jan 2, 2025',
-  status: 'Verified',
-  events: 4,
-  initials: 'SC'
-}];
+
 
 const roleStyles: Record<string, string> = {
-  Participant: 'bg-primary/10 text-primary',
-  Organizer: 'bg-amber-50 text-amber-700',
-  Admin: 'bg-purple-50 text-purple-700'
+  Participant: 'bg-primary/10 text-primary font-bold uppercase tracking-tighter text-[9px]',
+  Organizer: 'bg-amber-50 text-amber-700 font-bold uppercase tracking-tighter text-[9px]',
+  Admin: 'bg-purple-50 text-purple-700 font-bold uppercase tracking-tighter text-[9px]'
 };
 const statusStyles: Record<string, string> = {
-  Verified: 'bg-green-50 text-green-700',
-  Pending: 'bg-amber-50 text-amber-700'
+  Verified: 'bg-emerald-50 text-emerald-700 font-bold uppercase tracking-tighter text-[9px]',
+  Pending: 'bg-amber-50 text-amber-700 font-bold uppercase tracking-tighter text-[9px]',
+  Rejected: 'bg-rose-50 text-rose-700 font-bold uppercase tracking-tighter text-[9px]'
 };
+
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  joined: string;
+  status: string;
+  events: number;
+  initials: string;
+  createdAt: Date;
+}
+
 export function AdminUsersPage() {
   const [search, setSearch] = useState('');
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const usersData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        let formattedJoined = 'Unknown';
+        if (data.createdAt) {
+          try {
+            formattedJoined = format(data.createdAt.toDate(), 'MMM dd, yyyy');
+          } catch (e) {
+            // fallback
+          }
+        }
+        
+        let statusDisplay = 'Pending';
+        if (data.verificationStatus === 'verified') statusDisplay = 'Verified';
+        else if (data.verificationStatus === 'rejected') statusDisplay = 'Rejected';
+        
+        const roleDisplay = data.role ? data.role.charAt(0).toUpperCase() + data.role.slice(1) : 'Participant';
+
+        const fullName = (data.firstName && data.lastName) ? `${data.firstName} ${data.lastName}` : '';
+        const resolvedName = fullName || data.displayName || data.name || 'Anonymous User';
+
+        return {
+          id: doc.id,
+          name: resolvedName,
+          email: data.email || 'No Email',
+          role: roleDisplay,
+          joined: formattedJoined,
+          status: statusDisplay,
+          events: data.eventsCount || 0,
+          initials: resolvedName.substring(0, 2).toUpperCase(),
+          createdAt: data.createdAt?.toDate?.() || new Date(0)
+        };
+      }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      
+      setUsers(usersData);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching users:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const filtered = users.filter(
     (u) =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   return (
     <motion.div
       initial={{
@@ -158,7 +160,7 @@ export function AdminUsersPage() {
                     </TableCell>
                   </TableRow>
                 ) : filtered.map((u) =>
-                <TableRow key={u.email}>
+                <TableRow key={u.email} className="group hover:bg-slate-50/50 transition-colors">
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
@@ -179,20 +181,18 @@ export function AdminUsersPage() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                      variant="outline"
-                      className={`text-xs border-0 ${roleStyles[u.role]}`}>
-                      
+                        variant="outline"
+                        className={`border-none px-2 py-0.5 rounded-lg ${roleStyles[u.role]}`}>
                         {u.role}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
+                    <TableCell className="hidden md:table-cell text-muted-foreground text-[13px] font-medium">
                       {u.joined}
                     </TableCell>
                     <TableCell>
                       <Badge
-                      variant="outline"
-                      className={`text-xs border-0 ${statusStyles[u.status]}`}>
-                      
+                        variant="outline"
+                        className={`border-none px-2 py-0.5 rounded-lg ${statusStyles[u.status]}`}>
                         {u.status}
                       </Badge>
                     </TableCell>
@@ -203,9 +203,9 @@ export function AdminUsersPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-muted-foreground hover:text-primary hover:bg-primary/5 h-8 px-3 rounded-lg transition-colors font-medium"
+                        className="h-9 px-4 rounded-xl text-primary font-bold hover:bg-primary/5 transition-all flex items-center gap-1.5 ml-auto"
                       >
-                        View
+                        View Details <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
                     </TableCell>
                   </TableRow>

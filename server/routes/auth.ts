@@ -561,7 +561,8 @@ router.post('/forgot-password', async (req, res) => {
  * 8. Reset Password - Verify OTP & Update
  */
 router.post('/reset-password', async (req, res) => {
-    let { email, otp, newPassword } = req.body;
+    let { email } = req.body;
+    const { otp, newPassword } = req.body;
 
     if (!email || !otp || !newPassword) {
         return res.status(400).json({ error: 'Email, OTP, and new password are required' });
@@ -613,7 +614,8 @@ router.post('/reset-password', async (req, res) => {
  * 8.5 Verify Reset Code (Without Deleting)
  */
 router.post('/verify-reset-code', async (req, res) => {
-    let { email, otp } = req.body;
+    let { email } = req.body;
+    const { otp } = req.body;
 
     if (!email || !otp) {
         return res.status(400).json({ error: 'Email and reset code are required' });
@@ -673,7 +675,7 @@ router.post('/submit-verification', authenticateUser, async (req: AuthRequest, r
 
         // 2. Update Firestore
         const userRef = db.collection('users').doc(uid);
-        const updatePayload: any = {
+        const updatePayload: Record<string, unknown> = {
             kycStatus: 'pending',
             validIdUrl,
             validIdBackUrl: validIdBackUrl || '',
@@ -712,12 +714,13 @@ router.get('/admin/pending-verifications', authenticateUser, isAdmin, async (req
         }));
 
         res.json(pending);
-    } catch (error: any) {
+    } catch (error) {
+        const err = error as { message?: string; code?: string };
         console.error('Error fetching pending verifications:', error);
         res.status(500).json({ 
             error: 'Failed to fetch pending verifications',
-            details: error.message,
-            code: error.code
+            details: err.message || 'Unknown error',
+            code: err.code
         });
     }
 });
@@ -747,6 +750,39 @@ router.post('/admin/verify-user', authenticateUser, isAdmin, async (req, res) =>
     } catch (error) {
         console.error('Error in verify-user:', error);
         res.status(500).json({ error: 'Failed to update verification status' });
+    }
+});
+
+/**
+ * 12. Approve/Reject Organizer Request (Admin Only)
+ */
+router.post('/admin/organizer-request', authenticateUser, isAdmin, async (req, res) => {
+    const { uid, status, notes } = req.body;
+
+    if (!uid || !['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid UID or status' });
+    }
+
+    try {
+        const userRef = db.collection('users').doc(uid);
+        
+        const updates: Record<string, unknown> = {
+            organizerRequestStatus: status,
+            organizerProcessedAt: new Date().toISOString(),
+            organizerNotes: notes || '',
+            updatedAt: new Date().toISOString(),
+        };
+
+        if (status === 'approved') {
+            updates.role = 'organizer';
+        }
+
+        await userRef.update(updates);
+
+        res.json({ success: true, message: `Organizer request ${status}` });
+    } catch (error) {
+        console.error('Error processing organizer request:', error);
+        res.status(500).json({ error: 'Failed to update organizer request status' });
     }
 });
 

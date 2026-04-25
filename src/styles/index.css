@@ -336,6 +336,23 @@
 .df-calendar-month-grid {
   background: #f8faf9 !important;
   font-family: 'Sora', sans-serif !important;
+  overflow-y: auto !important;
+}
+
+/* Dayflow Custom Scrollbar */
+.df-calendar-container *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.df-calendar-container *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.df-calendar-container *::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.15);
+  border-radius: 10px;
+}
+.df-calendar-container *::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.3);
 }
 
 .df-calendar-day-header,

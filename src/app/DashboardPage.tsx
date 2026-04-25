@@ -536,11 +536,21 @@ function AdminDashboard() {
   const { userName } = useAuth();
   
   const [activities, setActivities] = useState<ActivityData[]>([]);
-  const [stats, setStats] = useState({ pendingVerifications: '0', pendingEvents: '0', activeUsers: '0', totalEvents: '0' });
+  const [stats, setStats] = useState({ 
+    pendingVerifications: '0', 
+    pendingEvents: '0', 
+    activeUsers: '0', 
+    totalEvents: '0', 
+    pendingOrganizerRequests: '0',
+    activeEvents: '0',
+    verifiedUsers: '0',
+    pendingTasks: '0'
+  });
 
   useEffect(() => {
     const unsubscribeEvents = onSnapshot(collection(db, 'events'), (snapshot) => {
         let pending = 0;
+        let active = 0;
         const total = snapshot.size;
         const acts: ActivityData[] = [];
         
@@ -555,8 +565,9 @@ function AdminDashboard() {
                     timestamp: new Date(data.createdAt || Date.now()).getTime()
                 });
             } else if (data.status === 'published') {
+                active++;
                 acts.push({
-                    text: `Event "${data.title}" approved`,
+                    text: `Event "${data.title}" published live`,
                     time: data.updatedAt ? format(new Date(data.updatedAt), 'MMM d, h:mm a') : 'Recently',
                     icon: CheckCircle,
                     timestamp: new Date(data.updatedAt || Date.now()).getTime()
@@ -567,19 +578,30 @@ function AdminDashboard() {
         acts.sort((a,b) => b.timestamp - a.timestamp);
         
         setActivities(acts.slice(0, 5));
-        setStats(prev => ({ ...prev, pendingEvents: pending.toString(), totalEvents: total.toString() }));
+        setStats(prev => ({ ...prev, pendingEvents: pending.toString(), activeEvents: active.toString(), totalEvents: total.toString(), pendingTasks: (pending + parseInt(prev.pendingVerifications) + parseInt(prev.pendingOrganizerRequests)).toString() }));
     });
 
     const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
         let pendingVerifications = 0;
+        let pendingOrganizerRequests = 0;
+        let verified = 0;
         const activeUsers = snapshot.size;
         
         snapshot.forEach(doc => {
             const data = doc.data();
-            if (data.kycVerified === false) pendingVerifications++;
+            if (data.kycStatus === 'pending') pendingVerifications++;
+            if (data.kycStatus === 'verified' || data.kycVerified) verified++;
+            if (data.organizerRequestStatus === 'pending') pendingOrganizerRequests++;
         });
         
-        setStats(prev => ({ ...prev, activeUsers: activeUsers.toString(), pendingVerifications: pendingVerifications.toString() }));
+        setStats(prev => ({ 
+            ...prev, 
+            activeUsers: activeUsers.toString(), 
+            verifiedUsers: verified.toString(),
+            pendingVerifications: pendingVerifications.toString(), 
+            pendingOrganizerRequests: pendingOrganizerRequests.toString(),
+            pendingTasks: (pendingVerifications + pendingOrganizerRequests + parseInt(prev.pendingEvents)).toString()
+        }));
     });
 
     return () => {
@@ -597,30 +619,32 @@ function AdminDashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          icon={UserCheck}
-          label="Pending Verifications"
-          value={stats.pendingVerifications}
-          color="bg-amber-50 text-amber-600" />
-
-        <StatCard
-          icon={CalendarDays}
-          label="Pending Events"
-          value={stats.pendingEvents}
-          color="bg-blue-50 text-blue-600" />
-
-        <StatCard
           icon={Users}
-          label="Active Users"
+          label="Total Users"
           value={stats.activeUsers}
-          trend="+0 this month"
+          subtext="Registered accounts"
           color="bg-primary/10 text-primary" />
 
         <StatCard
-          icon={BarChart3}
-          label="Total Events"
-          value={stats.totalEvents}
-          trend="+0 this month"
-          color="bg-green-50 text-green-600" />
+          icon={CalendarDays}
+          label="Active Events"
+          value={stats.activeEvents}
+          subtext="Published & live"
+          color="bg-emerald-50 text-emerald-600" />
+
+        <StatCard
+          icon={Shield}
+          label="Verified Users"
+          value={stats.verifiedUsers}
+          subtext="KYC approved"
+          color="bg-blue-50 text-blue-600" />
+
+        <StatCard
+          icon={AlertCircle}
+          label="Pending Tasks"
+          value={stats.pendingTasks}
+          subtext="Requires admin action"
+          color="bg-amber-50 text-amber-600" />
 
       </div>
 
@@ -697,7 +721,7 @@ function AdminDashboard() {
               </div>
               <span className="font-semibold text-sm">Review Organizer Requests</span>
               <Badge className="ml-auto bg-purple-500 text-white border-0 font-bold shadow-sm shadow-purple-200">
-                0
+                {stats.pendingOrganizerRequests}
               </Badge>
             </Button>
           </CardContent>

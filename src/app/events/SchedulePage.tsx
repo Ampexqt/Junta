@@ -155,11 +155,14 @@ export function SchedulePage() {
   };
 
   // Filter logic
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
+  const now = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   const filteredEvents = useMemo(() => {
-    let events = rawEvents.filter(e => selectedCategories.includes(e.category));
+    const events = rawEvents.filter(e => selectedCategories.includes(e.category));
     
     if (activeView === 'upcoming') {
       return events.filter(e => new Date(e.date) >= now)
@@ -181,7 +184,7 @@ export function SchedulePage() {
     views: [
       createDayView({ timeFormat: '12h', scrollToCurrentTime: true }),
       createWeekView({ timeFormat: '12h', scrollToCurrentTime: true }),
-      createMonthView({ scroll: { disabled: true, transition: 'fade' } }),
+      createMonthView(),
       createYearView({ mode: 'grid', showTimedEventsInYearView: true }),
     ],
     defaultView: ViewType.MONTH,
@@ -231,7 +234,7 @@ export function SchedulePage() {
             ].map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActiveView(item.id as any)}
+                onClick={() => setActiveView(item.id as 'calendar' | 'upcoming' | 'past')}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-bold transition-all group",
                   activeView === item.id 
@@ -316,14 +319,13 @@ export function SchedulePage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.995 }}
               transition={{ duration: 0.15 }}
-              className="rounded-xl overflow-hidden border border-slate-200 shadow-lg shadow-slate-200/10 bg-white junta-calendar-wrap flex-1 max-h-[620px]"
+              className="rounded-xl overflow-hidden border border-slate-200 shadow-lg shadow-slate-200/10 bg-white junta-calendar-wrap flex-1"
             >
               <style dangerouslySetInnerHTML={{ __html: `
                 /* Hide ALL possible plus/create buttons in the calendar */
                 .junta-calendar-wrap [class*="create"],
                 .junta-calendar-wrap [class*="Create"],
                 .junta-calendar-wrap .df-header-left button:first-of-type,
-                .junta-calendar-wrap button:has(svg),
                 .junta-calendar-wrap .df-icon-plus,
                 .junta-calendar-wrap .df-header-create-button { 
                   display: none !important; 
