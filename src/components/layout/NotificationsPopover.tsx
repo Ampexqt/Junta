@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/features/auth/AuthContext';
 
 type Notification = {
   id: string;
@@ -30,17 +31,25 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 const colorMap: Record<string, { color: string; bg: string }> = {
-  event: { color: 'text-blue-600', bg: 'bg-blue-50' },
-  system: { color: 'text-purple-600', bg: 'bg-purple-50' },
+  event: { color: 'text-primary', bg: 'bg-primary/5' },
+  system: { color: 'text-slate-600', bg: 'bg-slate-100' },
   reminder: { color: 'text-amber-600', bg: 'bg-amber-50' },
-  verification: { color: 'text-green-600', bg: 'bg-green-50' },
+  verification: { color: 'text-primary', bg: 'bg-primary/10' },
   default: { color: 'text-primary', bg: 'bg-primary/10' }
 };
 
 export function NotificationsPopover() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [hasSeenAll, setHasSeenAll] = useState(false);
   const navigate = useNavigate();
+  const { profile, role } = useAuth();
+
+  // Reset "seen" state when new notifications arrive from the DB
+  useEffect(() => {
+    setHasSeenAll(false);
+  }, [unreadCount]);
 
   useEffect(() => {
     const q = query(
@@ -50,7 +59,7 @@ export function NotificationsPopover() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetched = snapshot.docs.map(doc => {
+      const dbNotifications = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -61,16 +70,54 @@ export function NotificationsPopover() {
           read: data.read || false,
         };
       }) as Notification[];
-      
-      setNotifications(fetched);
-      setUnreadCount(fetched.filter(n => !n.read).length);
+
+      // Inject System Notifications based on User State
+      const systemNotifications: Notification[] = [];
+
+      // 1. Verification Prompt (High Priority)
+      if (profile && profile.kycStatus !== 'verified' && role === 'participant') {
+        systemNotifications.push({
+          id: 'sys-verify',
+          type: 'verification',
+          title: 'Action Required: Identity Verification',
+          description: 'Please verify your identity to join exclusive events and unlock all features.',
+          time: 'System',
+          read: false
+        });
+      }
+
+      // 2. Welcome Message
+      if (profile && role === 'participant') {
+        systemNotifications.push({
+          id: 'sys-welcome',
+          type: 'event',
+          title: `Welcome back, ${profile.firstName}!`,
+          description: 'Explore upcoming environmental events and make an impact today.',
+          time: 'Today',
+          read: true
+        });
+      }
+
+      const allNotifications = [...systemNotifications, ...dbNotifications];
+      setNotifications(allNotifications);
+      setUnreadCount(allNotifications.filter(n => !n.read).length);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [profile, role]);
+
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
+    setHasSeenAll(true);
+    // In a real app, you would also update the Firestore docs here
+  };
 
   return (
-    <Popover>
+    <Popover onOpenChange={(open) => {
+      setIsOpen(open);
+      if (open) setHasSeenAll(true);
+    }}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
@@ -78,22 +125,32 @@ export function NotificationsPopover() {
           className="relative hover:bg-primary/5 hover:text-primary transition-all duration-200 rounded-xl h-9 w-9"
           aria-label="Notifications"
         >
-          <Bell className="w-[18px] h-[18px]" />
-          {unreadCount > 0 && (
+          <Bell className={`w-[18px] h-[18px] transition-colors ${isOpen ? 'text-primary' : 'text-slate-600'}`} />
+          {unreadCount > 0 && !hasSeenAll && (
             <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white shadow-sm animate-pulse" />
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0 mr-4 rounded-2xl shadow-2xl border-slate-200/60 overflow-hidden" align="end">
-        <div className="p-4 border-b border-slate-100 bg-white/50 backdrop-blur-md">
-          <div className="flex items-center justify-between">
+      <PopoverContent className="w-[360px] p-0 mr-4 rounded-2xl shadow-2xl border-slate-200/60 overflow-hidden" align="end">
+        <div className="p-4 border-b border-slate-100 bg-white/50 backdrop-blur-md flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <h3 className="font-bold text-sm text-slate-900">Notifications</h3>
             {unreadCount > 0 && (
-              <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-[10px] font-black uppercase tracking-widest px-2 group">
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-[10px] font-black uppercase tracking-widest px-2">
                 {unreadCount} New
               </Badge>
             )}
           </div>
+          {unreadCount > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={markAllAsRead}
+              className="h-7 px-2 text-[10px] font-bold text-primary hover:bg-primary/5 rounded-lg"
+            >
+              Mark all as read
+            </Button>
+          )}
         </div>
         
         <ScrollArea className="h-[350px]">
@@ -106,11 +163,14 @@ export function NotificationsPopover() {
                 return (
                   <div 
                     key={n.id} 
-                    className={`p-4 transition-all hover:bg-slate-50 relative group cursor-pointer ${!n.read ? 'bg-primary/[0.02]' : ''}`}
-                    onClick={() => navigate(`/app/events`)} // Default to events for now
+                    className={`p-4 transition-all hover:bg-slate-50 relative group cursor-pointer ${!n.read ? 'bg-primary/[0.03]' : ''}`}
+                    onClick={() => {
+                      if (n.id === 'sys-verify') navigate('/app/settings');
+                      else navigate('/app/events');
+                    }}
                   >
                     {!n.read && (
-                      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary rounded-full my-4" />
+                      <div className="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-full" />
                     )}
                     <div className="flex gap-3">
                       <div className={`w-9 h-9 rounded-xl shrink-0 flex items-center justify-center ${colors.bg}`}>
@@ -118,12 +178,12 @@ export function NotificationsPopover() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <p className={`text-[13px] leading-tight truncate ${!n.read ? 'font-bold text-slate-900' : 'font-semibold text-slate-600'}`}>
+                          <p className={`text-[13px] leading-snug flex-1 ${!n.read ? 'font-bold text-slate-900' : 'font-semibold text-slate-600'}`}>
                             {n.title}
                           </p>
-                          <span className="text-[10px] font-medium text-slate-400 shrink-0">{n.time}</span>
+                          <span className="text-[9px] font-bold text-slate-400 shrink-0 uppercase tracking-tight mt-0.5">{n.time}</span>
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                        <p className="text-[11px] text-slate-500 leading-relaxed">
                           {n.description}
                         </p>
                       </div>
