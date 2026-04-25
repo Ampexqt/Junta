@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { useAuth } from '@/features/auth/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 type Notification = {
   id: string;
@@ -39,21 +41,23 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 const colorMap: Record<string, { color: string; bg: string }> = {
-  event: { color: 'text-blue-600', bg: 'bg-blue-50' },
-  system: { color: 'text-purple-600', bg: 'bg-purple-50' },
+  event: { color: 'text-primary', bg: 'bg-primary/5' },
+  system: { color: 'text-slate-600', bg: 'bg-slate-100' },
   reminder: { color: 'text-amber-600', bg: 'bg-amber-50' },
-  verification: { color: 'text-green-600', bg: 'bg-green-50' },
+  verification: { color: 'text-primary', bg: 'bg-primary/10' },
   default: { color: 'text-primary', bg: 'bg-primary/10' }
 };
 
 export function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { profile, role } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const q = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetched = snapshot.docs.map(doc => {
+      const dbNotifications = snapshot.docs.map(doc => {
         const data = doc.data();
         const type = data.type || 'system';
         const colors = colorMap[type as keyof typeof colorMap] || colorMap.default;
@@ -70,11 +74,45 @@ export function NotificationsPage() {
           iconBg: colors.bg
         };
       }) as Notification[];
-      setNotifications(fetched);
+
+      // Inject System Notifications
+      const systemNotifications: Notification[] = [];
+      
+      if (profile && profile.kycStatus !== 'verified' && role === 'participant') {
+        const colors = colorMap.verification;
+        systemNotifications.push({
+          id: 'sys-verify',
+          type: 'verification',
+          title: 'Action Required: Identity Verification',
+          description: 'Please verify your identity to join exclusive events and unlock all features.',
+          time: 'System Required',
+          read: false,
+          icon: CheckCircle,
+          iconColor: colors.color,
+          iconBg: colors.bg
+        });
+      }
+
+      if (profile && role === 'participant') {
+        const colors = colorMap.event;
+        systemNotifications.push({
+          id: 'sys-welcome',
+          type: 'event',
+          title: `Welcome back, ${profile.firstName}!`,
+          description: 'Explore upcoming environmental events and make an impact today.',
+          time: 'Account Status',
+          read: true,
+          icon: CalendarDays,
+          iconColor: colors.color,
+          iconBg: colors.bg
+        });
+      }
+
+      setNotifications([...systemNotifications, ...dbNotifications]);
       setIsLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [profile, role]);
 
   const markAllRead = () => {
     // In a real app, this would update Firestore
@@ -99,36 +137,43 @@ export function NotificationsPage() {
             transition={{ delay: i * 0.03 }}
           >
             <Card
-              className={`rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md overflow-hidden ${
+              className={`rounded-2xl shadow-sm border transition-all hover:shadow-md overflow-hidden ${
                 !n.read 
-                  ? 'bg-primary/[0.02] border-primary/15 shadow-primary/5' 
-                  : 'hover:bg-muted/30'
+                  ? 'bg-primary/[0.02] border-primary/20' 
+                  : 'bg-white border-slate-100 hover:border-slate-200'
               }`}
               onClick={() => {
-                // Update local state (should update Firestore in real app)
+                if (n.id === 'sys-verify') navigate('/app/settings');
+                // Update local state
                 setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
               }}
             >
-              {!n.read && (
-                <div className="h-0.5 w-full bg-gradient-to-r from-primary/60 to-primary/20" />
-              )}
-              <CardContent className="py-4 flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${n.iconBg}`}>
-                  <n.icon className={`w-5 h-5 ${n.iconColor}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className={`text-sm ${!n.read ? 'font-semibold' : 'font-medium'} text-foreground truncate`}>
-                      {n.title}
-                    </p>
-                    {!n.read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
+              <CardContent className="p-0">
+                <div className="flex items-stretch min-h-[90px]">
+                  {!n.read && (
+                    <div className="w-1.5 bg-primary shrink-0" />
+                  )}
+                  <div className="flex-1 p-4 flex items-start gap-4">
+                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${n.iconBg} shadow-sm`}>
+                      <n.icon className={`w-5 h-5 ${n.iconColor}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <h3 className={`text-sm tracking-tight truncate ${!n.read ? 'font-black text-slate-900' : 'font-bold text-slate-700'}`}>
+                            {n.title}
+                          </h3>
+                          {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 animate-pulse" />}
+                        </div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0 whitespace-nowrap">
+                          {n.time}
+                        </span>
+                      </div>
+                      <p className={`text-[12px] leading-relaxed ${!n.read ? 'text-slate-600 font-medium' : 'text-slate-500'}`}>
+                        {n.description}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                    {n.description}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-1.5">
-                    {n.time}
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -155,39 +200,37 @@ export function NotificationsPage() {
   );
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto w-full pb-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading font-semibold text-2xl text-foreground">
+    <div className="space-y-6 max-w-2xl mx-auto w-full pb-20 px-4">
+      <div className="flex flex-col gap-1 pt-4">
+        <div className="flex items-center justify-between">
+          <h1 className="font-heading font-black text-2xl text-slate-900 tracking-tight">
             Notifications
           </h1>
-          <p className="text-muted-foreground mt-1">
-            {unreadCount > 0 ?
-              `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}.` :
-              'All caught up!'}
-          </p>
+          {unreadCount > 0 && (
+            <Button variant="ghost" onClick={markAllRead} className="h-8 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 transition-all">
+              <Check className="w-3.5 h-3.5 mr-1.5" /> Mark all read
+            </Button>
+          )}
         </div>
-        {unreadCount > 0 && (
-          <Button variant="outline" size="sm" onClick={markAllRead} className="hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all">
-            <Check className="w-4 h-4 mr-1.5" /> Mark all read
-          </Button>
-        )}
+        <p className="text-slate-500 text-[12px] font-medium">
+          {unreadCount > 0 ?
+            `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''} that need your attention.` :
+            'You are all caught up for now! Check back later for updates.'}
+        </p>
       </div>
 
-      <Tabs defaultValue="all" className="w-full">
-        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md pb-2 -mx-2 px-2 pt-2">
-          <TabsList className="bg-muted/50 border p-1 rounded-xl w-full justify-start overflow-x-auto hide-scrollbar">
-            <TabsTrigger value="all" className="rounded-lg px-4">
-              All{' '}
+      <Tabs defaultValue="all" className="w-full flex flex-col items-center">
+        <div className="w-full mb-6 overflow-x-auto pb-1 scrollbar-hide flex justify-center">
+          <TabsList className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-100/50 p-1 text-slate-500 border border-slate-200/40 gap-1">
+            <TabsTrigger value="all" className="rounded-lg px-4 font-bold text-[11px] data-active:bg-white data-active:text-primary data-active:shadow-sm">
+              All
               {unreadCount > 0 && (
-                <Badge className="ml-2 bg-primary/10 text-primary hover:bg-primary/20 border-0 text-[10px] px-1.5 h-4">
-                  {unreadCount}
-                </Badge>
+                <span className="ml-2 w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               )}
             </TabsTrigger>
-            <TabsTrigger value="events" className="rounded-lg px-4">Events</TabsTrigger>
-            <TabsTrigger value="system" className="rounded-lg px-4">System</TabsTrigger>
-            <TabsTrigger value="reminders" className="rounded-lg px-4">Reminders</TabsTrigger>
+            <TabsTrigger value="events" className="rounded-lg px-4 font-bold text-[11px] data-active:bg-white data-active:text-primary data-active:shadow-sm">Events</TabsTrigger>
+            <TabsTrigger value="system" className="rounded-lg px-4 font-bold text-[11px] data-active:bg-white data-active:text-primary data-active:shadow-sm">System</TabsTrigger>
+            <TabsTrigger value="reminders" className="rounded-lg px-4 font-bold text-[11px] data-active:bg-white data-active:text-primary data-active:shadow-sm">Reminders</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="all" className="mt-4">
