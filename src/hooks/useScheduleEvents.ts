@@ -269,6 +269,25 @@ export function useScheduleEvents(): UseScheduleEventsReturn {
           if (calEvent) calEvents.push(calEvent);
         });
 
+        // Add Mock Event for Apr 29, 2026 (User Request)
+        const mockCleanup: ScheduleEvent = {
+          id: 'mock-cleanup-29',
+          title: 'Coastal Clean-up',
+          date: '2026-04-29',
+          startTime: '08:00',
+          endTime: '12:00',
+          location: 'Lantawan Drive Pasonanca',
+          locationName: 'Lantawan Drive Pasonanca',
+          category: 'Cleanup',
+          status: 'published',
+        };
+        
+        if (!raw.some(e => e.id === mockCleanup.id)) {
+          raw.push(mockCleanup);
+          const mockCal = toCalendarEvent(mockCleanup);
+          if (mockCal) calEvents.push(mockCal);
+        }
+
         setRawEvents(raw);
         setCalendarEvents(calEvents);
         setIsLoading(false);
