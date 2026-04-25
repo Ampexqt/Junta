@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { 
   AlertCircle, 
   Calendar as CalendarIcon, 
@@ -25,8 +26,14 @@ import {
   History,
   CalendarCheck,
   Filter,
-  Check
+  Check,
+  User
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { useAuth } from '@/features/auth/AuthContext';
 import {
@@ -71,81 +78,89 @@ function ScheduleSkeleton() {
 
 // ─── Event Item Component ───────────────────────────────────────────────────
 
-function EventListItem({ event, onClick }: { event: ScheduleEvent; onClick: () => void }) {
-  const isPast = new Date(event.date) < new Date(new Date().setHours(0, 0, 0, 0));
-  
-  // Find category color
-  const catDef = CALENDAR_DEFINITIONS.find(c => c.name === event.category);
-  const dotColor = catDef?.colors.eventColor || '#cbd5e1';
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ x: 4 }}
-      transition={{ duration: 0.2 }}
-    >
-      <div 
-        className="group flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 hover:border-emerald-200 hover:shadow-sm transition-all cursor-pointer"
-        onClick={onClick}
-      >
-        {/* Date Box */}
-        <div className="flex flex-col items-center justify-center min-w-[56px] h-[56px] rounded-xl bg-slate-50 border border-slate-100 group-hover:bg-emerald-50 transition-colors">
-          <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-            {new Date(event.date).toLocaleDateString('en-US', { month: 'short' })}
-          </span>
-          <span className="text-lg font-black text-slate-700">
-            {new Date(event.date).getDate()}
-          </span>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: dotColor }} />
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{event.category}</span>
-          </div>
-          <h3 className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
-            {event.title}
-          </h3>
-          <div className="flex items-center gap-3 mt-1">
-            <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
-              <Clock className="w-3 h-3" />
-              {event.startTime}
-            </div>
-            <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium truncate">
-              <MapPin className="w-3 h-3" />
-              {event.locationName || event.location}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <Badge variant="outline" className={cn(
-            "text-[9px] font-bold uppercase h-5",
-            isPast ? "bg-slate-50 text-slate-400" : "bg-emerald-50 text-emerald-700 border-emerald-100"
-          )}>
-            {isPast ? 'Past' : 'Upcoming'}
-          </Badge>
-          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-600 transition-colors" />
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── Main Component ──────────────────────────────────────────────────────────
-
 export function SchedulePage() {
   useDayflowStyles();
   const navigate = useNavigate();
   const { role } = useAuth();
   const { calendarEvents, rawEvents, isLoading, error, refresh } = useScheduleEvents();
-  
+
   const [activeView, setActiveView] = useState<'calendar' | 'upcoming' | 'past'>('calendar');
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     CALENDAR_DEFINITIONS.map(c => c.name)
   );
+  const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  
+  // ─── Event Item Component (Nested for scope) ───────────────────────────────
+  function EventListItem({ event, onClick }: { event: ScheduleEvent; onClick: () => void }) {
+    const isPast = new Date(event.date) < new Date(new Date().setHours(0, 0, 0, 0));
+    
+    // Find category color
+    const catDef = CALENDAR_DEFINITIONS.find(c => c.name === event.category);
+    const dotColor = catDef?.colors.eventColor || '#cbd5e1';
 
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={{ x: 4 }}
+        transition={{ duration: 0.2 }}
+      >
+        <div 
+          className="group flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 hover:border-emerald-200 hover:shadow-sm transition-all cursor-pointer"
+          onClick={() => {
+            if (event.id === 'mock-cleanup-29') {
+              setSelectedEvent(event);
+              setShowModal(true);
+              return;
+            }
+            onClick();
+          }}
+        >
+          {/* Date Box */}
+          <div className="flex flex-col items-center justify-center min-w-[56px] h-[56px] rounded-xl bg-slate-50 border border-slate-100 group-hover:bg-emerald-50 transition-colors">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+              {new Date(event.date).toLocaleDateString('en-US', { month: 'short' })}
+            </span>
+            <span className="text-lg font-black text-slate-700">
+              {new Date(event.date).getDate()}
+            </span>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: dotColor }} />
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{event.category}</span>
+            </div>
+            <h3 className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
+              {event.title}
+            </h3>
+            <div className="flex items-center gap-3 mt-1">
+              <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
+                <Clock className="w-3 h-3" />
+                {event.startTime}
+              </div>
+              <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium truncate">
+                <MapPin className="w-3 h-3" />
+                {event.locationName || event.location}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <Badge variant="outline" className={cn(
+              "text-[9px] font-bold uppercase h-5",
+              isPast ? "bg-slate-50 text-slate-400" : "bg-emerald-50 text-emerald-700 border-emerald-100"
+            )}>
+              {isPast ? 'Past' : 'Upcoming'}
+            </Badge>
+            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-600 transition-colors" />
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+  
   const subtitle = ROLE_SUBTITLE[role] ?? ROLE_SUBTITLE.participant;
 
   const toggleCategory = (name: string) => {
@@ -180,6 +195,8 @@ export function SchedulePage() {
   , [calendarEvents, selectedCategories]);
 
   // ── Calendar Instance ──
+  const eventsPlugin = useMemo(() => createEventsPlugin(), []);
+
   const calendar = useCalendarApp({
     views: [
       createDayView({ timeFormat: '12h', scrollToCurrentTime: true }),
@@ -188,17 +205,33 @@ export function SchedulePage() {
       createYearView({ mode: 'grid', showTimedEventsInYearView: true }),
     ],
     defaultView: ViewType.MONTH,
-    plugins: [createEventsPlugin()],
+    plugins: [eventsPlugin],
     events: filteredCalendarEvents,
     calendars: CALENDAR_DEFINITIONS,
     initialDate: new Date(),
     callbacks: {
       onEventClick: (event) => {
         const firestoreId = (event as { meta?: { firestoreId?: string } }).meta?.firestoreId;
-        if (firestoreId) navigate(`/app/events/${firestoreId}`);
+        
+        // Find the full event object from rawEvents
+        const fullEvent = rawEvents.find(e => e.id === firestoreId);
+        
+        if (fullEvent) {
+          setSelectedEvent(fullEvent);
+          setShowModal(true);
+        } else if (firestoreId) {
+          navigate(`/app/events/${firestoreId}`);
+        }
       },
     },
   });
+
+  // ── Sync Events to Calendar Instance ──
+  useEffect(() => {
+    if (eventsPlugin && eventsPlugin.set) {
+      eventsPlugin.set(filteredCalendarEvents);
+    }
+  }, [eventsPlugin, filteredCalendarEvents]);
 
   if (isLoading) return <ScheduleSkeleton />;
 
@@ -377,6 +410,106 @@ export function SchedulePage() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* Event Details Modal */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="sm:max-w-[425px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
+          <div className={cn(
+            "h-32 w-full relative flex items-end p-6",
+            selectedEvent?.category === 'Cleanup' ? "bg-blue-600" :
+            selectedEvent?.category === 'Planting' ? "bg-emerald-600" :
+            selectedEvent?.category === 'Workshop' ? "bg-purple-600" :
+            selectedEvent?.category === 'Awareness' ? "bg-amber-500" :
+            selectedEvent?.category === 'Research' ? "bg-pink-600" : "bg-slate-600"
+          )}>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            <div className="relative z-10 w-full flex items-center justify-between">
+              <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-black text-[10px] uppercase tracking-widest px-3">
+                {selectedEvent?.category}
+              </Badge>
+              <div className="flex -space-x-2">
+                 {[1,2,3].map(i => (
+                   <div key={i} className="w-6 h-6 rounded-full border-2 border-white/50 bg-slate-200 overflow-hidden shadow-sm">
+                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i + (selectedEvent?.id || '')}`} alt="avatar" />
+                   </div>
+                 ))}
+                 <div className="w-6 h-6 rounded-full border-2 border-white/50 bg-white/20 backdrop-blur-md flex items-center justify-center text-[8px] font-black text-white">
+                    +{selectedEvent?.participantsCount || 12}
+                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-6">
+            <div className="space-y-1">
+              <DialogTitle className="text-xl font-black text-slate-900 tracking-tight leading-tight">
+                {selectedEvent?.title}
+              </DialogTitle>
+              <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                <CalendarIcon className="w-3 h-3" />
+                {selectedEvent?.date && new Date(selectedEvent.date).toLocaleDateString('en-US', { 
+                  weekday: 'long',
+                  month: 'long', 
+                  day: 'numeric', 
+                  year: 'numeric' 
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-black uppercase tracking-wider">Schedule</span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-700">
+                    {selectedEvent?.startTime} — {selectedEvent?.endTime || 'End'}
+                  </p>
+               </div>
+               <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-black uppercase tracking-wider">Location</span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-700 truncate">
+                    {selectedEvent?.locationName || selectedEvent?.location}
+                  </p>
+               </div>
+            </div>
+
+            <Separator className="bg-slate-100" />
+
+            <div className="space-y-3">
+               <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                    <User className="w-4 h-4 text-slate-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Organizer</p>
+                    <p className="text-xs font-bold text-slate-900 truncate">
+                      {selectedEvent?.organizationName || selectedEvent?.organizerName || 'Junta Official'}
+                    </p>
+                  </div>
+               </div>
+               
+               <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100/50">
+                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed italic">
+                    "This is a scheduled environmental activity. Official registration and participation details will be enabled soon."
+                  </p>
+               </div>
+            </div>
+
+            <div className="pt-2 flex gap-3">
+               <Button variant="outline" className="flex-1 h-10 rounded-xl font-bold text-xs" onClick={() => setShowModal(false)}>
+                  Close
+               </Button>
+               <Button className="flex-1 h-10 rounded-xl bg-primary text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20">
+                  Join Waitlist
+               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
