@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,20 +13,9 @@ import {
   Check,
   LucideIcon
 } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-
-type Notification = {
-  id: string;
-  type: 'event' | 'system' | 'reminder' | 'verification';
-  title: string;
-  description: string;
-  time: string;
-  read: boolean;
-  icon: LucideIcon;
-  iconColor: string;
-  iconBg: string;
-};
+import { useNotifications, AppNotification } from '@/hooks/useNotifications';
+import { formatDistanceToNow } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const iconMap: Record<string, LucideIcon> = {
   event: CalendarDays,
@@ -39,101 +27,80 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 const colorMap: Record<string, { color: string; bg: string }> = {
-  event: { color: 'text-blue-600', bg: 'bg-blue-50' },
+  event_created: { color: 'text-blue-600', bg: 'bg-blue-50' },
+  event_approved: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  event_rejected: { color: 'text-rose-600', bg: 'bg-rose-50' },
+  event_joined: { color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  kyc_submitted: { color: 'text-amber-600', bg: 'bg-amber-50' },
+  kyc_verified: { color: 'text-green-600', bg: 'bg-green-50' },
+  kyc_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
+  organizer_approved: { color: 'text-teal-600', bg: 'bg-teal-50' },
+  organizer_rejected: { color: 'text-orange-600', bg: 'bg-orange-50' },
   system: { color: 'text-purple-600', bg: 'bg-purple-50' },
-  reminder: { color: 'text-amber-600', bg: 'bg-amber-50' },
-  verification: { color: 'text-green-600', bg: 'bg-green-50' },
   default: { color: 'text-primary', bg: 'bg-primary/10' }
 };
 
 export function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { notifications, loading: isLoading, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const q = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetched = snapshot.docs.map(doc => {
-        const data = doc.data();
-        const type = data.type || 'system';
-        const colors = colorMap[type as keyof typeof colorMap] || colorMap.default;
-        
-        return {
-          id: doc.id,
-          title: data.title || 'Notification',
-          description: data.message || data.description || '',
-          type: type as Notification['type'],
-          time: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : 'Just now',
-          read: data.read || false,
-          icon: iconMap[type as keyof typeof iconMap] || Bell,
-          iconColor: colors.color,
-          iconBg: colors.bg
-        };
-      }) as Notification[];
-      setNotifications(fetched);
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const markAllRead = () => {
-    // In a real app, this would update Firestore
-    setNotifications((prev) =>
-      prev.map((n) => ({
-        ...n,
-        read: true
-      }))
-    );
+  const handleNotificationClick = (n: AppNotification) => {
+    if (!n.read) {
+      markAsRead(n.id);
+    }
+    if (n.link) {
+      navigate(n.link);
+    }
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const renderList = (items: Notification[]) => (
+  const renderList = (items: AppNotification[]) => (
     <div className="space-y-2">
       {items.length > 0 ? (
-        items.map((n, i) => (
-          <motion.div
-            key={n.id}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.03 }}
-          >
-            <Card
-              className={`rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md overflow-hidden ${
-                !n.read 
-                  ? 'bg-primary/[0.02] border-primary/15 shadow-primary/5' 
-                  : 'hover:bg-muted/30'
-              }`}
-              onClick={() => {
-                // Update local state (should update Firestore in real app)
-                setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
-              }}
+        items.map((n, i) => {
+          const colors = colorMap[n.type] || colorMap.default;
+          const Icon = iconMap[n.type] || Bell;
+
+          return (
+            <motion.div
+              key={n.id}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03 }}
             >
-              {!n.read && (
-                <div className="h-0.5 w-full bg-gradient-to-r from-primary/60 to-primary/20" />
-              )}
-              <CardContent className="py-4 flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${n.iconBg}`}>
-                  <n.icon className={`w-5 h-5 ${n.iconColor}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className={`text-sm ${!n.read ? 'font-semibold' : 'font-medium'} text-foreground truncate`}>
-                      {n.title}
-                    </p>
-                    {!n.read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
+              <Card
+                className={`rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md overflow-hidden ${
+                  !n.read 
+                    ? 'bg-primary/[0.02] border-primary/15 shadow-primary/5' 
+                    : 'hover:bg-muted/30'
+                }`}
+                onClick={() => handleNotificationClick(n)}
+              >
+                {!n.read && (
+                  <div className="h-0.5 w-full bg-gradient-to-r from-primary/60 to-primary/20" />
+                )}
+                <CardContent className="py-4 flex items-start gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colors.bg}`}>
+                    <Icon className={`w-5 h-5 ${colors.color}`} />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                    {n.description}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-1.5">
-                    {n.time}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm ${!n.read ? 'font-semibold' : 'font-medium'} text-foreground truncate`}>
+                        {n.title}
+                      </p>
+                      {!n.read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                      {n.message}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1.5">
+                      {formatDistanceToNow(n.createdAt, { addSuffix: true })}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })
       ) : (
         <Card className="rounded-2xl border-dashed border-2 shadow-none bg-transparent">
           <CardContent className="flex flex-col items-center justify-center py-20 text-center">
@@ -168,7 +135,7 @@ export function NotificationsPage() {
           </p>
         </div>
         {unreadCount > 0 && (
-          <Button variant="outline" size="sm" onClick={markAllRead} className="hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all">
+          <Button variant="outline" size="sm" onClick={markAllAsRead} className="hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all">
             <Check className="w-4 h-4 mr-1.5" /> Mark all read
           </Button>
         )}
@@ -194,13 +161,13 @@ export function NotificationsPage() {
           {renderList(notifications)}
         </TabsContent>
         <TabsContent value="events" className="mt-4">
-          {renderList(notifications.filter((n) => n.type === 'event'))}
+          {renderList(notifications.filter((n) => n.type.startsWith('event')))}
         </TabsContent>
         <TabsContent value="system" className="mt-4">
-          {renderList(notifications.filter((n) => n.type === 'system'))}
+          {renderList(notifications.filter((n) => !n.type.startsWith('event') && !n.type.startsWith('kyc') && !n.type.startsWith('organizer')))}
         </TabsContent>
         <TabsContent value="reminders" className="mt-4">
-          {renderList(notifications.filter((n) => n.type === 'reminder'))}
+          {renderList(notifications.filter((n) => n.type.startsWith('kyc') || n.type.startsWith('organizer')))}
         </TabsContent>
       </Tabs>
     </div>

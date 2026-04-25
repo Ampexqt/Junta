@@ -85,7 +85,7 @@ const GreetingHeader = ({ userName, subtitle }: { userName: string; subtitle: st
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="mb-8"
+      className="mb-4 sm:mb-8"
     >
       <h1 className="font-heading font-bold text-3xl tracking-tight text-slate-900 flex items-center gap-2">
         {greeting}, <span className="text-primary">{firstName}</span>
@@ -424,11 +424,12 @@ function OrganizerDashboard() {
   };
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <GreetingHeader 
           userName={userName} 
           subtitle="Manage your events and track participant engagement effortlessly." 
         />
+        <div className="self-start">
         <CreateEventModal
           trigger={
             <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200/50 font-semibold border-none">
@@ -437,6 +438,7 @@ function OrganizerDashboard() {
             </Button>
           }
         />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -485,6 +487,7 @@ function OrganizerDashboard() {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -526,6 +529,7 @@ function OrganizerDashboard() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>);
