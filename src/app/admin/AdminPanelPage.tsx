@@ -151,7 +151,7 @@ export function AdminPanelPage() {
           opacity: 1,
           y: 0
         }}
-        className="grid grid-cols-3 gap-4">
+        className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         
         {[
         {
@@ -194,7 +194,7 @@ export function AdminPanelPage() {
       </motion.div>
 
       <Tabs defaultValue="verification">
-        <TabsList>
+        <TabsList className="w-full h-auto flex-wrap gap-1 justify-start">
           <TabsTrigger value="verification" className="gap-1.5">
             User Verification{' '}
             <Badge variant="outline" className="ml-1 text-[10px] px-1.5 h-4">

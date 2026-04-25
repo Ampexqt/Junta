@@ -38,12 +38,12 @@ const iconMap: Record<string, LucideIcon> = {
   users: Users
 };
 
-const colorMap: Record<string, { color: string; bg: string; border: string }> = {
-  event: { color: 'text-primary', bg: 'bg-primary/5', border: 'border-primary/10' },
-  system: { color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
-  reminder: { color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
-  verification: { color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-  default: { color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100' }
+const colorMap: Record<string, { color: string; bg: string }> = {
+  event: { color: 'text-blue-600', bg: 'bg-blue-50' },
+  system: { color: 'text-purple-600', bg: 'bg-purple-50' },
+  reminder: { color: 'text-amber-600', bg: 'bg-amber-50' },
+  verification: { color: 'text-green-600', bg: 'bg-green-50' },
+  default: { color: 'text-primary', bg: 'bg-primary/10' }
 };
 
 export function NotificationsPage() {
@@ -77,6 +77,7 @@ export function NotificationsPage() {
   }, []);
 
   const markAllRead = () => {
+    // In a real app, this would update Firestore
     setNotifications((prev) =>
       prev.map((n) => ({
         ...n,
@@ -88,76 +89,64 @@ export function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const renderList = (items: Notification[]) => (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {items.length > 0 ? (
         items.map((n, i) => (
           <motion.div
             key={n.id}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.02, duration: 0.3 }}
+            transition={{ delay: i * 0.03 }}
           >
             <Card
-              className={`rounded-2xl border transition-all duration-200 cursor-pointer relative overflow-hidden group ${
+              className={`rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md overflow-hidden ${
                 !n.read 
-                  ? 'bg-white border-primary/20 shadow-md shadow-primary/5' 
-                  : 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm'
+                  ? 'bg-primary/[0.02] border-primary/15 shadow-primary/5' 
+                  : 'hover:bg-muted/30'
               }`}
               onClick={() => {
+                // Update local state (should update Firestore in real app)
                 setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
               }}
             >
               {!n.read && (
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full" />
+                <div className="h-0.5 w-full bg-gradient-to-r from-primary/60 to-primary/20" />
               )}
-              <CardContent className="p-4 sm:p-5 flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105 duration-300 ${n.iconBg}`}>
-                  <n.icon className={`w-6 h-6 ${n.iconColor}`} />
+              <CardContent className="py-4 flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${n.iconBg}`}>
+                  <n.icon className={`w-5 h-5 ${n.iconColor}`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <p className={`text-sm tracking-tight ${!n.read ? 'font-black text-slate-900' : 'font-bold text-slate-600'} truncate`}>
-                        {n.title}
-                      </p>
-                      {!n.read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0 animate-pulse" />}
-                    </div>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider whitespace-nowrap bg-slate-50 px-2 py-0.5 rounded-md">
-                      {n.type}
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm ${!n.read ? 'font-semibold' : 'font-medium'} text-foreground truncate`}>
+                      {n.title}
+                    </p>
+                    {!n.read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
                   </div>
-                  <p className="text-xs text-slate-500 font-medium leading-relaxed line-clamp-2">
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                     {n.description}
                   </p>
-                  <div className="flex items-center gap-3 mt-3">
-                    <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                      <Bell className="w-3 h-3" /> {n.time}
-                    </p>
-                    {n.read && (
-                      <p className="text-[10px] font-bold text-emerald-500 flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Seen
-                      </p>
-                    )}
-                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1.5">
+                    {n.time}
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
         ))
       ) : (
-        <Card className="rounded-[2rem] border-dashed border-2 border-slate-200 shadow-none bg-slate-50/30">
-          <CardContent className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-20 h-20 rounded-[2rem] bg-white shadow-xl shadow-slate-200/50 flex items-center justify-center mb-6 relative">
-              <Bell className="w-10 h-10 text-slate-200" />
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary/20 rounded-full blur-sm" />
+        <Card className="rounded-2xl border-dashed border-2 shadow-none bg-transparent">
+          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+              <Bell className="w-8 h-8 text-muted-foreground/40" />
             </div>
-            <h3 className="font-heading font-black text-xl text-slate-900 mb-2">
-              {isLoading ? 'Fetching Updates...' : 'All caught up!'}
+            <h3 className="font-heading font-medium text-lg text-foreground mb-1">
+              {isLoading ? 'Loading...' : 'No notifications'}
             </h3>
-            <p className="text-sm text-slate-400 font-medium max-w-xs mx-auto leading-relaxed">
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
               {isLoading 
-                ? 'We are checking our records for any new messages or events just for you.' 
-                : 'You have no new notifications right now. Enjoy the peace while it lasts!'}
+                ? 'Please wait while we fetch your notifications.' 
+                : 'You currently have no notifications in this category. We\'ll let you know when something comes up.'}
             </p>
           </CardContent>
         </Card>
@@ -166,66 +155,53 @@ export function NotificationsPage() {
   );
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto w-full pb-20 px-4 pt-4">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+    <div className="space-y-6 max-w-4xl mx-auto w-full pb-10">
+      <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Bell className="w-5 h-5 text-primary" />
-            </div>
-            <h1 className="font-heading font-black text-3xl text-slate-900 tracking-tight">
-              Notifications
-            </h1>
-          </div>
-          <p className="text-slate-500 font-medium text-sm ml-1">
+          <h1 className="font-heading font-semibold text-2xl text-foreground">
+            Notifications
+          </h1>
+          <p className="text-muted-foreground mt-1">
             {unreadCount > 0 ?
-              `You have ${unreadCount} unread message${unreadCount > 1 ? 's' : ''} waiting for your attention.` :
-              'No unread messages. You\'re doing great!'}
+              `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}.` :
+              'All caught up!'}
           </p>
         </div>
         {unreadCount > 0 && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={markAllRead} 
-            className="rounded-xl border-slate-200 font-black uppercase text-[10px] tracking-widest hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm active:scale-95"
-          >
-            <Check className="w-4 h-4 mr-2" /> Mark all read
+          <Button variant="outline" size="sm" onClick={markAllRead} className="hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all">
+            <Check className="w-4 h-4 mr-1.5" /> Mark all read
           </Button>
         )}
       </div>
 
       <Tabs defaultValue="all" className="w-full">
-        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-xl pb-4 -mx-4 px-4 pt-2">
-          <TabsList className="bg-slate-100/50 border border-slate-200/40 p-1 rounded-2xl w-full sm:w-auto justify-start overflow-x-auto no-scrollbar gap-1">
-            <TabsTrigger value="all" className="rounded-xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
+        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md pb-2 -mx-2 px-2 pt-2">
+          <TabsList className="bg-muted/50 border p-1 rounded-xl w-full justify-start overflow-x-auto hide-scrollbar">
+            <TabsTrigger value="all" className="rounded-lg px-4">
               All{' '}
               {unreadCount > 0 && (
-                <span className="ml-2 w-5 h-5 flex items-center justify-center bg-primary text-white rounded-lg text-[9px] font-black">
+                <Badge className="ml-2 bg-primary/10 text-primary hover:bg-primary/20 border-0 text-[10px] px-1.5 h-4">
                   {unreadCount}
-                </span>
+                </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="events" className="rounded-xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">Events</TabsTrigger>
-            <TabsTrigger value="system" className="rounded-xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">System</TabsTrigger>
-            <TabsTrigger value="reminders" className="rounded-xl px-6 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">Reminders</TabsTrigger>
+            <TabsTrigger value="events" className="rounded-lg px-4">Events</TabsTrigger>
+            <TabsTrigger value="system" className="rounded-lg px-4">System</TabsTrigger>
+            <TabsTrigger value="reminders" className="rounded-lg px-4">Reminders</TabsTrigger>
           </TabsList>
         </div>
-        
-        <div className="mt-2">
-          <TabsContent value="all" className="mt-0 focus-visible:outline-none">
-            {renderList(notifications)}
-          </TabsContent>
-          <TabsContent value="events" className="mt-0 focus-visible:outline-none">
-            {renderList(notifications.filter((n) => n.type === 'event'))}
-          </TabsContent>
-          <TabsContent value="system" className="mt-0 focus-visible:outline-none">
-            {renderList(notifications.filter((n) => n.type === 'system'))}
-          </TabsContent>
-          <TabsContent value="reminders" className="mt-0 focus-visible:outline-none">
-            {renderList(notifications.filter((n) => n.type === 'reminder'))}
-          </TabsContent>
-        </div>
+        <TabsContent value="all" className="mt-4">
+          {renderList(notifications)}
+        </TabsContent>
+        <TabsContent value="events" className="mt-4">
+          {renderList(notifications.filter((n) => n.type === 'event'))}
+        </TabsContent>
+        <TabsContent value="system" className="mt-4">
+          {renderList(notifications.filter((n) => n.type === 'system'))}
+        </TabsContent>
+        <TabsContent value="reminders" className="mt-4">
+          {renderList(notifications.filter((n) => n.type === 'reminder'))}
+        </TabsContent>
       </Tabs>
     </div>
   );

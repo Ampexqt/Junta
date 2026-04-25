@@ -3,55 +3,68 @@ import { motion } from 'framer-motion';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
-import { Loader2, Search, ArrowRight } from 'lucide-react';
+import { Loader2, Search, ArrowRight, X, CalendarDays, MapPin, Users, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardHeader
-} from
-'@/components/ui/card';
+  CardHeader,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue } from
-'@/components/ui/select';
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow } from
-'@/components/ui/table';
-
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
 
 const categoryStyles: Record<string, string> = {
   Cleanup: 'bg-blue-50 text-blue-700',
   Planting: 'bg-green-50 text-green-700',
   Workshop: 'bg-purple-50 text-purple-700',
   Awareness: 'bg-amber-50 text-amber-700',
-  Research: 'bg-cyan-50 text-cyan-700'
+  Research: 'bg-cyan-50 text-cyan-700',
 };
 const statusStyles: Record<string, string> = {
   Approved: 'bg-emerald-50 text-emerald-700 font-bold uppercase tracking-tighter text-[9px]',
   Pending: 'bg-amber-50 text-amber-700 font-bold uppercase tracking-tighter text-[9px]',
   Rejected: 'bg-rose-50 text-rose-700 font-bold uppercase tracking-tighter text-[9px]',
-  Completed: 'bg-blue-50 text-blue-700 font-bold uppercase tracking-tighter text-[9px]'
+  Completed: 'bg-blue-50 text-blue-700 font-bold uppercase tracking-tighter text-[9px]',
+};
+const statusBannerStyles: Record<string, string> = {
+  Approved: 'bg-emerald-600',
+  Pending: 'bg-amber-500',
+  Rejected: 'bg-rose-600',
+  Completed: 'bg-blue-600',
 };
 
 interface EventData {
   id: string;
   name: string;
   organizer: string;
+  organizationName: string;
   date: string;
   category: string;
   status: string;
   participants: number;
+  locationName: string;
+  description: string;
+  coverImage: string;
   createdAt: Date;
 }
 
@@ -60,6 +73,8 @@ export function AdminAllEventsPage() {
   const [category, setCategory] = useState('all');
   const [allEvents, setAllEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, 'events'));
@@ -68,30 +83,34 @@ export function AdminAllEventsPage() {
         const data = doc.data();
         let formattedDate = 'TBD';
         if (data.date) {
-            try {
-                formattedDate = format(new Date(data.date), 'MMM dd, yyyy');
-            } catch (e) {
-                formattedDate = 'Invalid Date';
-            }
+          try {
+            formattedDate = format(new Date(data.date), 'MMM dd, yyyy');
+          } catch (e) {
+            formattedDate = 'Invalid Date';
+          }
         }
-        
+
         let statusDisplay = 'Pending';
         if (data.status === 'published') statusDisplay = 'Approved';
         else if (data.status === 'rejected') statusDisplay = 'Rejected';
         else if (data.status === 'completed') statusDisplay = 'Completed';
-        
+
         return {
-            id: doc.id,
-            name: data.title || 'Untitled Event',
-            organizer: data.organizerName || 'Anonymous',
-            date: formattedDate,
-            category: data.category || 'Uncategorized',
-            status: statusDisplay,
-            participants: data.participantsCount || 0,
-            createdAt: data.createdAt?.toDate?.() || new Date(0)
+          id: doc.id,
+          name: data.title || 'Untitled Event',
+          organizer: data.organizerName || 'Anonymous',
+          organizationName: data.organizationName || '',
+          date: formattedDate,
+          category: data.category || 'Uncategorized',
+          status: statusDisplay,
+          participants: data.participantsCount || 0,
+          locationName: data.locationName || 'Location TBD',
+          description: data.aboutEvent || data.shortDescription || 'No description provided.',
+          coverImage: data.coverImage || '',
+          createdAt: data.createdAt?.toDate?.() || new Date(0),
         };
       }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      
+
       setAllEvents(eventsData);
       setLoading(false);
     }, (error) => {
@@ -104,11 +123,16 @@ export function AdminAllEventsPage() {
 
   const filtered = allEvents.filter((e) => {
     const matchSearch =
-    e.name.toLowerCase().includes(search.toLowerCase()) ||
-    e.organizer.toLowerCase().includes(search.toLowerCase());
+      e.name.toLowerCase().includes(search.toLowerCase()) ||
+      e.organizer.toLowerCase().includes(search.toLowerCase());
     const matchCat = category === 'all' || e.category === category;
     return matchSearch && matchCat;
   });
+
+  const openEventDetail = (e: EventData) => {
+    setSelectedEvent(e);
+    setIsModalOpen(true);
+  };
 
   if (loading) {
     return (
@@ -117,22 +141,15 @@ export function AdminAllEventsPage() {
       </div>
     );
   }
+
   return (
     <motion.div
-      initial={{
-        opacity: 0,
-        y: 10
-      }}
-      animate={{
-        opacity: 1,
-        y: 0
-      }}
-      className="space-y-6">
-      
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
       <div>
-        <h1 className="font-heading font-semibold text-2xl text-foreground">
-          All Events
-        </h1>
+        <h1 className="font-heading font-semibold text-2xl text-foreground">All Events</h1>
         <p className="text-muted-foreground mt-1">Complete event directory.</p>
       </div>
 
@@ -145,7 +162,8 @@ export function AdminAllEventsPage() {
                 placeholder="Search events or organizers..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10" />
+                className="pl-10"
+              />
             </div>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger className="w-full sm:w-40">
@@ -168,41 +186,43 @@ export function AdminAllEventsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Event Name</TableHead>
-                  <TableHead className="hidden sm:table-cell">
-                    Organizer
-                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">Organizer</TableHead>
                   <TableHead className="hidden md:table-cell">Date</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="hidden lg:table-cell text-right">
-                    Participants
-                  </TableHead>
+                  <TableHead className="hidden lg:table-cell text-right">Participants</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((e) =>
-                  <TableRow key={e.id} className="group hover:bg-slate-50/50 transition-colors">
-                    <TableCell className="font-medium text-sm">
-                      {e.name}
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground font-medium">
+                      No events found.
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
-                      {e.organizer}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground text-[13px] font-medium">
-                      {e.date}
-                    </TableCell>
+                  </TableRow>
+                ) : filtered.map((e) => (
+                  <TableRow
+                    key={e.id}
+                    className="group hover:bg-slate-50/50 transition-colors cursor-pointer"
+                    onClick={() => openEventDetail(e)}
+                  >
+                    <TableCell className="font-medium text-sm">{e.name}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">{e.organizer}</TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground text-[13px] font-medium">{e.date}</TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={`border-none px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter ${categoryStyles[e.category]}`}>
+                        className={`border-none px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter ${categoryStyles[e.category] || 'bg-slate-50 text-slate-600'}`}
+                      >
                         {e.category}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={`border-none px-2 py-0.5 rounded-lg ${statusStyles[e.status]}`}>
+                        className={`border-none px-2 py-0.5 rounded-lg ${statusStyles[e.status] || statusStyles.Pending}`}
+                      >
                         {e.status}
                       </Badge>
                     </TableCell>
@@ -214,17 +234,108 @@ export function AdminAllEventsPage() {
                         variant="ghost"
                         size="sm"
                         className="h-9 px-4 rounded-xl text-primary font-bold hover:bg-primary/5 transition-all flex items-center gap-1.5 ml-auto"
+                        onClick={(ev) => { ev.stopPropagation(); openEventDetail(e); }}
                       >
                         View Details <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
                     </TableCell>
                   </TableRow>
-                )}
+                ))}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
-    </motion.div>);
 
+      {/* Event Detail Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-lg p-0 overflow-hidden border-none shadow-2xl bg-white rounded-3xl">
+          {selectedEvent && (
+            <>
+              {/* Cover Image / Header */}
+              <div className={`relative ${selectedEvent.coverImage ? '' : `${statusBannerStyles[selectedEvent.status] || 'bg-slate-700'}`} min-h-[140px]`}>
+                {selectedEvent.coverImage ? (
+                  <img
+                    src={selectedEvent.coverImage}
+                    alt={selectedEvent.name}
+                    className="w-full h-40 object-cover"
+                  />
+                ) : (
+                  <div className="h-40 flex items-center justify-center">
+                    <CalendarDays className="w-16 h-16 text-white/30" />
+                  </div>
+                )}
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+
+                {/* Close button */}
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 transition-colors flex items-center justify-center text-white backdrop-blur-sm"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+                {/* Title on image */}
+                <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge className={`border-0 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 ${categoryStyles[selectedEvent.category] || 'bg-white/20 text-white'}`}>
+                      {selectedEvent.category}
+                    </Badge>
+                    <Badge className={`border-0 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 ${statusStyles[selectedEvent.status] || 'bg-white/20 text-white'}`}>
+                      {selectedEvent.status}
+                    </Badge>
+                  </div>
+                  <h2 className="text-lg font-black text-white leading-tight drop-shadow">{selectedEvent.name}</h2>
+                </div>
+              </div>
+
+              {/* Organizer strip */}
+              <div className="flex items-center gap-3 px-5 py-3 bg-slate-50 border-b border-slate-100">
+                <Avatar className="w-9 h-9">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-black">
+                    {(selectedEvent.organizer || 'A').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">{selectedEvent.organizer}</p>
+                  {selectedEvent.organizationName && (
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{selectedEvent.organizationName}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Event Details */}
+              <div className="px-5 py-5 space-y-3">
+                {[
+                  { icon: CalendarDays, label: 'Event Date', value: selectedEvent.date },
+                  { icon: MapPin, label: 'Location', value: selectedEvent.locationName },
+                  { icon: Users, label: 'Participants', value: `${selectedEvent.participants} registered` },
+                  { icon: Tag, label: 'Category', value: selectedEvent.category },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+                      <Icon className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{label}</p>
+                      <p className="text-sm font-semibold text-foreground mt-0.5">{value}</p>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Description */}
+                {selectedEvent.description && (
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1.5">About This Event</p>
+                    <p className="text-sm text-slate-600 leading-relaxed font-medium">{selectedEvent.description}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </motion.div>
+  );
 }

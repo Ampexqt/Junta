@@ -3,6 +3,7 @@ import { auth, db } from '../config/firebase-admin';
 import { resend } from '../config/resend';
 import { authenticateUser, AuthRequest, isAdmin } from '../middleware/auth';
 import { FaceVerificationService } from '../services/face-verification';
+import { createNotification, notifyAllAdmins } from '../services/notifications';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcryptjs';
@@ -688,6 +689,15 @@ router.post('/submit-verification', authenticateUser, async (req: AuthRequest, r
 
         await userRef.update(updatePayload);
 
+        // Notify all admins that a new KYC is pending review
+        notifyAllAdmins({
+            type: 'kyc_submitted',
+            title: '🪪 New KYC Submission',
+            message: `A user has submitted identity verification documents and is awaiting review.`,
+            link: '/app/admin/verification',
+            relatedId: uid,
+        }).catch(console.error);
+
         res.json({ 
             success: true, 
             message: 'Verification submitted successfully. Automated analysis complete.',
@@ -746,6 +756,18 @@ router.post('/admin/verify-user', authenticateUser, isAdmin, async (req, res) =>
             updatedAt: new Date().toISOString(),
         });
 
+        // Notify the user about their KYC result
+        createNotification({
+            userId: uid,
+            type: status === 'verified' ? 'kyc_verified' : 'kyc_rejected',
+            title: status === 'verified' ? '✅ Identity Verified!' : '❌ Verification Rejected',
+            message: status === 'verified'
+                ? 'Your identity has been successfully verified. You can now access all platform features.'
+                : `Your identity verification was rejected. ${notes ? 'Reason: ' + notes : 'Please resubmit with clearer documents.'}`,
+            link: '/app/settings',
+            relatedId: uid,
+        }).catch(console.error);
+
         res.json({ success: true, message: `User verification ${status}` });
     } catch (error) {
         console.error('Error in verify-user:', error);
@@ -778,6 +800,18 @@ router.post('/admin/organizer-request', authenticateUser, isAdmin, async (req, r
         }
 
         await userRef.update(updates);
+
+        // Notify the user about their organizer request outcome
+        createNotification({
+            userId: uid,
+            type: status === 'approved' ? 'organizer_approved' : 'organizer_rejected',
+            title: status === 'approved' ? '🎉 Organizer Request Approved!' : '❌ Organizer Request Rejected',
+            message: status === 'approved'
+                ? 'Congratulations! Your organizer request has been approved. You can now create and manage events.'
+                : `Your organizer request was not approved. ${notes ? 'Reason: ' + notes : 'Please contact support for more information.'}`,
+            link: '/app/dashboard',
+            relatedId: uid,
+        }).catch(console.error);
 
         res.json({ success: true, message: `Organizer request ${status}` });
     } catch (error) {
