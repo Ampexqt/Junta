@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,6 +29,8 @@ import {
   Glasses,
   Focus,
   ChevronRight,
+  UserPlus,
+  Lock
 } from 'lucide-react';
 import {
   Select,
@@ -99,6 +102,8 @@ export function SettingsPage() {
   const [pendingValidIdUrl, setPendingValidIdUrl] = useState<string | null>(profile?.validIdUrl || null);
   const [pendingValidIdBackUrl, setPendingValidIdBackUrl] = useState<string | null>((profile as { validIdBackUrl?: string })?.validIdBackUrl || null);
   const [pendingSelfieUrl, setPendingSelfieUrl] = useState<string | null>(profile?.selfieUrl || null);
+
+  const [activeTab, setActiveTab] = useState('account');
 
   // Sync local state when profile loads/updates
   useEffect(() => {
@@ -406,6 +411,17 @@ export function SettingsPage() {
     }
   };
 
+  const handleApplyOrganizer = () => {
+    if (!organizationName) {
+      sileo.error({ title: 'Missing Information', description: 'Please provide an organization name.' });
+      return;
+    }
+    sileo.success({ 
+      title: 'Application Received', 
+      description: `Your request to become an organizer for "${organizationName}" has been submitted for review.` 
+    });
+  };
+
   if (!uid) {
     return <Navigate to="/login" replace />;
   }
@@ -432,7 +448,7 @@ export function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="account" orientation="horizontal" className="w-full flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} orientation="horizontal" className="w-full flex flex-col">
         <div className="mb-4 overflow-x-auto pb-1 scrollbar-hide">
           <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-slate-100/50 p-0.5 text-slate-500 border border-slate-200/40 w-full sm:w-auto min-w-max gap-0.5">
             <TabsTrigger 
@@ -453,10 +469,13 @@ export function SettingsPage() {
             )}
             <TabsTrigger 
               value="verification" 
-              className="rounded-md px-3 py-1 text-[11px] data-active:bg-white data-active:text-amber-600 data-active:shadow-md font-bold transition-all flex items-center gap-1.5 h-full"
+              className="relative rounded-md px-3 py-1 text-[11px] data-active:bg-white data-active:text-amber-600 data-active:shadow-md font-bold transition-all flex items-center gap-1.5 h-full"
             >
               <Fingerprint className="w-3.5 h-3.5" />
               Verification
+              {!kycVerified && (
+                <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm ${kycPending ? 'bg-amber-500' : 'bg-rose-500'} animate-pulse`} />
+              )}
             </TabsTrigger>
             <TabsTrigger 
               value="security" 
@@ -465,6 +484,15 @@ export function SettingsPage() {
               <KeyRound className="w-3.5 h-3.5" />
               Security
             </TabsTrigger>
+            {role === 'participant' && (
+              <TabsTrigger 
+                value="apply" 
+                className="rounded-md px-3 py-1 text-[11px] data-active:bg-white data-active:text-primary data-active:shadow-md font-bold transition-all flex items-center gap-1.5 h-full"
+              >
+                {!kycVerified ? <Lock className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+                Become Organizer
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
 
@@ -569,45 +597,45 @@ export function SettingsPage() {
           {role === 'organizer' && (
             <TabsContent value="organization">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <Card className="rounded-2xl shadow-sm border-emerald-100 bg-emerald-50/5 overflow-hidden">
-                  <CardHeader className="bg-emerald-50/50 border-b border-emerald-100/50 p-4">
-                    <CardTitle className="font-heading text-md font-black text-emerald-900">Organization Identity</CardTitle>
+                <Card className="rounded-2xl shadow-sm border-primary/10 bg-primary/[0.02] overflow-hidden">
+                  <CardHeader className="bg-primary/5 border-b border-primary/10 p-4">
+                    <CardTitle className="font-heading text-sm font-black text-primary-900">Organization Identity</CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4 space-y-6">
-                    <div className="flex items-center gap-4 bg-white p-3 rounded-xl border border-emerald-100/50 shadow-sm relative">
+                  <CardContent className="p-4 space-y-4">
+                    <div className="flex items-center gap-4 bg-white p-3 rounded-xl border border-primary/10 shadow-sm relative">
                       <div className="relative group/logo">
-                        <Avatar className="w-12 h-12 rounded-xl border-2 border-white shadow-sm transition-all group-hover/logo:scale-105 relative">
+                        <Avatar className="w-12 h-12 rounded-lg border-2 border-white shadow-sm transition-all group-hover/logo:scale-105 relative">
                           <AvatarImage src={pendingOrgLogoURL || profile?.organizationLogo} className="object-cover" />
-                          <AvatarFallback className="bg-emerald-100 text-emerald-600 text-sm font-black rounded-xl uppercase">
+                          <AvatarFallback className="bg-primary/10 text-primary text-sm font-black rounded-lg uppercase">
                             {organizationName?.substring(0, 2) || 'OG'}
                           </AvatarFallback>
                         </Avatar>
                         <Button
                           size="icon"
                           onClick={() => orgLogoInputRef.current?.click()}
-                          className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-600 rounded-lg border-2 border-white shadow-md hover:bg-emerald-700 flex items-center justify-center transition-all"
+                          className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary rounded-lg border-2 border-white shadow-md hover:bg-primary/90 flex items-center justify-center transition-all"
                         >
                           {isUploadingOrgLogo ? <Loader2 className="w-2.5 h-2.5 animate-spin text-white" /> : <Camera className="w-2.5 h-2.5 text-white" />}
                         </Button>
                       </div>
                       <div className="space-y-0.5">
-                        <h4 className="font-black text-sm text-emerald-900 tracking-tight leading-none">Organization Logo</h4>
-                        <p className="text-[10px] text-emerald-700/60 font-medium">Consistent branding across all events.</p>
+                        <h4 className="font-black text-xs text-primary-900 tracking-tight leading-none">Organization Logo</h4>
+                        <p className="text-[10px] text-primary/60 font-medium">Consistent branding across all events.</p>
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label htmlFor="settings-orgname" className="font-black text-[9px] uppercase tracking-[0.1em] text-emerald-800/40 px-1">Official Name</Label>
+                      <Label htmlFor="settings-orgname" className="font-black text-[9px] uppercase tracking-[0.1em] text-primary-900/40 px-1">Official Name</Label>
                       <Input
                         id="settings-orgname"
                         value={organizationName}
                         onChange={(e) => setOrganizationName(e.target.value)} 
-                        className="h-9 rounded-xl border-emerald-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-white font-bold text-sm"
+                        className="h-9 rounded-xl border-primary/20 focus:border-primary focus:ring-4 focus:ring-primary/10 bg-white font-bold text-sm"
                       />
                     </div>
 
                     <div className="pt-2 flex justify-end">
-                      <Button onClick={handleSave} className="h-9 px-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-[0.1em] shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02]">
+                      <Button onClick={handleSave} className="h-9 px-8 rounded-xl bg-primary hover:bg-primary/90 text-white font-black uppercase text-[10px] tracking-[0.1em] shadow-lg shadow-primary/30 transition-all hover:scale-[1.02]">
                         {isSaving ? <Loader2 className="animate-spin mr-2 w-3 h-3" /> : 'Update Brand'}
                       </Button>
                     </div>
@@ -625,11 +653,24 @@ export function SettingsPage() {
                     <CardTitle className="font-heading text-md font-black text-slate-900 tracking-tight">Identity Verification</CardTitle>
                     <p className="text-slate-400 font-medium text-[10px]">Complete the following steps to verify your account.</p>
                   </div>
-                  <Badge className={`${kycVerified ? 'bg-emerald-50 text-emerald-600' : kycPending ? 'bg-amber-50 text-amber-600' : kycRejected ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-600'} border-0 px-3 py-1 font-bold text-[9px] uppercase tracking-[0.1em] rounded-full`}>
-                    {kycVerified ? 'Verified' : kycPending ? 'Verification Submitted' : kycRejected ? 'Rejected' : 'Action Required'}
+                  <Badge className={`${kycVerified ? 'bg-primary/10 text-primary' : kycPending ? 'bg-amber-50 text-amber-600' : kycRejected ? 'bg-rose-600 text-white shadow-lg shadow-rose-200' : 'bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-200'} border-0 px-3 py-1 font-bold text-[9px] uppercase tracking-[0.1em] rounded-full`}>
+                    {kycVerified ? 'Verified' : kycPending ? 'Verification Submitted' : kycRejected ? 'Action Required' : 'Action Required'}
                   </Badge>
                 </CardHeader>
                 <CardContent className="p-0">
+                  {!kycVerified && (
+                    <div className="px-4 py-3 bg-rose-50/50 border-b border-rose-100/50 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                        <Shield className="w-4 h-4 text-rose-600" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <h4 className="font-black text-[10px] text-rose-900 uppercase tracking-tight">Unlock Premium Features</h4>
+                        <p className="text-[10px] text-rose-700/70 font-medium leading-normal">
+                          Verify your identity to join official events, secure your account, and <span className="font-black text-rose-800 underline decoration-rose-300">apply to become an organizer</span>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="divide-y divide-slate-50">
                     {/* Unified Identification Row */}
                     <div className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between hover:bg-slate-50/50 transition-colors gap-4">
@@ -760,7 +801,7 @@ export function SettingsPage() {
                   <Dialog open={isWebcamOpen} onOpenChange={(open) => {
                     if (!open) closeWebcam();
                   }}>
-                    <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] bg-white">
+                    <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border-0 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] bg-white">
                       <div className="sr-only">
                         <DialogTitle>{captureTarget === 'selfie' ? 'Selfie Verification' : 'ID Verification'}</DialogTitle>
                         <DialogDescription>Please follow the on-screen instructions to verify your identity.</DialogDescription>
@@ -793,7 +834,7 @@ export function SettingsPage() {
                         <div className="flex-1 flex flex-col items-center justify-center p-8 pt-24 space-y-8 bg-gradient-to-b from-white to-slate-50">
                           <div className="relative">
                             <div className="absolute inset-0 bg-emerald-500/10 blur-3xl rounded-full" />
-                            <div className="relative w-20 h-20 rounded-[2.5rem] bg-white border border-slate-100 flex items-center justify-center shadow-xl">
+                          <div className="relative w-20 h-20 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-xl">
                               {captureTarget.startsWith('id') ? (
                                 <FileText className="w-10 h-10 text-emerald-600" />
                               ) : (
@@ -969,62 +1010,60 @@ export function SettingsPage() {
 
           <TabsContent value="security">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="rounded-[2.5rem] shadow-xl border-slate-200/60 transition-all hover:shadow-2xl">
-                  <CardHeader className="p-5">
-                    <CardTitle className="font-heading text-xl font-black uppercase tracking-tight text-slate-900">Security Credentials</CardTitle>
-                    <CardDescription className="text-slate-500 font-medium">Manage your access and active sessions.</CardDescription>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="rounded-2xl shadow-sm border-slate-200/60 overflow-hidden">
+                  <CardHeader className="p-4 border-b border-slate-50">
+                    <CardTitle className="font-heading text-sm font-black uppercase tracking-tight text-slate-900">Security Credentials</CardTitle>
+                    <CardDescription className="text-[10px] text-slate-500 font-medium">Manage your access and active sessions.</CardDescription>
                   </CardHeader>
-                  <CardContent className="p-5 pt-0 space-y-8">
-                    <div className="p-5 rounded-3xl bg-slate-50/50 border border-slate-100 flex flex-col items-center text-center space-y-6">
-                      <div className="w-20 h-20 rounded-[2rem] bg-white shadow-xl flex items-center justify-center border border-slate-100">
-                        <KeyRound className="w-10 h-10 text-primary" />
+                  <CardContent className="p-4 space-y-4">
+                    <div className="p-4 rounded-xl bg-slate-50/50 border border-slate-100 flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center border border-slate-100 shrink-0">
+                        <KeyRound className="w-5 h-5 text-primary" />
                       </div>
-                      <div className="space-y-2">
-                         <h4 className="font-black text-xl text-slate-900 tracking-tight">Need a password update?</h4>
-                         <p className="text-xs text-slate-400 font-medium max-w-[200px]">We'll send a secure validation link to your recovery email.</p>
+                      <div className="flex-1 space-y-0.5">
+                         <h4 className="font-black text-xs text-slate-900 tracking-tight leading-none">Password Reset</h4>
+                         <p className="text-[10px] text-slate-400 font-medium">Request a secure update link.</p>
                       </div>
-                      <Button variant="outline" onClick={handlePasswordReset} className="w-full h-10 font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:bg-white hover:text-primary transition-all border-slate-200 shadow-sm">
-                        Request Reset Link
+                      <Button variant="outline" onClick={handlePasswordReset} className="h-8 px-4 font-black uppercase text-[9px] tracking-wider rounded-lg hover:bg-white hover:text-primary transition-all border-slate-200 shadow-none">
+                        Reset
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-[2.5rem] shadow-xl border-red-100 bg-red-50/5 overflow-hidden transition-all hover:shadow-2xl">
-                  <CardHeader className="p-5">
-                    <CardTitle className="font-heading text-xl font-black uppercase tracking-tight text-red-900">Sensitive Actions</CardTitle>
-                    <CardDescription className="text-red-700/60 font-medium">Critical changes that cannot be undone.</CardDescription>
+                <Card className="rounded-2xl shadow-sm border-red-100 bg-red-50/5 overflow-hidden">
+                  <CardHeader className="p-4 border-b border-red-100/50">
+                    <CardTitle className="font-heading text-sm font-black uppercase tracking-tight text-red-900">Sensitive Actions</CardTitle>
+                    <CardDescription className="text-[10px] text-red-700/60 font-medium">Critical changes that cannot be undone.</CardDescription>
                   </CardHeader>
-                  <CardContent className="p-5 pt-0 space-y-8">
-                    <div className="p-5 rounded-3xl bg-white border border-red-100 shadow-sm space-y-8">
-                      <div className="flex gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-                          <Trash2 className="w-6 h-6 text-red-600" />
-                        </div>
-                        <div>
-                          <h5 className="font-black text-red-900 tracking-tight">Permanent Account Deletion</h5>
-                          <p className="text-xs text-red-700/60 leading-relaxed font-bold mt-1 uppercase tracking-tighter italic">Warning: All event data will be lost.</p>
-                        </div>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="p-4 rounded-xl bg-white border border-red-100 shadow-sm flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
+                        <Trash2 className="w-5 h-5 text-red-600" />
+                      </div>
+                      <div className="flex-1 space-y-0.5">
+                        <h5 className="font-black text-xs text-red-900 tracking-tight leading-none">Account Deletion</h5>
+                        <p className="text-[9px] text-red-700/60 font-bold uppercase tracking-tighter italic">Warning: Data loss.</p>
                       </div>
                       
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="destructive" className="w-full h-10 font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl shadow-red-500/20 transition-all hover:scale-105 active:scale-95">
-                            Terminate Account
+                          <Button variant="destructive" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-wider rounded-lg shadow-none transition-all">
+                            Terminate
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent className="rounded-[2rem] border-red-100 shadow-2xl">
+                        <AlertDialogContent className="rounded-2xl border-red-100 shadow-2xl">
                           <AlertDialogHeader>
                             <AlertDialogTitle className="text-lg font-black text-red-900 tracking-tight">Absolute Confirmation Required</AlertDialogTitle>
                             <AlertDialogDescription className="text-slate-500 font-medium leading-relaxed">
-                              Deleting your account is permanent. This will remove your organizer profile, all submitted events, and participant records. This action <span className="font-black text-red-600 underline">cannot be undone</span>.
+                              Deleting your account is permanent. This action <span className="font-black text-red-600 underline">cannot be undone</span>.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                          <AlertDialogFooter className="gap-3">
-                            <AlertDialogCancel className="h-12 rounded-xl font-bold">Keep My Account</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteAccount} className="h-12 rounded-xl bg-red-600 hover:bg-red-700 font-black uppercase text-[10px] tracking-widest px-6 shadow-xl shadow-red-600/20">
-                              Confirm Deletion
+                          <AlertDialogFooter className="gap-2">
+                            <AlertDialogCancel className="h-10 rounded-xl font-bold">Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteAccount} className="h-10 rounded-xl bg-red-600 hover:bg-red-700 font-black uppercase text-[10px] tracking-widest px-6 shadow-xl shadow-red-600/20">
+                              Confirm
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -1035,6 +1074,63 @@ export function SettingsPage() {
               </div>
             </motion.div>
           </TabsContent>
+
+          {role === 'participant' && (
+            <TabsContent value="apply">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                {!kycVerified ? (
+                   <Card className="rounded-2xl shadow-sm border-primary/10 bg-primary/[0.02] overflow-hidden">
+                     <CardContent className="p-8 flex flex-col items-center text-center space-y-6">
+                       <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                         <Lock className="w-8 h-8 text-primary" />
+                       </div>
+                       <div className="space-y-2">
+                         <h3 className="font-heading text-lg font-black text-slate-900 tracking-tight">Verification Required</h3>
+                         <p className="text-sm text-slate-500 font-medium max-w-[300px]">
+                           You must complete your identity verification before you can apply to become an official event organizer.
+                         </p>
+                       </div>
+                       <Button onClick={() => setActiveTab('verification')} className="h-10 px-8 rounded-xl bg-primary text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]">
+                         Verify Now
+                       </Button>
+                     </CardContent>
+                   </Card>
+                ) : (
+                  <Card className="rounded-2xl shadow-sm border-primary/10 bg-primary/[0.02] overflow-hidden">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10 p-4">
+                      <CardTitle className="font-heading text-sm font-black text-slate-900">Organizer Application</CardTitle>
+                      <CardDescription className="text-slate-500 font-medium text-[10px]">Join our community of event creators.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="apply-orgname" className="font-black text-[9px] uppercase tracking-[0.1em] text-slate-400 px-1">Organization Name</Label>
+                        <Input
+                          id="apply-orgname"
+                          value={organizationName}
+                          onChange={(e) => setOrganizationName(e.target.value)} 
+                          className="h-9 rounded-xl border-slate-200 focus:border-primary focus:ring-4 focus:ring-primary/10 bg-white font-bold text-sm"
+                          placeholder="e.g. Acme Events"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="apply-bio" className="font-black text-[9px] uppercase tracking-[0.1em] text-slate-400 px-1">Organization Bio</Label>
+                        <Textarea
+                          id="apply-bio"
+                          className="rounded-xl border-slate-200 focus:border-primary focus:ring-4 focus:ring-primary/10 bg-white font-medium text-sm min-h-[100px]"
+                          placeholder="Tell us about the events you plan to host..."
+                        />
+                      </div>
+                      <div className="pt-2 flex justify-end">
+                        <Button onClick={handleApplyOrganizer} className="h-9 px-8 rounded-xl bg-primary hover:bg-primary/90 text-white font-black uppercase text-[10px] tracking-[0.1em] shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]">
+                          Submit Application
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </motion.div>
+            </TabsContent>
+          )}
         </div>
       </Tabs>
     </div>);
