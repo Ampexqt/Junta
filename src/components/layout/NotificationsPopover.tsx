@@ -1,7 +1,4 @@
-import { useState, useEffect } from 'react';
 import { Bell, CalendarDays, CheckCircle, Info, Settings, ArrowRight, LucideIcon } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import {
   Popover,
   PopoverContent,
@@ -11,15 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from 'react-router-dom';
+import { useNotifications, AppNotification } from '@/hooks/useNotifications';
+import { formatDistanceToNow } from 'date-fns';
 
-type Notification = {
-  id: string;
-  type: 'event' | 'system' | 'reminder' | 'verification';
-  title: string;
-  description: string;
-  time: string;
-  read: boolean;
-};
+
 
 const iconMap: Record<string, LucideIcon> = {
   event: CalendarDays,
@@ -30,44 +22,31 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 const colorMap: Record<string, { color: string; bg: string }> = {
-  event: { color: 'text-blue-600', bg: 'bg-blue-50' },
+  event_created: { color: 'text-blue-600', bg: 'bg-blue-50' },
+  event_approved: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  event_rejected: { color: 'text-rose-600', bg: 'bg-rose-50' },
+  event_joined: { color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  kyc_submitted: { color: 'text-amber-600', bg: 'bg-amber-50' },
+  kyc_verified: { color: 'text-green-600', bg: 'bg-green-50' },
+  kyc_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
+  organizer_approved: { color: 'text-teal-600', bg: 'bg-teal-50' },
+  organizer_rejected: { color: 'text-orange-600', bg: 'bg-orange-50' },
   system: { color: 'text-purple-600', bg: 'bg-purple-50' },
-  reminder: { color: 'text-amber-600', bg: 'bg-amber-50' },
-  verification: { color: 'text-green-600', bg: 'bg-green-50' },
   default: { color: 'text-primary', bg: 'bg-primary/10' }
 };
 
 export function NotificationsPopover() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { notifications, unreadCount, markAsRead } = useNotifications({ maxItems: 10 });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const q = query(
-      collection(db, 'notifications'), 
-      orderBy('createdAt', 'desc'),
-      limit(10)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetched = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          title: data.title || 'Notification',
-          description: data.message || data.description || '',
-          type: data.type || 'system',
-          time: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now',
-          read: data.read || false,
-        };
-      }) as Notification[];
-      
-      setNotifications(fetched);
-      setUnreadCount(fetched.filter(n => !n.read).length);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  const handleNotificationClick = (n: AppNotification) => {
+    if (!n.read) {
+      markAsRead(n.id);
+    }
+    if (n.link) {
+      navigate(n.link);
+    }
+  };
 
   return (
     <Popover>
@@ -107,7 +86,7 @@ export function NotificationsPopover() {
                   <div 
                     key={n.id} 
                     className={`p-4 transition-all hover:bg-slate-50 relative group cursor-pointer ${!n.read ? 'bg-primary/[0.02]' : ''}`}
-                    onClick={() => navigate(`/app/events`)} // Default to events for now
+                    onClick={() => handleNotificationClick(n)}
                   >
                     {!n.read && (
                       <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary rounded-full my-4" />
@@ -121,10 +100,12 @@ export function NotificationsPopover() {
                           <p className={`text-[13px] leading-tight truncate ${!n.read ? 'font-bold text-slate-900' : 'font-semibold text-slate-600'}`}>
                             {n.title}
                           </p>
-                          <span className="text-[10px] font-medium text-slate-400 shrink-0">{n.time}</span>
+                          <span className="text-[10px] font-medium text-slate-400 shrink-0">
+                            {formatDistanceToNow(n.createdAt, { addSuffix: true })}
+                          </span>
                         </div>
                         <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
-                          {n.description}
+                          {n.message}
                         </p>
                       </div>
                     </div>

@@ -11,7 +11,7 @@ import {
   '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Table,
   TableBody,
@@ -63,6 +63,7 @@ type PendingEvent = {
   aboutEvent: string;
   shortDescription: string;
   status: string;
+  organizerPhotoURL?: string;
   organizationName?: string;
   coverImage?: string;
   timeline?: { id: string; time: string; activity: string; description: string; }[];
@@ -194,7 +195,7 @@ export function EventApprovalsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           {
             label: 'Pending',
@@ -256,12 +257,13 @@ export function EventApprovalsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {events.filter(e => e.status !== 'pending').map((e) =>
+                {events.filter(e => e.status === 'pending').map((e) =>
                   <TableRow key={e.id} className="group hover:bg-slate-50/50 transition-colors">
                     <TableCell className="font-medium">{e.title}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Avatar className="w-7 h-7">
+                          <AvatarImage src={e.organizerPhotoURL} className="object-cover" />
                           <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
                             {(e.organizerName || 'A').split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
@@ -326,9 +328,9 @@ export function EventApprovalsPage() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         {selectedEvent &&
-          <DialogContent className="sm:max-w-2xl h-[90vh] p-0 overflow-hidden border-none shadow-2xl bg-slate-50 flex flex-col">
+          <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl h-[90vh] p-0 overflow-hidden border-none shadow-2xl bg-slate-50 flex flex-col">
             {/* Header Area */}
-            <DialogHeader className="p-6 bg-white border-b border-slate-100 flex flex-row items-start justify-between space-y-0 flex-shrink-0">
+            <DialogHeader className="p-5 sm:p-6 bg-white border-b border-slate-100 flex flex-col lg:flex-row items-start justify-between space-y-3 lg:space-y-0 flex-shrink-0">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                    <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50 border-none px-2 py-0 text-[10px] uppercase font-black tracking-widest">
@@ -346,7 +348,7 @@ export function EventApprovalsPage() {
                 </DialogDescription>
               </div>
 
-              <div className="flex-1 max-w-[240px] ml-auto mr-8">
+              <div className="flex-1 w-full lg:max-w-[240px] lg:ml-auto lg:mr-8">
                 <p className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest px-1">Organization Label</p>
                 <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl">
                    <Tag className="w-3.5 h-3.5 text-slate-400" />
@@ -365,8 +367,8 @@ export function EventApprovalsPage() {
                 )}
 
                 {/* About Section */}
-                <div className="grid grid-cols-3 gap-8">
-                    <div className="col-span-2 space-y-3">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                    <div className="col-span-1 lg:col-span-2 space-y-3">
                         <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                             <span className="w-4 h-[1px] bg-slate-200" /> Executive Summary
                         </h3>
@@ -489,20 +491,20 @@ export function EventApprovalsPage() {
             </ScrollArea>
 
             {/* Footer Actions */}
-            <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-end gap-3 flex-shrink-0">
+            <div className="p-4 bg-white border-t border-slate-100 flex flex-col-reverse sm:flex-row items-center justify-end gap-3 flex-shrink-0">
                 {selectedEvent.status === 'pending' && (
                     <>
                         <Button
                             variant="ghost"
                             disabled={actionLoading === selectedEvent.id}
-                            className="text-slate-400 hover:text-red-500 font-bold text-xs uppercase tracking-widest px-6"
+                            className="w-full sm:w-auto text-slate-400 hover:text-red-500 font-bold text-xs uppercase tracking-widest px-6"
                             onClick={() => setConfirmAction({ open: true, type: 'rejected', id: selectedEvent.id, reason: '' })}
                         >
                             {actionLoading === selectedEvent.id ? 'Loading...' : 'Decline Request'}
                         </Button>
                         <Button
                             disabled={actionLoading === selectedEvent.id}
-                            className="bg-slate-900 hover:bg-black text-white px-8 h-11 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-black/10 active:scale-95 transition-all"
+                            className="w-full sm:w-auto bg-slate-900 hover:bg-black text-white px-8 h-11 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-black/10 active:scale-95 transition-all"
                             onClick={() => setConfirmAction({ open: true, type: 'published', id: selectedEvent.id, reason: '' })}
                         >
                             {actionLoading === selectedEvent.id ? 'Approving...' : 'Publish Event'}
@@ -516,7 +518,7 @@ export function EventApprovalsPage() {
 
       {/* Action Confirmation Modal */}
       <Dialog open={confirmAction.open} onOpenChange={(open) => setConfirmAction(prev => ({ ...prev, open }))}>
-        <DialogContent className="sm:max-w-md rounded-2xl p-6">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-2xl p-5 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-xl font-black text-slate-900">
                {confirmAction.type === 'published' ? 'Final Confirmation' : 'Decline Request'}
@@ -539,10 +541,10 @@ export function EventApprovalsPage() {
             </div>
           )}
 
-          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+          <DialogFooter className="mt-4 flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
              <Button
                 variant="ghost"
-                className="font-bold text-xs uppercase tracking-widest text-slate-400"
+                className="w-full sm:w-auto font-bold text-xs uppercase tracking-widest text-slate-400"
                 onClick={() => setConfirmAction(prev => ({ ...prev, open: false }))}
              >
                 Cancel
@@ -550,8 +552,8 @@ export function EventApprovalsPage() {
              <Button
                 disabled={confirmAction.type === 'rejected' && !confirmAction.reason.trim()}
                 className={confirmAction.type === 'published' 
-                  ? "bg-slate-900 hover:bg-black text-white px-8 rounded-xl font-bold text-xs uppercase tracking-widest"
-                  : "bg-red-600 hover:bg-red-700 text-white px-8 rounded-xl font-bold text-xs uppercase tracking-widest"
+                  ? "w-full sm:w-auto bg-slate-900 hover:bg-black text-white px-8 rounded-xl font-bold text-xs uppercase tracking-widest"
+                  : "w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-8 rounded-xl font-bold text-xs uppercase tracking-widest"
                 }
                 onClick={() => handleAction(confirmAction.id, confirmAction.type)}
              >

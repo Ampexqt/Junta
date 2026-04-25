@@ -3,6 +3,7 @@ import admin from 'firebase-admin';
 import { db } from '../config/firebase-admin';
 import * as jwt from 'jsonwebtoken';
 import { authenticateUser, AuthRequest } from '../middleware/auth';
+import { createNotification, notifyAllAdmins } from '../services/notifications';
 
 const router = Router();
 
@@ -44,6 +45,15 @@ router.post('/', authenticateUser, async (req, res) => {
         };
 
         const docRef = await db.collection('events').add(newEvent);
+
+        // Notify all admins about the new pending event
+        notifyAllAdmins({
+            type: 'event_created',
+            title: '📋 New Event Submission',
+            message: `"${eventData.title}" was submitted by ${authReq.user?.name || 'an organizer'} and is awaiting review.`,
+            link: '/app/admin/approvals',
+            relatedId: docRef.id,
+        }).catch(console.error); // fire-and-forget
 
         res.status(201).json({
             message: 'Event created successfully',
@@ -271,6 +281,26 @@ router.patch('/:id/status', authenticateUser, async (req, res) => {
 
         await db.collection('events').doc(id).update(updateData);
 
+        // Notify the organizer about the status change
+        const eventDoc = await db.collection('events').doc(id).get();
+        const eventData2 = eventDoc.data();
+        if (eventData2?.organizerId) {
+            const isApproved = status === 'published';
+            const isRejected = status === 'rejected';
+            if (isApproved || isRejected) {
+                createNotification({
+                    userId: eventData2.organizerId,
+                    type: isApproved ? 'event_approved' : 'event_rejected',
+                    title: isApproved ? '✅ Event Approved!' : '❌ Event Rejected',
+                    message: isApproved
+                        ? `Your event "${eventData2.title}" has been approved and is now live!`
+                        : `Your event "${eventData2.title}" was not approved. Please review and resubmit.`,
+                    link: '/app/organizer/submissions',
+                    relatedId: id,
+                }).catch(console.error);
+            }
+        }
+
         res.json({ message: `Event ${status} successfully`, eventId: id });
     } catch (error) {
         console.error('Error updating event status:', error);
@@ -315,10 +345,25 @@ router.post('/:id/join', authenticateUser, async (req, res) => {
         await participationRef.set({
             eventId: id,
             userId,
-            status: 'Upcoming', // Can be 'Upcoming', 'In Progress', 'Completed'
+            status: 'Upcoming',
             progress: 0,
             joinedAt: new Date().toISOString()
         });
+
+        // Notify the organizer that someone joined
+        if (eventData?.organizerId) {
+            const userDoc = await db.collection('users').doc(userId).get();
+            const userData2 = userDoc.data();
+            const userName = userData2?.displayName || userData2?.firstName || 'A participant';
+            createNotification({
+                userId: eventData.organizerId,
+                type: 'event_joined',
+                title: '👤 New Participant',
+                message: `${userName} just registered for your event "${eventData.title}".`,
+                link: '/app/organizer/my-events',
+                relatedId: id,
+            }).catch(console.error);
+        }
 
         res.json({ message: 'Successfully joined event', eventId: id });
     } catch (error) {
