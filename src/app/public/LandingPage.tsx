@@ -473,7 +473,7 @@ function FeaturedEventsSection() {
           const q = query(
             collection(db, 'events'),
             where('visibility', '==', 'public'),
-            where('status', '==', 'published'),
+            where('status', 'in', ['published', 'approved', 'ongoing']),
             orderBy('createdAt', 'desc'),
             limit(4)
           );
@@ -632,7 +632,7 @@ function MapPreviewSection() {
           const q = query(
             collection(db, 'events'),
             where('visibility', '==', 'public'),
-            where('status', '==', 'published')
+            where('status', 'in', ['published', 'approved', 'ongoing'])
           );
           const unsub = onSnapshot(q, (snap) => {
             setPins(snap.docs.map(doc => {
