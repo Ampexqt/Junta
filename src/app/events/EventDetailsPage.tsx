@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
+import { onSnapshot, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/features/auth/AuthContext';
 
 import Map, { Marker } from 'react-map-gl/mapbox';
 
@@ -43,41 +46,69 @@ interface EventData {
   organizationLogo?: string;
 }
 
+const categoryIcons: Record<string, string> = {
+  cleanup: '🧹', planting: '🌱', workshop: '🎓',
+  seminar: '🏛️', research: '🧬', awareness: '📣', other: '📍',
+};
+
+const categoryColors: Record<string, string> = {
+  cleanup: '#ef4444',
+  planting: '#10b981',
+  workshop: '#f59e0b',
+  seminar: '#3b82f6',
+  research: '#8b5cf6',
+  other: '#64748b',
+};
+
 export function EventDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { token: mapboxToken } = useMapboxToken();
+  const { uid } = useAuth();
   const [event, setEvent] = useState<EventData | null>(null);
   const [loading, setLoading] = useState(true);
   const [joined, setJoined] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [liveStatus, setLiveStatus] = useState<string>('');
 
-  useEffect(() => {
-    const fetchEvent = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const response = await fetch(`${API_BASE_URL}/events/${id}`, {
-          headers
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setEvent(data);
-        } else if (response.status === 403 || response.status === 401) {
-          // If forbidden, they might not be the owner
-          setEvent(null);
-        }
-      } catch (e: unknown) {
-        console.error('Error fetching event details:', e);
-        sileo.error({ title: 'Sync Error', description: 'Failed to load event details. Please try again later.' });
-      } finally {
-        setLoading(false);
+  // Fetch event + hasJoined status — re-runs when uid changes (handles re-login)
+  const fetchEvent = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await fetch(`${API_BASE_URL}/events/${id}`, { headers });
+      if (response.ok) {
+        const data = await response.json();
+        setEvent(data);
+        setLiveStatus(data.status || '');
+        setJoined(data.hasJoined || false);
+      } else if (response.status === 403 || response.status === 401) {
+        setEvent(null);
       }
-    };
-    if (id) fetchEvent();
+    } catch (e: unknown) {
+      console.error('Error fetching event details:', e);
+      sileo.error({ title: 'Sync Error', description: 'Failed to load event details. Please try again later.' });
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  // Re-fetch whenever id or uid changes (handles logout → re-login)
+  useEffect(() => {
+    fetchEvent();
+  }, [fetchEvent, uid]);
+
+  // Real-time status listener
+  useEffect(() => {
+    if (!id) return;
+    const unsub = onSnapshot(doc(db, 'events', id), (snap) => {
+      const newStatus = snap.data()?.status;
+      if (newStatus) setLiveStatus(newStatus);
+    });
+    return () => unsub();
   }, [id]);
 
   if (loading) {
@@ -224,11 +255,18 @@ export function EventDetailsPage() {
                   interactive={false}
                 >
                   <Marker latitude={event.coordinates.lat} longitude={event.coordinates.lng} anchor="bottom">
-                    <div className="relative">
-                       <div className="absolute -inset-4 bg-emerald-500/20 rounded-full animate-pulse scale-75" />
-                       <div className="relative w-6 h-6 rounded-full bg-white shadow-xl flex items-center justify-center border-2 border-white">
-                          <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-inner" />
-                       </div>
+                    <div className="relative flex flex-col items-center group">
+                      <div className="absolute -top-1 w-8 h-8 rounded-full animate-ping" style={{ backgroundColor: `${categoryColors[event.category.toLowerCase()] || '#10b981'}40` }} />
+                      <div
+                        className="flex items-center justify-center rounded-2xl border-2 border-white shadow-xl transition-all duration-300 w-10 h-10 -translate-y-2"
+                        style={{ backgroundColor: categoryColors[event.category.toLowerCase()] || '#10b981' }}
+                      >
+                        <span className="text-lg">{categoryIcons[event.category.toLowerCase()] || '📍'}</span>
+                      </div>
+                      <div
+                        className="w-3 h-3 rotate-45 -mt-1.5 border-r border-b border-white transition-all opacity-100"
+                        style={{ backgroundColor: categoryColors[event.category.toLowerCase()] || '#10b981' }}
+                      />
                     </div>
                   </Marker>
                 </Map>
@@ -258,20 +296,61 @@ export function EventDetailsPage() {
                     </div>
                     <p className="text-sm font-black text-white uppercase tracking-tighter">Registration Confirmed</p>
                   </div>
-                ) : (
-                  <Button className="w-full bg-slate-900 hover:bg-slate-800 h-14 rounded-2xl text-sm font-black uppercase tracking-widest shadow-lg" 
+                ) : (liveStatus === 'published' || liveStatus === 'approved') ? (
+                  <Button
+                    className="w-full bg-slate-900 hover:bg-slate-800 h-14 rounded-2xl text-sm font-black uppercase tracking-widest shadow-lg disabled:opacity-70"
+                    disabled={isJoining}
                     onClick={async () => {
+                      const token = localStorage.getItem('token');
+                      // If no token at all, redirect to login
+                      if (!token) {
+                        sileo.error({ title: 'Login Required', description: 'Please log in to join this event.' });
+                        navigate('/login');
+                        return;
+                      }
+                      setIsJoining(true);
                       try {
                         const response = await fetch(`${API_BASE_URL}/events/${id}/join`, {
                           method: 'POST',
-                          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+                          headers: { 
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          }
                         });
-                        if (response.ok) setJoined(true);
-                        else throw new Error('Join failed');
-                      } catch (err) { sileo.error({ title: 'Error', description: 'Failed to register' }); }
+                        const resData = await response.json();
+                        if (response.ok) {
+                          setJoined(true);
+                          sileo.success({ title: 'Registered!', description: 'You have successfully joined this event.' });
+                        } else if (response.status === 400 && resData.error?.includes('already joined')) {
+                          // Already joined — just reflect this in the UI
+                          setJoined(true);
+                          sileo.info({ title: 'Already Registered', description: 'You are already registered for this event.' });
+                        } else if (response.status === 401 || response.status === 403) {
+                          sileo.error({ title: 'Session Expired', description: 'Your session has expired. Please log in again.' });
+                          navigate('/login');
+                        } else {
+                          throw new Error(resData.error || 'Join failed');
+                        }
+                      } catch (err: unknown) {
+                        sileo.error({ title: 'Error', description: (err instanceof Error ? err.message : null) || 'Failed to register' });
+                      } finally {
+                        setIsJoining(false);
+                      }
                     }}
                   >
-                    Join This Mission <ArrowLeft className="w-4 h-4 rotate-180 ml-2" />
+                    {isJoining ? 'Registering...' : <>Join This Mission <ArrowLeft className="w-4 h-4 rotate-180 ml-2" /></>}
+                  </Button>
+                ) : liveStatus === 'ongoing' ? (
+                  <Button disabled className="w-full h-14 rounded-2xl text-sm font-black uppercase tracking-widest shadow-none bg-amber-50 text-amber-600 border border-amber-200 opacity-100 cursor-not-allowed">
+                    🟢 Event In Progress
+                  </Button>
+                ) : liveStatus === 'completed' ? (
+                  <Button disabled className="w-full h-14 rounded-2xl text-sm font-black uppercase tracking-widest shadow-none bg-slate-100 text-slate-400 opacity-100 cursor-not-allowed">
+                    🏁 Event Has Ended
+                  </Button>
+                ) : (
+                  <Button disabled className="w-full bg-slate-100 text-slate-400 border-none h-14 rounded-2xl text-sm font-black uppercase tracking-widest shadow-none opacity-100 cursor-not-allowed">
+                    Registration Unavailable
                   </Button>
                 )}
                 <Button variant="ghost" className="w-full h-10 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 hover:bg-primary/5 hover:text-primary">

@@ -18,7 +18,9 @@ import {
 
     LogOut,
     ChevronsUpDown,
-    LucideIcon
+    LucideIcon,
+    Trophy,
+    Shield
 } from "lucide-react"
 
 import {
@@ -289,8 +291,14 @@ export function AppSidebar() {
                             {isExpanded && (
                                 <div className="grid flex-1 text-left text-sm leading-tight ml-2 group-data-[collapsible=icon]:hidden overflow-hidden">
                                     <span className="truncate font-bold text-[13.5px]">{userName}</span>
-                                    <span className="truncate text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                                    <span className="truncate text-[10px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center gap-1">
                                         {roleLabels[role]}
+                                        {role === 'participant' && profile?.level && (
+                                            <span className="flex items-center text-amber-500"><Trophy className="w-3 h-3 ml-1 mr-0.5" /> Lvl {profile.level}</span>
+                                        )}
+                                        {role === 'organizer' && profile?.organizerTier && (
+                                            <span className="flex items-center text-blue-500"><Shield className="w-3 h-3 ml-1 mr-0.5" /> Tier {profile.organizerTier}</span>
+                                        )}
                                     </span>
                                 </div>
                             )}

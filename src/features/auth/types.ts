@@ -18,6 +18,17 @@ export type UserProfile = {
     selfieUrl?: string;
     lastOrgNameUpdate?: string;
     organizationLogo?: string;
+    
+    // Gamification - Participant
+    xp?: number;
+    level?: number;
+    badges?: string[];
+    streak?: number;
+    
+    // Gamification - Organizer
+    organizerPoints?: number;
+    organizerTier?: number;
+    organizerBadges?: string[];
 };
 
 export type AuthContextType = {

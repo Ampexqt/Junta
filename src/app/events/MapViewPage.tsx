@@ -348,33 +348,18 @@ export function MapViewPage() {
                       }}
                     >
                       <div className="relative flex flex-col items-center cursor-pointer group">
-                        {/* Sophisticated Glow/Pulse */}
-                        <div 
-                          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full animate-pulse opacity-20 duration-[2000ms] ${isActive ? 'scale-125' : 'scale-0'}`} 
+                        {isActive && (
+                          <div className="absolute -top-1 w-8 h-8 rounded-full animate-ping" style={{ backgroundColor: `${hexColor}40` }} />
+                        )}
+                        <div
+                          className={`flex items-center justify-center rounded-2xl border-2 border-white shadow-xl transition-all duration-300 ${isActive ? 'w-10 h-10 -translate-y-2' : 'w-8 h-8 group-hover:w-9 group-hover:h-9 group-hover:-translate-y-1'}`}
                           style={{ backgroundColor: hexColor }}
-                        />
-                        
-                        {/* Noticeable Minimalist Target */}
-                        <div className="relative flex items-center justify-center">
-                           <div 
-                             className={`absolute rounded-full border transition-all duration-500 ${isActive ? 'w-10 h-10 border-white/50 bg-white/10' : 'w-8 h-8 border-transparent'}`} 
-                             style={{ borderColor: isActive ? undefined : `${hexColor}30` }}
-                           />
-                           
-                           <div 
-                             className={`relative rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] flex items-center justify-center border-2 border-white transition-all duration-300 ${isActive ? 'w-8 h-8 -translate-y-1' : 'w-6 h-6 group-hover:scale-110'}`}
-                           >
-                             <div 
-                               className={`rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)] transition-all ${isActive ? 'w-4 h-4' : 'w-3 h-3'}`}
-                               style={{ backgroundColor: hexColor }} 
-                             />
-                           </div>
+                        >
+                          <span className="text-lg">{categoryConfig[pin.category]?.icon || '📍'}</span>
                         </div>
-                        
-                        {/* Subtler Link/Tail */}
-                        <div 
-                          className={`w-[1.5px] h-2 bg-slate-300/50 -mt-0.5 rounded-full transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`}
-                          style={{ backgroundColor: isActive ? hexColor : undefined }}
+                        <div
+                          className={`w-3 h-3 rotate-45 -mt-1.5 border-r border-b border-white transition-all ${isActive ? 'opacity-100' : 'opacity-0'}`}
+                          style={{ backgroundColor: hexColor }}
                         />
                       </div>
                     </Marker>

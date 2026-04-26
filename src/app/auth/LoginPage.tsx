@@ -71,7 +71,25 @@ export function LoginPage() {
         const userData = userDoc.data();
         const fullName = `${userData.firstName} ${userData.lastName}`;
         
+        // Exchange Firebase ID token for a Junta JWT (needed for protected API routes like /join)
+        let juntaToken: string | null = null;
+        try {
+          const idToken = await user.getIdToken(true);
+          const syncRes = await fetch(`${API_BASE_URL}/auth/google-sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          });
+          if (syncRes.ok) {
+            const syncData = await syncRes.json();
+            juntaToken = syncData.token;
+          }
+        } catch (syncErr) {
+          console.warn('[Google Login] Failed to sync JWT, some features may be unavailable:', syncErr);
+        }
+
         // Success! Set up session
+        if (juntaToken) localStorage.setItem('token', juntaToken);
         localStorage.setItem('junta_user_uid', user.uid);
         localStorage.setItem('junta_user_name', fullName);
         localStorage.setItem('junta_user_role', userData.role);

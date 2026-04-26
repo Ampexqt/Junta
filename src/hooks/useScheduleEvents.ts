@@ -13,7 +13,6 @@ import {
   query,
   where,
   onSnapshot,
-  Query,
   DocumentData,
 } from 'firebase/firestore';
 import { createEvent } from '@dayflow/core';
@@ -123,15 +122,30 @@ export const CALENDAR_DEFINITIONS = [
 function parseEventDate(dateStr: string, timeStr?: string): Date | null {
   if (!dateStr) return null;
   try {
-    // Firestore dates can be ISO strings like "2025-06-15" or "2025-06-15T08:00:00.000Z"
-    const base = dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`;
-    const d = new Date(base);
+    // Attempt standard parse first (handles "Apr 29, 2026")
+    let d = new Date(dateStr);
+    
+    // If invalid, try appending T00:00:00 (for strict "YYYY-MM-DD" formats)
+    if (isNaN(d.getTime())) {
+      const base = dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`;
+      d = new Date(base);
+    }
+    
     if (isNaN(d.getTime())) return null;
 
     if (timeStr) {
-      const [h, m] = timeStr.split(':').map(Number);
-      if (!isNaN(h) && !isNaN(m)) {
-        d.setHours(h, m, 0, 0);
+      // timeStr might be "10:30 AM" or "14:00"
+      const [timePart, period] = timeStr.trim().split(/\s+/);
+      if (timePart) {
+        const [hStr, mStr] = timePart.split(':');
+        let h = parseInt(hStr, 10);
+        const m = parseInt(mStr || '0', 10);
+        
+        if (!isNaN(h) && !isNaN(m)) {
+           if (period?.toLowerCase() === 'pm' && h < 12) h += 12;
+           if (period?.toLowerCase() === 'am' && h === 12) h = 0;
+           d.setHours(h, m, 0, 0);
+        }
       }
     }
     return d;
@@ -156,7 +170,7 @@ function toCalendarEvent(raw: ScheduleEvent): DayflowEvent | null {
     const fallbackEnd = new Date(start.getTime() + 2 * 60 * 60 * 1000);
     return createEvent({
       id: raw.id,
-      title: raw.title,
+      title: `${raw.title} • ${raw.locationName || raw.location}`,
       start,
       end: fallbackEnd,
       description: `${raw.location} · ${raw.category}`,
@@ -177,7 +191,7 @@ function toCalendarEvent(raw: ScheduleEvent): DayflowEvent | null {
 
   return createEvent({
     id: raw.id,
-    title: raw.title,
+    title: `${raw.title} • ${raw.locationName || raw.location}`,
     start,
     end,
     description: `${raw.location} · ${raw.category}`,
@@ -226,68 +240,63 @@ export function useScheduleEvents(): UseScheduleEventsReturn {
   const { role, uid } = useAuth();
   const [rawEvents, setRawEvents] = useState<ScheduleEvent[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<DayflowEvent[]>([]);
+  const [joinedEventIds, setJoinedEventIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
+  // Effect 1: Listen to participations to know which events the user has joined
   useEffect(() => {
+    if (!uid || role === 'admin') return;
+
+    const partQ = query(collection(db, 'participations'), where('userId', '==', uid));
+    const unsub = onSnapshot(partQ, (snap) => {
+      setJoinedEventIds(new Set(snap.docs.map(d => d.data().eventId as string)));
+    }, (err) => console.error('[useScheduleEvents] partQ error:', err));
+
+    return () => unsub();
+  }, [uid, role]);
+
+  // Effect 2: Listen to events and apply role-based filtering
+  useEffect(() => {
+    if (!uid) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
-    const eventsRef = collection(db, 'events');
-
-    let q: Query<DocumentData>;
-
-    if (role === 'admin') {
-      // Admin sees ALL events regardless of status
-      q = query(eventsRef);
-    } else if (role === 'organizer' && uid) {
-      // Organizer sees only their own events (all statuses)
-      q = query(eventsRef, where('organizerId', '==', uid));
-    } else {
-      // Participant sees only published public events
-      q = query(
-        eventsRef,
-        where('visibility', '==', 'public'),
-        where('status', '==', 'published')
-      );
-    }
-
-    const unsubscribe = onSnapshot(
-      q,
+    const unsubEvents = onSnapshot(
+      collection(db, 'events'),
       (snapshot) => {
         const raw: ScheduleEvent[] = [];
         const calEvents: DayflowEvent[] = [];
 
         snapshot.forEach((doc) => {
-          const scheduleEvent = mapDocToScheduleEvent(doc.id, doc.data());
+          const data = doc.data();
+
+          // Filter logic per role
+          if (role !== 'admin') {
+            const isMyEvent = data.organizerId === uid;  // created by me
+            const isJoined  = joinedEventIds.has(doc.id); // joined as participant
+            if (!isMyEvent && !isJoined) return;
+          }
+
+          const scheduleEvent = mapDocToScheduleEvent(doc.id, data);
           raw.push(scheduleEvent);
 
           const calEvent = toCalendarEvent(scheduleEvent);
-          if (calEvent) calEvents.push(calEvent);
+          if (calEvent) {
+            calEvents.push(calEvent);
+          } else {
+            console.warn('[useScheduleEvents] toCalendarEvent returned null for:', doc.id, scheduleEvent.date, scheduleEvent.startTime);
+          }
         });
 
-        // Add Mock Event for Apr 29, 2026 (User Request)
-        const mockCleanup: ScheduleEvent = {
-          id: 'mock-cleanup-29',
-          title: 'Coastal Clean-up',
-          date: '2026-04-29',
-          startTime: '08:00',
-          endTime: '12:00',
-          location: 'Lantawan Drive Pasonanca',
-          locationName: 'Lantawan Drive Pasonanca',
-          category: 'Cleanup',
-          status: 'published',
-        };
-        
-        if (!raw.some(e => e.id === mockCleanup.id)) {
-          raw.push(mockCleanup);
-          const mockCal = toCalendarEvent(mockCleanup);
-          if (mockCal) calEvents.push(mockCal);
-        }
-
+        console.log(`[useScheduleEvents] Found ${calEvents.length} calendar events out of ${snapshot.size} total events. joinedEventIds size:`, joinedEventIds.size);
         setRawEvents(raw);
         setCalendarEvents(calEvents);
         setIsLoading(false);
@@ -299,9 +308,9 @@ export function useScheduleEvents(): UseScheduleEventsReturn {
       }
     );
 
-    return () => unsubscribe();
+    return () => unsubEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role, uid, refreshKey]);
+  }, [role, uid, refreshKey, joinedEventIds]);
 
   return { calendarEvents, rawEvents, isLoading, error, refresh };
 }
