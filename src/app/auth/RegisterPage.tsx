@@ -119,6 +119,7 @@ export function RegisterPage() {
   const [openBarangay, setOpenBarangay] = useState(false);
   const [idPreview, setIdPreview] = useState<string | null>(null);
   const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
+  const [kycStage, setKycStage] = useState<'selection' | 'instruction' | 'capture'>('selection');
   const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -162,6 +163,8 @@ export function RegisterPage() {
         body: JSON.stringify({
           ...formData,
           role: selectedRole,
+          idImage: idPreview,
+          selfieImage: selfiePreview
         }),
       });
 
@@ -392,11 +395,20 @@ export function RegisterPage() {
   const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: kycMode === 'selfie' ? 'user' : 'environment' }
+        video: { 
+          facingMode: kycMode === 'selfie' ? 'user' : 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       });
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        // Force play just in case
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(e => console.error("Video play failed:", e));
+        };
       }
     } catch (err) {
       console.error('Camera access denied:', err);
@@ -446,11 +458,16 @@ export function RegisterPage() {
 
   useEffect(() => {
     const currentPreview = kycMode === 'id' ? idPreview : selfiePreview;
-    if (kycMode !== 'none' && !currentPreview) {
+    
+    // Only start camera when in capture stage and no preview exists
+    if (kycMode !== 'none' && kycStage === 'capture' && !currentPreview) {
       startCamera();
+    } else {
+      stopCamera();
     }
+    
     return () => stopCamera();
-  }, [kycMode, idPreview, selfiePreview, startCamera, stopCamera]);
+  }, [kycMode, kycStage, idPreview, selfiePreview, startCamera, stopCamera]);
 
 
   return (
@@ -930,10 +947,10 @@ export function RegisterPage() {
                         transition={{ duration: 0.25 }}
                         className="space-y-4"
                       >
-                        {kycMode === 'none' ? (
+                        {kycStage === 'selection' ? (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div
-                              onClick={() => setKycMode('id')}
+                              onClick={() => { setKycMode('id'); setKycStage('instruction'); }}
                               className={`border border-dashed rounded-xl p-5 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[130px] ${idUploaded ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-emerald-500/40 hover:bg-emerald-50/30'}`}
                             >
                               {idPreview ? (
@@ -953,7 +970,7 @@ export function RegisterPage() {
                             </div>
 
                             <div
-                              onClick={() => setKycMode('selfie')}
+                              onClick={() => { setKycMode('selfie'); setKycStage('instruction'); }}
                               className={`border border-dashed rounded-xl p-5 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[130px] ${selfieUploaded ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-emerald-500/40 hover:bg-emerald-50/30'}`}
                             >
                               {selfiePreview ? (
@@ -972,6 +989,61 @@ export function RegisterPage() {
                               )}
                             </div>
                           </div>
+                        ) : kycStage === 'instruction' ? (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xl space-y-8"
+                          >
+                            <div className="flex items-center justify-between">
+                               <div className="space-y-1">
+                                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">Step 1 of 2</p>
+                                  <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+                                    {kycMode === 'id' ? 'Identity Front' : 'Face Scan'}
+                                  </h3>
+                               </div>
+                               <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300">
+                                  <RefreshCw className="w-5 h-5" />
+                               </div>
+                            </div>
+
+                            <div className="flex flex-col items-center justify-center py-4">
+                               <div className="w-24 h-24 rounded-3xl bg-emerald-50 flex items-center justify-center shadow-inner relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-tr from-emerald-100/50 to-transparent" />
+                                  {kycMode === 'id' ? (
+                                    <Building2 className="w-10 h-10 text-emerald-600 relative z-10" />
+                                  ) : (
+                                    <User className="w-10 h-10 text-emerald-600 relative z-10" />
+                                  )}
+                               </div>
+                               <p className="mt-6 text-sm font-bold text-slate-600 text-center max-w-[240px] leading-relaxed">
+                                  Position your {kycMode === 'id' ? 'ID card' : 'face'} within the frame and ensure all details are visible.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                                    <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                  </div>
+                                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest text-center">Readable Text</span>
+                               </div>
+                               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                                    <Info className="w-4 h-4 text-emerald-500" />
+                                  </div>
+                                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest text-center">No Glare</span>
+                               </div>
+                            </div>
+
+                            <Button
+                              onClick={() => setKycStage('capture')}
+                              className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-emerald-200 transition-all active:scale-95"
+                            >
+                              Start {kycMode === 'id' ? 'Scanning' : 'Verification'}
+                              <ArrowRight className="ml-2 w-4 h-4" />
+                            </Button>
+                          </motion.div>
                         ) : (
                           <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -1017,6 +1089,7 @@ export function RegisterPage() {
                                   ref={videoRef}
                                   autoPlay
                                   playsInline
+                                  muted
                                   className="w-full h-full object-cover"
                                 />
                               )}
@@ -1025,7 +1098,7 @@ export function RegisterPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => { setKycMode('none'); stopCamera(); }}
+                                onClick={() => { setKycMode('none'); setKycStage('selection'); stopCamera(); }}
                                 className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-md text-white hover:bg-black/70 transition-colors z-20"
                               >
                                 <X className="w-4 h-4" />
@@ -1071,6 +1144,7 @@ export function RegisterPage() {
                                       if (kycMode === 'id') setIdUploaded(true);
                                       else setSelfieUploaded(true);
                                       setKycMode('none');
+                                      setKycStage('selection');
                                     }}
                                     className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-900/40 transition-all font-semibold"
                                   >
@@ -1085,30 +1159,30 @@ export function RegisterPage() {
                           </motion.div>
                         )}
 
-                        {(idUploaded || selfieUploaded) && kycMode === 'none' && (
+                        {(idUploaded || selfieUploaded) && kycStage === 'selection' && (
                           <div className="flex items-center gap-2 px-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider animate-in fade-in slide-in-from-left-2 duration-500">
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 shadow-sm shadow-emerald-200" />
                             <p>Admin will review your identity once submitted.</p>
                           </div>
                         )}
 
-                        {kycMode === 'none' && (
+                        {kycStage === 'selection' && (
                           <>
                             <div className="grid grid-cols-1 gap-3">
-                              <div className="p-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Info className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Valid IDs Accepted</span>
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle className="w-3 h-3 text-slate-400" />
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Valid IDs Accepted</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                                    {['PhilID (National ID)', 'Passport', "Driver's License", 'UMID', 'Postal ID', 'PRC ID', 'Voter\'s ID', 'SSS / GSIS'].map(id => (
+                                      <div key={id} className="flex items-center gap-1.5 text-[10px] text-slate-600 font-bold">
+                                        <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                        {id}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                                  {['PhilID (National ID)', 'Passport', "Driver's License", 'UMID', 'Postal ID', 'PRC ID', 'Voter\'s ID', 'SSS / GSIS'].map(id => (
-                                    <div key={id} className="flex items-center gap-1.5 text-[10px] text-slate-600 font-bold">
-                                      <div className="w-1 h-1 rounded-full bg-emerald-500" />
-                                      {id}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
 
                               <div className="bg-emerald-50/30 border border-emerald-100 rounded-2xl p-4 shadow-sm">
                                 <div className="flex items-start gap-3">
@@ -1125,44 +1199,44 @@ export function RegisterPage() {
                               </div>
                             </div>
 
-                            <div className="flex flex-col gap-4 pt-2">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <Button
-                                  variant="outline"
-                                  className="h-11 rounded-xl border-slate-200 text-sm font-bold shadow-sm hover:bg-slate-50"
-                                  onClick={() => setStep(3)}
-                                >
-                                  <ArrowLeft className="mr-2 w-4 h-4" /> Back
-                                </Button>
-                                <Button
-                                  className="h-11 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold shadow-lg shadow-emerald-200 transition-all disabled:opacity-50"
-                                  onClick={handleComplete}
-                                  disabled={!idUploaded || !selfieUploaded || isCompleting}
-                                >
-                                  {isCompleting ? (
-                                    <>
-                                      <RefreshCw className="mr-2 w-4 h-4 animate-spin" />
-                                      Finishing...
-                                    </>
-                                  ) : (
-                                    'Complete Registration'
-                                  )}
-                                </Button>
+                              <div className="flex flex-col gap-3 pt-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <Button
+                                    variant="outline"
+                                    className="h-10 rounded-xl border-slate-200 text-sm font-bold shadow-sm hover:bg-slate-50"
+                                    onClick={() => setStep(3)}
+                                  >
+                                    <ArrowLeft className="mr-2 w-4 h-4" /> Back
+                                  </Button>
+                                  <Button
+                                    className="h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold shadow-lg shadow-emerald-200 transition-all disabled:opacity-50"
+                                    onClick={handleComplete}
+                                    disabled={!idUploaded || !selfieUploaded || isCompleting}
+                                  >
+                                    {isCompleting ? (
+                                      <>
+                                        <RefreshCw className="mr-2 w-4 h-4 animate-spin" />
+                                        Finishing...
+                                      </>
+                                    ) : (
+                                      'Complete Registration'
+                                    )}
+                                  </Button>
+                                </div>
+                                <div className="text-center">
+                                  <button
+                                    type="button"
+                                    onClick={handleComplete}
+                                    disabled={isCompleting}
+                                    className={cn(
+                                      "text-[10px] font-bold text-slate-400 hover:text-emerald-700 transition-all underline decoration-slate-200 hover:decoration-emerald-500/50",
+                                      isCompleting && "opacity-50 cursor-not-allowed"
+                                    )}
+                                  >
+                                    {isCompleting ? 'Creating account...' : "Skip for now. I'll verify later"}
+                                  </button>
+                                </div>
                               </div>
-                              <div className="text-center">
-                                <button
-                                  type="button"
-                                  onClick={handleComplete}
-                                  disabled={isCompleting}
-                                  className={cn(
-                                    "text-[11px] font-bold text-slate-400 hover:text-emerald-700 transition-all underline decoration-slate-200 hover:decoration-emerald-500/50",
-                                    isCompleting && "opacity-50 cursor-not-allowed"
-                                  )}
-                                >
-                                  {isCompleting ? 'Creating account...' : "Skip for now. I'll verify later in my Profile Settings"}
-                                </button>
-                              </div>
-                            </div>
                           </>
                         )}
                       </motion.div>
