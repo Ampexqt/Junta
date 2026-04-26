@@ -285,7 +285,10 @@ export function AdminAllEventsPage() {
                         {(e.status === 'Approved' || e.status === 'Ongoing') && (
                           <Button variant="ghost" size="sm"
                             className="text-xs font-bold text-blue-600 hover:bg-blue-50 h-8 px-2"
-                            disabled={lifecycleLoading === e.id + 'mark-completed'}
+                            disabled={
+                              lifecycleLoading === e.id + 'mark-completed' || 
+                              (e.status === 'Approved' && new Date(e.date) > new Date())
+                            }
                             onClick={(ev) => { ev.stopPropagation(); handleLifecycle(e.id, 'mark-completed'); }}>
                             <Flag className="w-3 h-3 mr-1" /> Complete
                           </Button>
