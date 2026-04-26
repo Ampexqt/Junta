@@ -9,6 +9,7 @@ import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
+import { uploadBase64Image } from '../services/upload';
 
 const router = Router();
 
@@ -157,7 +158,9 @@ router.post('/register', async (req, res) => {
         role, 
         barangay, 
         orgName,
-        suffix
+        suffix,
+        idImage,
+        selfieImage
     } = req.body;
 
     if (!email || !password || !firstName || !lastName) {
@@ -202,6 +205,22 @@ router.post('/register', async (req, res) => {
             return res.status(500).json({ error: 'Failed to create or retrieve user record' });
         }
 
+        // 1.7 Handle Identity Verification Images (Optional during registration)
+        let idUrl = '';
+        let selfieUrl = '';
+        let kycStatus = 'none';
+
+        if (idImage && selfieImage) {
+            try {
+                idUrl = await uploadBase64Image(idImage, 'kyc/ids');
+                selfieUrl = await uploadBase64Image(selfieImage, 'kyc/selfies');
+                kycStatus = 'pending';
+            } catch (uploadError) {
+                console.error('[AUTH] KYC Image upload failed during registration:', uploadError);
+                // We don't fail the whole registration if upload fails, but we log it
+            }
+        }
+
         // 2. Store Profile details in Firestore
         // Note: For Google users, userRecord.uid will be their existing Google UID
         await db.collection('users').doc(userRecord.uid).set({
@@ -218,6 +237,10 @@ router.post('/register', async (req, res) => {
             orgName: orgName || '',
             organizationName: orgName || '',
             kycVerified: false,
+            kycStatus: kycStatus,
+            validIdUrl: idUrl,
+            selfieUrl: selfieUrl,
+            kycSubmittedAt: kycStatus === 'pending' ? new Date().toISOString() : null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             
@@ -725,21 +748,32 @@ router.post('/submit-verification', authenticateUser, async (req: AuthRequest, r
     try {
         console.log(`[KYC] Processing verification for user ${uid}`);
 
-        // 1. Automated Face Comparison
+        // 1. Handle Base64 Uploads if necessary
+        let finalIdUrl = validIdUrl;
+        let finalSelfieUrl = selfieUrl;
+
+        if (validIdUrl.startsWith('data:image')) {
+            finalIdUrl = await uploadBase64Image(validIdUrl, 'kyc/ids');
+        }
+        if (selfieUrl.startsWith('data:image')) {
+            finalSelfieUrl = await uploadBase64Image(selfieUrl, 'kyc/selfies');
+        }
+
+        // 2. Automated Face Comparison
         let verificationResult: { confidence: number; threshold: number } | null = null;
         try {
-            verificationResult = await FaceVerificationService.compareFaces(validIdUrl, selfieUrl);
+            verificationResult = await FaceVerificationService.compareFaces(finalIdUrl, finalSelfieUrl);
         } catch (apiError) {
             console.warn('[KYC] Face++ API error or missing keys. Proceeding with manual review only.');
         }
 
-        // 2. Update Firestore
+        // 3. Update Firestore
         const userRef = db.collection('users').doc(uid);
         const updatePayload: Record<string, unknown> = {
             kycStatus: 'pending',
-            validIdUrl,
+            validIdUrl: finalIdUrl,
             validIdBackUrl: validIdBackUrl || '',
-            selfieUrl,
+            selfieUrl: finalSelfieUrl,
             verificationScore: verificationResult?.confidence || 0,
             verificationThreshold: verificationResult?.threshold || 80,
             kycSubmittedAt: new Date().toISOString(),
