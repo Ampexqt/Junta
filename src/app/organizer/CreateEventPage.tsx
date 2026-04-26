@@ -381,16 +381,15 @@ const { token } = useMapboxToken();
                       reverseGeocode(lat, lng);
                     }}
                   >
-                    <div className="relative flex flex-col items-center cursor-grab active:cursor-grabbing">
-                      <div className="absolute -top-1 w-10 h-10 rounded-full bg-primary/20 animate-ping" />
-                      <div className="relative w-10 h-10 rounded-2xl bg-primary border-2 border-white flex items-center justify-center shadow-xl transform transition-transform hover:scale-110 active:scale-95 animate-bounce">
-                        <span className="text-xl">
-                          {categoryEmoji[formData.category.toLowerCase()] || '📍'}
-                        </span>
+                      <div className="relative flex flex-col items-center cursor-grab active:cursor-grabbing group">
+                        <div className="absolute -top-1 w-8 h-8 rounded-full animate-ping bg-primary/40" />
+                        <div className="flex items-center justify-center rounded-2xl border-2 border-white shadow-xl transition-all duration-300 w-10 h-10 -translate-y-2 bg-primary">
+                          <span className="text-lg">
+                            {categoryEmoji[formData.category.toLowerCase()] || '📍'}
+                          </span>
+                        </div>
+                        <div className="w-3 h-3 rotate-45 -mt-1.5 border-r border-b border-white transition-all opacity-100 bg-primary" />
                       </div>
-                      {/* Custom Pointer Tail */}
-                      <div className="w-3 h-3 bg-primary rotate-45 -mt-1.5 border-r border-b border-white" />
-                    </div>
                   </Marker>
                 )}
               </Map>

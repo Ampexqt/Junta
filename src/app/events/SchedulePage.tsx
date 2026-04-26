@@ -43,6 +43,7 @@ import {
 } from '@/hooks/useScheduleEvents';
 import { useDayflowStyles } from '@/hooks/useDayflowStyles';
 import { cn } from '@/lib/utils';
+import { API_BASE_URL } from '@/lib/api';
 
 // ─── Role subtitle config ────────────────────────────────────────────────────
 
@@ -90,6 +91,18 @@ export function SchedulePage() {
   );
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [participantAvatars, setParticipantAvatars] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!selectedEvent?.id || !showModal) return;
+    setParticipantAvatars([]);
+    fetch(`${API_BASE_URL}/events/${selectedEvent.id}/public-participants?limit=3`)
+      .then(res => res.json())
+      .then(data => setParticipantAvatars(data))
+      .catch(console.error);
+  }, [selectedEvent?.id, showModal]);
+
+
   
   // ─── Event Item Component (Nested for scope) ───────────────────────────────
   function EventListItem({ event, onClick }: { event: ScheduleEvent; onClick: () => void }) {
@@ -177,7 +190,10 @@ export function SchedulePage() {
   }, []);
 
   const filteredEvents = useMemo(() => {
-    const events = rawEvents.filter(e => selectedCategories.includes(e.category));
+    const events = rawEvents.filter(e => {
+      const mappedCat = CALENDAR_DEFINITIONS.find(c => c.name === e.category) ? e.category : 'Other';
+      return selectedCategories.includes(mappedCat);
+    });
     
     if (activeView === 'upcoming') {
       return events.filter(e => new Date(e.date) >= now)
@@ -190,9 +206,14 @@ export function SchedulePage() {
   }, [rawEvents, activeView, selectedCategories, now]);
 
   // Calendar filtered events
-  const filteredCalendarEvents = useMemo(() => 
-    calendarEvents.filter(e => selectedCategories.includes(e.meta?.category as string))
-  , [calendarEvents, selectedCategories]);
+  const filteredCalendarEvents = useMemo(() => {
+    return calendarEvents.filter(e => {
+      const rawCat = e.meta?.category as string;
+      // If the category isn't directly in our list, it falls under "Other"
+      const mappedCat = CALENDAR_DEFINITIONS.find(c => c.name === rawCat) ? rawCat : 'Other';
+      return selectedCategories.includes(mappedCat);
+    });
+  }, [calendarEvents, selectedCategories]);
 
   // ── Calendar Instance ──
   const eventsPlugin = useMemo(() => createEventsPlugin(), []);
@@ -228,10 +249,14 @@ export function SchedulePage() {
 
   // ── Sync Events to Calendar Instance ──
   useEffect(() => {
-    if (eventsPlugin && eventsPlugin.set) {
-      eventsPlugin.set(filteredCalendarEvents);
-    }
-  }, [eventsPlugin, filteredCalendarEvents]);
+    if (!calendar) return;
+    
+    // Clear old events and set new ones safely
+    calendar.applyEventsChanges({
+      delete: calendar.events.map(e => e.id),
+      add: filteredCalendarEvents
+    });
+  }, [calendar, filteredCalendarEvents]);
 
   if (isLoading) return <ScheduleSkeleton />;
 
@@ -414,27 +439,40 @@ export function SchedulePage() {
       {/* Event Details Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="sm:max-w-[425px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
-          <div className={cn(
-            "h-32 w-full relative flex items-end p-6",
-            selectedEvent?.category === 'Cleanup' ? "bg-blue-600" :
-            selectedEvent?.category === 'Planting' ? "bg-emerald-600" :
-            selectedEvent?.category === 'Workshop' ? "bg-purple-600" :
-            selectedEvent?.category === 'Awareness' ? "bg-amber-500" :
-            selectedEvent?.category === 'Research' ? "bg-pink-600" : "bg-slate-600"
-          )}>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div 
+            className="h-32 w-full relative flex items-end p-6 bg-slate-800 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${
+                selectedEvent?.category === 'Cleanup' ? 'https://images.unsplash.com/photo-1618477461853-cf6ed80fbea5?q=80&w=800&auto=format&fit=crop' :
+                selectedEvent?.category === 'Planting' ? 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=800&auto=format&fit=crop' :
+                selectedEvent?.category === 'Workshop' ? 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=800&auto=format&fit=crop' :
+                selectedEvent?.category === 'Awareness' ? 'https://images.unsplash.com/photo-1531206715517-5c0ba140b4b8?q=80&w=800&auto=format&fit=crop' :
+                selectedEvent?.category === 'Research' ? 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?q=80&w=800&auto=format&fit=crop' :
+                'https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?q=80&w=800&auto=format&fit=crop'
+              })`
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
             <div className="relative z-10 w-full flex items-center justify-between">
-              <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-black text-[10px] uppercase tracking-widest px-3">
+              <Badge className="bg-emerald-500/90 backdrop-blur-md text-white border-none font-black text-[10px] uppercase tracking-widest px-3">
                 {selectedEvent?.category}
               </Badge>
               <div className="flex -space-x-2">
-                 {[1,2,3].map(i => (
-                   <div key={i} className="w-6 h-6 rounded-full border-2 border-white/50 bg-slate-200 overflow-hidden shadow-sm">
-                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i + (selectedEvent?.id || '')}`} alt="avatar" />
-                   </div>
-                 ))}
+                 {participantAvatars.length > 0 ? (
+                   participantAvatars.map((url, i) => (
+                     <div key={i} className="w-6 h-6 rounded-full border-2 border-slate-900 bg-slate-200 overflow-hidden shadow-sm">
+                        <img src={url} alt="participant" className="w-full h-full object-cover" />
+                     </div>
+                   ))
+                 ) : (
+                   [1,2,3].map(i => (
+                     <div key={i} className="w-6 h-6 rounded-full border-2 border-slate-900 bg-slate-200 overflow-hidden shadow-sm opacity-50">
+                        <img src={`https://i.pravatar.cc/150?u=${selectedEvent?.id || 'event'}-${i}`} alt="avatar" className="w-full h-full object-cover" />
+                     </div>
+                   ))
+                 )}
                  <div className="w-6 h-6 rounded-full border-2 border-white/50 bg-white/20 backdrop-blur-md flex items-center justify-center text-[8px] font-black text-white">
-                    +{selectedEvent?.participantsCount || 12}
+                    +{selectedEvent?.participantsCount || 0}
                  </div>
               </div>
             </div>
@@ -503,8 +541,16 @@ export function SchedulePage() {
                <Button variant="outline" className="flex-1 h-10 rounded-xl font-bold text-xs" onClick={() => setShowModal(false)}>
                   Close
                </Button>
-               <Button className="flex-1 h-10 rounded-xl bg-primary text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20">
-                  Join Waitlist
+               <Button 
+                 className="flex-1 h-10 rounded-xl bg-primary text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 hover:bg-primary/90"
+                 onClick={() => {
+                   setShowModal(false);
+                   if (selectedEvent) {
+                     setTimeout(() => navigate(`/app/events/${selectedEvent.id}`), 150);
+                   }
+                 }}
+               >
+                  View Details
                </Button>
             </div>
           </div>

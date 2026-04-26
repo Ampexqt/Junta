@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
   Card,
-  CardContent,
-  CardHeader,
-  CardTitle
+  CardContent
 } from
   '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,6 +64,7 @@ type PendingEvent = {
   status: string;
   organizerPhotoURL?: string;
   organizationName?: string;
+  organizationLogo?: string;
   coverImage?: string;
   timeline?: { id: string; time: string; activity: string; description: string; }[];
   requirements?: string[];
@@ -236,93 +236,103 @@ export function EventApprovalsPage() {
           )}
       </div>
 
-      <Card className="rounded-2xl shadow-sm border">
-        <CardHeader>
-          <CardTitle className="font-heading text-lg">Pending Review</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Event Title</TableHead>
-                  <TableHead>Organizer</TableHead>
-                  <TableHead className="hidden md:table-cell">Date</TableHead>
-                  <TableHead className="hidden lg:table-cell">
-                    Location
-                  </TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {events.filter(e => e.status === 'pending').map((e) =>
-                  <TableRow key={e.id} className="group hover:bg-slate-50/50 transition-colors">
-                    <TableCell className="font-medium">{e.title}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="w-7 h-7">
-                          <AvatarImage src={e.organizerPhotoURL} className="object-cover" />
-                          <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
-                            {(e.organizerName || 'A').split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-slate-900">
-                            {e.organizerName || 'Anonymous'}
-                          </span>
-                          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">
-                            {e.organizationName || 'No Organization'}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                        {e.date ? (
-                            (() => {
-                                try {
-                                    return format(new Date(e.date), 'MMM dd, yyyy');
-                                } catch (err) {
-                                    return 'Invalid Date';
-                                }
-                            })()
-                        ) : 'TBD'}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                      {e.locationName || 'TBD'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`border-none px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter ${categoryBadge[e.category] || 'bg-slate-100 text-slate-600'}`}>
-                        {e.category}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`border-none px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter ${statusBadge[e.status]}`}>
-                        {e.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-9 px-4 rounded-xl text-primary font-bold hover:bg-primary/5 transition-all flex items-center gap-1.5 ml-auto"
-                        onClick={() => {
-                          setSelectedEvent(e);
-                          setDialogOpen(true);
-                        }}>
-                        View Details <ArrowRight className="w-3.5 h-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+      <Card className="rounded-2xl shadow-sm border overflow-hidden">
+        <CardContent className="p-0">
+          <Tabs defaultValue="pending" className="w-full flex-col">
+            <div className="px-6 pt-5 pb-0 border-b border-slate-100 space-y-3">
+              <h3 className="font-heading font-bold text-lg text-foreground">Event Submissions</h3>
+              <TabsList className="bg-slate-100/70 rounded-xl h-9 p-1">
+                <TabsTrigger value="pending" className="rounded-lg text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm px-4">
+                  Pending
+                  {pending > 0 && <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-black">{pending}</span>}
+                </TabsTrigger>
+                <TabsTrigger value="approved" className="rounded-lg text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm px-4">
+                  Approved
+                  {approved > 0 && <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-black">{approved}</span>}
+                </TabsTrigger>
+                <TabsTrigger value="rejected" className="rounded-lg text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-rose-600 data-[state=active]:shadow-sm px-4">
+                  Rejected
+                  {rejected > 0 && <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-black">{rejected}</span>}
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {(['pending', 'approved', 'rejected'] as const).map(tab => {
+              const filtered = events.filter(e =>
+                tab === 'approved' ? e.status === 'published' : e.status === tab
+              );
+              const emptyMsg = tab === 'pending' ? 'No pending events to review.' : tab === 'approved' ? 'No approved events yet.' : 'No rejected events.';
+              return (
+                <TabsContent key={tab} value={tab} className="mt-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b border-slate-100">
+                          <TableHead>Event Title</TableHead>
+                          <TableHead>Organizer</TableHead>
+                          <TableHead className="hidden md:table-cell">Date</TableHead>
+                          <TableHead className="hidden lg:table-cell">Location</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filtered.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="h-28 text-center text-sm text-muted-foreground font-medium">
+                              {emptyMsg}
+                            </TableCell>
+                          </TableRow>
+                        ) : filtered.map((e) =>
+                          <TableRow key={e.id} className="group hover:bg-slate-50/50 transition-colors">
+                            <TableCell className="font-medium">{e.title}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Avatar className="w-7 h-7">
+                                  <AvatarImage src={e.organizationLogo || e.organizerPhotoURL} className="object-cover" />
+                                  <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
+                                    {(e.organizerName || 'A').split(' ').map(n => n[0]).join('')}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-slate-900">{e.organizerName || 'Anonymous'}</span>
+                                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">{e.organizationName || 'No Organization'}</span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
+                              {e.date ? (() => { try { return format(new Date(e.date), 'MMM dd, yyyy'); } catch { return 'Invalid Date'; } })() : 'TBD'}
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">{e.locationName || 'TBD'}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={`border-none px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter ${categoryBadge[e.category] || 'bg-slate-100 text-slate-600'}`}>
+                                {e.category}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={`border-none px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter ${statusBadge[e.status] || 'bg-slate-100 text-slate-600'}`}>
+                                {e.status === 'published' ? 'Approved' : e.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-9 px-4 rounded-xl text-primary font-bold hover:bg-primary/5 transition-all flex items-center gap-1.5 ml-auto"
+                                onClick={() => { setSelectedEvent(e); setDialogOpen(true); }}>
+                                View Details <ArrowRight className="w-3.5 h-3.5" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
+              );
+            })}
+          </Tabs>
         </CardContent>
       </Card>
 

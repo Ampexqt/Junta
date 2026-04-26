@@ -584,23 +584,11 @@ export function CreateEventModal({ trigger }: CreateEventModalProps) {
                   }}
                 >
                   <div className="relative flex flex-col items-center cursor-grab active:cursor-grabbing group">
-                    {/* Sophisticated Glow/Pulse */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-primary/10 animate-pulse duration-[2000ms]" />
-                    
-                    {/* Noticeable Minimalist Target */}
-                    <div className="relative flex items-center justify-center">
-                       {/* Outer Thin Ring */}
-                       <div className="absolute w-10 h-10 rounded-full border border-primary/30 scale-90 group-hover:scale-100 transition-transform duration-500" />
-                       
-                       {/* Main Marker */}
-                       <div className="relative w-7 h-7 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] flex items-center justify-center border-2 border-white transition-all group-hover:scale-110 active:scale-95">
-                          <div className="w-3.5 h-3.5 rounded-full bg-primary shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]" />
-                       </div>
+                    <div className="absolute -top-1 w-8 h-8 rounded-full animate-ping bg-primary/40" />
+                    <div className="flex items-center justify-center rounded-2xl border-2 border-white shadow-xl transition-all duration-300 w-10 h-10 -translate-y-2 bg-primary">
+                      <span className="text-lg">📍</span>
                     </div>
-
-                    {/* Minimalist Pointer Link */}
-                    <div className="w-[2px] h-3 bg-primary/40 -mt-0.5 rounded-full" />
-                    <div className="w-1.5 h-1.5 bg-primary rounded-full -mt-1 shadow-sm ring-2 ring-white" />
+                    <div className="w-3 h-3 rotate-45 -mt-1.5 border-r border-b border-white transition-all opacity-100 bg-primary" />
                   </div>
                 </Marker>
               )}

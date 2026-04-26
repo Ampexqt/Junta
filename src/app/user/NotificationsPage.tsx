@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,85 +9,48 @@ import {
   CheckCircle,
   Info,
   Users,
-  Settings,
   Check,
+  Shield,
   LucideIcon
 } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-
-type Notification = {
-  id: string;
-  type: 'event' | 'system' | 'reminder' | 'verification';
-  title: string;
-  description: string;
-  time: string;
-  read: boolean;
-  icon: LucideIcon;
-  iconColor: string;
-  iconBg: string;
-};
+import { useNotifications, AppNotification } from '@/hooks/useNotifications';
+import { formatDistanceToNow } from 'date-fns';
 
 const iconMap: Record<string, LucideIcon> = {
-  event: CalendarDays,
-  system: Info,
-  reminder: Bell,
-  verification: CheckCircle,
-  settings: Settings,
-  users: Users
+  event_created: CalendarDays,
+  event_approved: CheckCircle,
+  event_rejected: Info,
+  event_joined: Users,
+  kyc_submitted: Info,
+  kyc_verified: CheckCircle,
+  kyc_rejected: Info,
+  organizer_approved: Shield,
+  organizer_rejected: Info,
+  system: Bell,
 };
 
 const colorMap: Record<string, { color: string; bg: string }> = {
-  event: { color: 'text-blue-600', bg: 'bg-blue-50' },
+  event_created: { color: 'text-blue-600', bg: 'bg-blue-50' },
+  event_approved: { color: 'text-green-600', bg: 'bg-green-50' },
+  event_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
+  event_joined: { color: 'text-blue-600', bg: 'bg-blue-50' },
+  kyc_submitted: { color: 'text-amber-600', bg: 'bg-amber-50' },
+  kyc_verified: { color: 'text-green-600', bg: 'bg-green-50' },
+  kyc_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
+  organizer_approved: { color: 'text-green-600', bg: 'bg-green-50' },
+  organizer_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
   system: { color: 'text-purple-600', bg: 'bg-purple-50' },
-  reminder: { color: 'text-amber-600', bg: 'bg-amber-50' },
-  verification: { color: 'text-green-600', bg: 'bg-green-50' },
   default: { color: 'text-primary', bg: 'bg-primary/10' }
 };
 
 export function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const q = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetched = snapshot.docs.map(doc => {
-        const data = doc.data();
-        const type = data.type || 'system';
-        const colors = colorMap[type as keyof typeof colorMap] || colorMap.default;
-        
-        return {
-          id: doc.id,
-          title: data.title || 'Notification',
-          description: data.message || data.description || '',
-          type: type as Notification['type'],
-          time: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : 'Just now',
-          read: data.read || false,
-          icon: iconMap[type as keyof typeof iconMap] || Bell,
-          iconColor: colors.color,
-          iconBg: colors.bg
-        };
-      }) as Notification[];
-      setNotifications(fetched);
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+  const { notifications, loading: isLoading, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   const markAllRead = () => {
-    // In a real app, this would update Firestore
-    setNotifications((prev) =>
-      prev.map((n) => ({
-        ...n,
-        read: true
-      }))
-    );
+    markAllAsRead();
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const renderList = (items: Notification[]) => (
+  const renderList = (items: AppNotification[]) => (
     <div className="space-y-2">
       {items.length > 0 ? (
         items.map((n, i) => (
@@ -105,16 +67,18 @@ export function NotificationsPage() {
                   : 'hover:bg-muted/30'
               }`}
               onClick={() => {
-                // Update local state (should update Firestore in real app)
-                setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
+                if (!n.read) markAsRead(n.id);
               }}
             >
               {!n.read && (
                 <div className="h-0.5 w-full bg-gradient-to-r from-primary/60 to-primary/20" />
               )}
               <CardContent className="py-4 flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${n.iconBg}`}>
-                  <n.icon className={`w-5 h-5 ${n.iconColor}`} />
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colorMap[n.type]?.bg || colorMap.default.bg}`}>
+                  {(() => {
+                     const Icon = iconMap[n.type] || Bell;
+                     return <Icon className={`w-5 h-5 ${colorMap[n.type]?.color || colorMap.default.color}`} />
+                  })()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -124,10 +88,10 @@ export function NotificationsPage() {
                     {!n.read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                    {n.description}
+                    {n.message}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-1.5">
-                    {n.time}
+                    {n.createdAt ? formatDistanceToNow(n.createdAt, { addSuffix: true }) : 'Just now'}
                   </p>
                 </div>
               </CardContent>
@@ -194,13 +158,13 @@ export function NotificationsPage() {
           {renderList(notifications)}
         </TabsContent>
         <TabsContent value="events" className="mt-4">
-          {renderList(notifications.filter((n) => n.type === 'event'))}
+          {renderList(notifications.filter((n) => n.type.includes('event')))}
         </TabsContent>
         <TabsContent value="system" className="mt-4">
-          {renderList(notifications.filter((n) => n.type === 'system'))}
+          {renderList(notifications.filter((n) => !n.type.includes('event') && !n.type.includes('organizer') && !n.type.includes('kyc')))}
         </TabsContent>
         <TabsContent value="reminders" className="mt-4">
-          {renderList(notifications.filter((n) => n.type === 'reminder'))}
+          {renderList(notifications.filter((n) => n.type.includes('organizer') || n.type.includes('kyc')))}
         </TabsContent>
       </Tabs>
     </div>

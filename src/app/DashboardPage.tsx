@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { CreateEventModal } from '../features/events/components/CreateEventModal';
@@ -42,6 +42,7 @@ import {
 } from
   'lucide-react';
 import { cn } from '@/lib/utils';
+import { GamificationDashboardCard } from '@/features/gamification/components/GamificationDashboardCard';
 
 interface EventData {
   id: string;
@@ -199,10 +200,12 @@ function ParticipantDashboard() {
         subtitle="Here's your environmental impact overview for today." 
       />
 
+      <GamificationDashboardCard />
+
       <motion.div
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
         {[
           {
@@ -225,13 +228,6 @@ function ParticipantDashboard() {
             value: stats.hours,
             trend: '+0 this month',
             color: 'bg-indigo-600/10 text-indigo-600'
-          },
-          {
-            icon: Star,
-            label: 'Community Points',
-            value: stats.impact,
-            trend: '+0 pts earned',
-            color: 'bg-amber-500/10 text-amber-500'
           }].
           map((s, i) =>
             <motion.div key={s.label} variants={fadeUp} custom={i}>
@@ -441,6 +437,8 @@ function OrganizerDashboard() {
         </div>
       </div>
 
+      <GamificationDashboardCard />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={CalendarDays}
@@ -556,33 +554,46 @@ function AdminDashboard() {
         let pending = 0;
         let active = 0;
         const total = snapshot.size;
-        const acts: ActivityData[] = [];
         
         snapshot.forEach(doc => {
             const data = doc.data();
             if (data.status === 'pending') {
                 pending++;
-                acts.push({
-                    text: `New event "${data.title}" pending approval`,
-                    time: data.createdAt ? format(new Date(data.createdAt), 'MMM d, h:mm a') : 'Recently',
-                    icon: CalendarDays,
-                    timestamp: new Date(data.createdAt || Date.now()).getTime()
-                });
             } else if (data.status === 'published') {
                 active++;
-                acts.push({
-                    text: `Event "${data.title}" published live`,
-                    time: data.updatedAt ? format(new Date(data.updatedAt), 'MMM d, h:mm a') : 'Recently',
-                    icon: CheckCircle,
-                    timestamp: new Date(data.updatedAt || Date.now()).getTime()
-                });
             }
         });
         
-        acts.sort((a,b) => b.timestamp - a.timestamp);
-        
-        setActivities(acts.slice(0, 5));
         setStats(prev => ({ ...prev, pendingEvents: pending.toString(), activeEvents: active.toString(), totalEvents: total.toString(), pendingTasks: (pending + parseInt(prev.pendingVerifications) + parseInt(prev.pendingOrganizerRequests)).toString() }));
+    });
+
+    const qLogs = query(collection(db, 'admin_logs'), orderBy('createdAt', 'desc'), limit(10));
+    const unsubscribeLogs = onSnapshot(qLogs, (snapshot) => {
+        const acts: ActivityData[] = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            let icon = CheckCircle;
+            if (data.actionStatus === 'rejected') icon = AlertCircle;
+            
+            let text = '';
+            if (data.actionType === 'event_approval') {
+               text = `Event "${data.targetName}" was ${data.actionStatus} by ${data.adminName}`;
+            } else if (data.actionType === 'kyc_verification') {
+               text = `User "${data.targetName}" KYC was ${data.actionStatus} by ${data.adminName}`;
+               icon = data.actionStatus === 'approved' ? UserCheck : AlertCircle;
+            } else if (data.actionType === 'organizer_request') {
+               text = `Organizer request for "${data.targetName}" was ${data.actionStatus} by ${data.adminName}`;
+               icon = data.actionStatus === 'approved' ? Shield : AlertCircle;
+            }
+
+            acts.push({
+                text,
+                time: data.createdAt ? format(new Date(data.createdAt), 'MMM d, h:mm a') : 'Recently',
+                icon,
+                timestamp: data.timestamp || Date.now()
+            });
+        });
+        setActivities(acts);
     });
 
     const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
@@ -611,6 +622,7 @@ function AdminDashboard() {
     return () => {
         unsubscribeEvents();
         unsubscribeUsers();
+        unsubscribeLogs();
     }
   }, []);
 

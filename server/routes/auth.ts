@@ -4,6 +4,7 @@ import { resend } from '../config/resend';
 import { authenticateUser, AuthRequest, isAdmin } from '../middleware/auth';
 import { FaceVerificationService } from '../services/face-verification';
 import { createNotification, notifyAllAdmins } from '../services/notifications';
+import { logAdminAction } from '../services/adminLogs';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcryptjs';
@@ -219,6 +220,15 @@ router.post('/register', async (req, res) => {
             kycVerified: false,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            
+            // Gamification Initial State
+            xp: 0,
+            level: 1,
+            badges: [],
+            streak: 0,
+            organizerPoints: 0,
+            organizerTier: 1,
+            organizerBadges: [],
         });
 
 
@@ -260,6 +270,55 @@ router.post('/register', async (req, res) => {
         }
 
         res.status(500).json({ error: err.message || 'Failed to complete registration' });
+    }
+});
+
+/**
+ * 3.5. Google Sync — Exchange a Firebase ID token for a Junta JWT.
+ * Called after Google login on the client to ensure all auth flows
+ * have a server-issued JWT for protected API routes.
+ */
+router.post('/google-sync', async (req, res) => {
+    const { idToken } = req.body;
+    if (!idToken) {
+        return res.status(400).json({ error: 'Firebase ID token is required' });
+    }
+    try {
+        // Verify the Firebase ID token using Admin SDK
+        const decoded = await auth.verifyIdToken(idToken);
+        const uid = decoded.uid;
+
+        // Fetch the user's Junta profile from Firestore
+        const userDoc = await db.collection('users').doc(uid).get();
+        if (!userDoc.exists) {
+            return res.status(404).json({ error: 'User profile not found. Please complete registration.' });
+        }
+        const userData = userDoc.data()!;
+
+        // Issue a standard Junta JWT
+        const token = jwt.sign(
+            {
+                uid,
+                email: userData.email,
+                role: userData.role,
+                name: userData.displayName,
+            },
+            process.env.JWT_SECRET || 'junta_fallback_secret',
+            { expiresIn: '7d' }
+        );
+
+        return res.json({
+            token,
+            user: {
+                uid,
+                email: userData.email,
+                displayName: userData.displayName,
+                role: userData.role,
+            }
+        });
+    } catch (error) {
+        console.error('[auth/google-sync] Error:', error);
+        return res.status(401).json({ error: 'Invalid or expired Firebase token' });
     }
 });
 
@@ -768,6 +827,17 @@ router.post('/admin/verify-user', authenticateUser, isAdmin, async (req, res) =>
             relatedId: uid,
         }).catch(console.error);
 
+        const authReq = req as AuthRequest;
+        const userDoc = await userRef.get();
+        logAdminAction({
+            adminId: authReq.user?.uid || 'admin',
+            adminName: authReq.user?.name || authReq.user?.email || 'Admin',
+            actionType: 'kyc_verification',
+            actionStatus: status === 'verified' ? 'approved' : 'rejected',
+            targetId: uid,
+            targetName: userDoc.data()?.displayName || 'Unknown User'
+        }).catch(console.error);
+
         res.json({ success: true, message: `User verification ${status}` });
     } catch (error) {
         console.error('Error in verify-user:', error);
@@ -811,6 +881,17 @@ router.post('/admin/organizer-request', authenticateUser, isAdmin, async (req, r
                 : `Your organizer request was not approved. ${notes ? 'Reason: ' + notes : 'Please contact support for more information.'}`,
             link: '/app/dashboard',
             relatedId: uid,
+        }).catch(console.error);
+
+        const authReq = req as AuthRequest;
+        const userDoc = await userRef.get();
+        logAdminAction({
+            adminId: authReq.user?.uid || 'admin',
+            adminName: authReq.user?.name || authReq.user?.email || 'Admin',
+            actionType: 'organizer_request',
+            actionStatus: status === 'approved' ? 'approved' : 'rejected',
+            targetId: uid,
+            targetName: userDoc.data()?.displayName || 'Unknown User'
         }).catch(console.error);
 
         res.json({ success: true, message: `Organizer request ${status}` });
