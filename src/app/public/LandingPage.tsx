@@ -52,7 +52,14 @@ const stagger = {
 function Navbar() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const links = ['Map', 'Features', 'How It Works', 'Events', 'Contact'];
+  const links = [
+    { name: 'Map', icon: MapPin, href: '#map' },
+    { name: 'Features', icon: Search, href: '#features' },
+    { name: 'How It Works', icon: CheckCircle, href: '#how-it-works' },
+    { name: 'Events', icon: Calendar, href: '#events' },
+    { name: 'Contact', icon: Megaphone, href: '#contact' }
+  ];
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-black/50 backdrop-blur-xl border-b border-primary/5 shadow-[0_10px_40px_rgba(31,122,99,0.06)] transition-all duration-500">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 h-20 flex items-center justify-between">
@@ -68,11 +75,11 @@ function Navbar() {
         <div className="hidden lg:flex items-center gap-8">
           {links.map((link) => (
             <a
-              key={link}
-              href={`#${link.toLowerCase().replace(/\s/g, '-')}`}
+              key={link.name}
+              href={link.href}
               className="text-sm font-semibold text-foreground/60 hover:text-primary transition-all relative group py-2 px-1"
             >
-              {link}
+              {link.name}
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-500 group-hover:w-full opacity-0 group-hover:opacity-100" />
             </a>
           ))}
@@ -96,48 +103,73 @@ function Navbar() {
 
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="hover:bg-primary/5 rounded-xl">
               <Menu className="w-5 h-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-72 bg-white/70 backdrop-blur-xl border-l border-white/20">
-            <div className="flex flex-col gap-4 mt-8">
-              {links.map((link) =>
-                <a
-                  key={link}
-                  href={`#${link.toLowerCase().replace(/\s/g, '-')}`}
-                  onClick={() => setOpen(false)}
-                  className="text-base font-medium text-foreground/80 hover:text-primary transition-colors py-2 flex items-center justify-between"
-                >
-                  {link}
-                </a>
-              )}
-              <div className="border-t pt-4 flex flex-col gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setOpen(false);
-                    navigate('/login');
-                  }}>
+          <SheetContent side="right" className="w-[85%] sm:w-80 bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border-l border-primary/10 p-0 overflow-hidden">
+            <div className="flex flex-col h-full">
+              {/* Drawer Header */}
+              <div className="p-8 border-b border-primary/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-950 rounded-xl flex items-center justify-center shadow-lg shadow-primary/25">
+                    <Leaf className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="font-['Lora'] font-bold text-2xl text-foreground">Junta</span>
+                </div>
+                <p className="mt-2 text-xs font-medium text-muted-foreground uppercase tracking-widest">Environmental Platform</p>
+              </div>
 
-                  Log In
-                </Button>
-                <Button
-                  onClick={() => {
-                    setOpen(false);
-                    navigate('/register');
-                  }}
-                  className="bg-primary hover:bg-primary/90">
+              {/* Navigation Links */}
+              <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
+                {links.map((link) => (
+                  <a
+                    key={link.name}
+                    href={link.href}
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-base font-semibold text-foreground/70 hover:text-primary hover:bg-primary/5 transition-all duration-300 group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                      <link.icon className="w-5 h-5 group-hover:text-primary transition-colors" />
+                    </div>
+                    {link.name}
+                  </a>
+                ))}
+              </div>
 
-                  Get Started
-                </Button>
+              {/* Drawer Footer Actions */}
+              <div className="p-8 border-t border-primary/5 bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="flex flex-col gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setOpen(false);
+                      navigate('/login');
+                    }}
+                    className="w-full h-12 rounded-2xl font-bold border-2 border-primary/10 hover:border-primary/30 hover:bg-white dark:hover:bg-slate-800"
+                  >
+                    Log In
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setOpen(false);
+                      navigate('/register');
+                    }}
+                    className="w-full h-12 rounded-2xl font-bold bg-primary hover:bg-primary-hover text-white shadow-lg shadow-primary/20"
+                  >
+                    Get Started
+                  </Button>
+                </div>
+                <p className="mt-6 text-center text-[10px] text-muted-foreground font-medium uppercase tracking-[0.2em]">
+                  Zamboanga Peninsula
+                </p>
               </div>
             </div>
           </SheetContent>
         </Sheet>
       </div>
-    </nav>);
-
+    </nav>
+  );
 }
 
 function HeroSection() {
@@ -193,13 +225,13 @@ function HeroSection() {
             {/* Heading */}
             <motion.h1 
               variants={itemVariants}
-              className="mb-6 max-w-2xl font-heading text-4xl font-bold leading-[1.08] tracking-tight text-[#1A1A1A] md:text-5xl lg:text-6xl xl:text-7xl"
+              className="mb-6 max-w-2xl font-heading text-4xl font-bold leading-[1.1] tracking-tight text-[#1A1A1A] sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl"
             >
-              Join Environmental <br />
-              Activities in <span className="relative inline-block">
+              Join Environmental <br className="hidden sm:block" />
+              Activities in <span className="relative inline-block whitespace-nowrap">
                 Your Community
                 {/* SVG Underline Curve */}
-                <svg className="absolute -bottom-2 left-0 w-full h-3 text-primary/20" viewBox="0 0 300 12" fill="none" preserveAspectRatio="none">
+                <svg className="absolute -bottom-2 left-0 w-full h-3 text-primary/20 pointer-events-none" viewBox="0 0 300 12" fill="none" preserveAspectRatio="none">
                   <path d="M4 9C40 3 150 1.5 296 9" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
                 </svg>
               </span>
@@ -208,7 +240,7 @@ function HeroSection() {
             {/* Subtitle */}
             <motion.p 
               variants={itemVariants}
-              className="mb-10 max-w-lg text-base font-medium leading-relaxed text-[#4A5A52] md:text-lg"
+              className="mb-10 max-w-lg text-base font-medium leading-relaxed text-[#4A5A52] md:text-lg lg:text-xl"
             >
               Discover, join, and organize local initiatives to protect and preserve Zamboanga City's natural beauty. Together, we can make a difference.
             </motion.p>
@@ -216,12 +248,12 @@ function HeroSection() {
             {/* CTA Buttons */}
             <motion.div 
               variants={itemVariants}
-              className="flex flex-col gap-4 sm:flex-row sm:gap-6"
+              className="flex flex-col w-full sm:w-auto gap-4 sm:flex-row sm:gap-6"
             >
               <Button
                 size="lg"
                 onClick={() => document.getElementById('events')?.scrollIntoView({ behavior: 'smooth' })}
-                className="h-14 min-w-[180px] rounded-full bg-primary px-10 text-base font-bold text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary-hover hover:-translate-y-0.5"
+                className="h-14 w-full sm:min-w-[180px] rounded-full bg-primary px-10 text-base font-bold text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary-hover hover:-translate-y-0.5"
               >
                 Browse Events
               </Button>
@@ -229,7 +261,7 @@ function HeroSection() {
                 variant="outline"
                 size="lg"
                 onClick={() => navigate('/register')}
-                className="h-14 min-w-[180px] rounded-full border-2 border-primary/20 bg-white px-10 text-base font-bold text-primary transition-all hover:border-primary/40"
+                className="h-14 w-full sm:min-w-[180px] rounded-full border-2 border-primary/20 bg-white px-10 text-base font-bold text-primary transition-all hover:border-primary/40"
               >
                 Create an Event
               </Button>
@@ -293,7 +325,7 @@ function FeaturesSection() {
   return (
     <section
       id="features"
-      className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      className="py-16 sm:py-20 px-6 sm:px-8 max-w-7xl mx-auto">
 
       <motion.div
         initial="hidden"
@@ -322,7 +354,7 @@ function FeaturesSection() {
         <motion.p
           variants={fadeUp}
           custom={2}
-          className="mt-4 text-muted-foreground max-w-2xl mx-auto">
+          className="mt-4 text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg">
 
           Our platform provides all the tools you need to discover, join, and
           organize environmental events in Zamboanga.
@@ -383,7 +415,7 @@ function HowItWorksSection() {
   return (
     <section
       id="how-it-works"
-      className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background via-primary/[0.02] to-background">
+      className="py-16 sm:py-24 px-6 sm:px-8 bg-gradient-to-b from-background via-primary/[0.02] to-background">
 
       <div className="max-w-7xl mx-auto">
         <motion.div
@@ -500,7 +532,7 @@ function FeaturedEventsSection() {
   }, []);
 
   return (
-    <section id="events" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <section id="events" className="py-16 sm:py-20 px-6 sm:px-8 max-w-7xl mx-auto">
       <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-100px' }} variants={stagger} className="text-center mb-16">
         <motion.p variants={fadeUp} custom={0} className="text-sm font-medium text-primary mb-2">Featured Events</motion.p>
         <motion.h2 variants={fadeUp} custom={1} className="font-heading font-semibold text-3xl sm:text-4xl text-foreground">Upcoming Environmental Events</motion.h2>
@@ -658,7 +690,7 @@ function MapPreviewSection() {
   const selectedPin = pins.find(p => p.id === selected);
 
   return (
-    <section id="map" className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/50" ref={sectionRef}>
+    <section id="map" className="py-16 sm:py-20 px-6 sm:px-8 bg-muted/50" ref={sectionRef}>
       <div className="max-w-7xl mx-auto">
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="text-center mb-12">
           <motion.p variants={fadeUp} custom={0} className="text-sm font-medium text-primary mb-2">Map View</motion.p>
@@ -667,7 +699,7 @@ function MapPreviewSection() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
-          <div className="relative rounded-[2.5rem] overflow-hidden border border-emerald-600/10 shadow-[0_32px_64px_-16px_rgba(16,185,129,0.12)] h-[550px] transition-all duration-700 hover:shadow-[0_40px_80px_-20px_rgba(16,185,129,0.18)]">
+          <div className="relative rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden border border-emerald-600/10 shadow-[0_32px_64px_-16px_rgba(16,185,129,0.12)] h-[450px] sm:h-[550px] transition-all duration-700 hover:shadow-[0_40px_80px_-20px_rgba(16,185,129,0.18)]">
             {hasEnteredView && token ? (
               <Map
                 initialViewState={{ latitude: 6.9150, longitude: 122.0650, zoom: 12.8, pitch: 0, bearing: 0 }}
@@ -845,11 +877,11 @@ function CTASection() {
           <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl opacity-70 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary-foreground/10 rounded-full translate-y-1/3 -translate-x-1/3 blur-3xl opacity-50 pointer-events-none" />
           
-          <CardContent className="p-12 sm:p-20 relative z-10 text-center">
-            <h2 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight mb-8 drop-shadow-sm">
+          <CardContent className="p-8 sm:p-20 relative z-10 text-center">
+            <h2 className="font-heading text-3xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight mb-8 drop-shadow-sm">
               Ready to make a <br className="hidden sm:block" /> difference?
             </h2>
-            <p className="text-white/90 mt-4 text-lg sm:text-xl max-w-2xl mx-auto mb-12 leading-relaxed font-medium">
+            <p className="text-white/90 mt-4 text-base sm:text-xl max-w-2xl mx-auto mb-12 leading-relaxed font-medium">
               Join the Junta community today and be part of the movement to protect
               and preserve Zamboanga's natural beauty for future generations.
             </p>
