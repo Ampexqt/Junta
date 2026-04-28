@@ -474,16 +474,17 @@ export function RegisterPage() {
     <div className="grid min-h-screen lg:grid-cols-2 relative overflow-hidden bg-white">
       <AuthNavigation />
 
-      <div className="flex flex-col gap-4 p-6 md:p-10">
+      <div className="flex flex-col gap-4 p-0 sm:p-6 md:p-10">
         <div className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-[440px]">
+          <div className="w-full sm:max-w-[440px]">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35 }}
+              className="h-full sm:h-auto"
             >
-              <Card className="rounded-[20px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 bg-white overflow-hidden">
-                <CardHeader className="pb-2 pt-6 px-8">
+              <Card className="rounded-none sm:rounded-[20px] shadow-none sm:shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-none sm:border border-slate-100 bg-white overflow-hidden min-h-screen sm:min-h-0">
+                <CardHeader className="pb-2 pt-8 sm:pt-6 px-6 sm:px-8">
                   <div className="flex items-center gap-1.5 mb-4">
                     {[1, 2, 3, 4].map((s) => (
                       <div key={s} className="flex items-center gap-1.5 flex-1">
@@ -504,7 +505,7 @@ export function RegisterPage() {
                     ))}
                   </div>
                   <Progress value={progress} className="h-[2px] mb-3 bg-slate-50 shrink-0" />
-                  <CardTitle className="font-heading font-bold text-xl text-slate-900">
+                  <CardTitle className="font-heading font-bold text-xl sm:text-2xl text-slate-900">
                     Step {step}: {stepTitles[step - 1]}
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 font-medium mt-1">
@@ -515,7 +516,7 @@ export function RegisterPage() {
                   </CardDescription>
                 </CardHeader>
 
-                <CardContent className="px-8 pb-8 pt-4">
+                <CardContent className="px-6 sm:px-8 pb-8 pt-4">
                   <AnimatePresence mode="wait">
                     {/* Step 1 */}
                     {step === 1 && (
@@ -607,8 +608,8 @@ export function RegisterPage() {
                       >
                         <div className="space-y-1.5">
                           <Label className="text-[12px] font-bold text-slate-700 ml-1">Full Name <span className="text-red-500">*</span></Label>
-                          <div className="grid grid-cols-12 gap-2">
-                            <div className="col-span-5 relative group">
+                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                            <div className="sm:col-span-5 relative group">
                               <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
                               <Input
                                 placeholder="First"
@@ -618,7 +619,7 @@ export function RegisterPage() {
                                 className={`pl-10 h-10 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 transition-all`}
                               />
                             </div>
-                            <div className="col-span-4">
+                            <div className="sm:col-span-4">
                               <Input
                                 placeholder="Last"
                                 value={formData.lastName}
@@ -627,7 +628,7 @@ export function RegisterPage() {
                                 className="h-10 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus-visible:ring-emerald-500/10 focus-visible:border-emerald-500 transition-all"
                               />
                             </div>
-                            <div className="col-span-3">
+                            <div className="sm:col-span-3">
                               <Select value={formData.suffix} onValueChange={(val) => setFormData({ ...formData, suffix: val })}>
                                 <SelectTrigger className="w-full h-10 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus:ring-emerald-500/10">
                                   <SelectValue placeholder="Suffix" />
@@ -799,16 +800,16 @@ export function RegisterPage() {
                           </div>
                         </div>
 
-                        <div className="flex gap-3 pt-2">
+                        <div className="flex flex-col sm:flex-row gap-3 pt-2">
                           <Button
                             variant="outline"
-                            className="flex-1 h-11 rounded-xl border-slate-200 text-sm font-bold shadow-sm"
+                            className="w-full sm:flex-1 h-11 rounded-xl border-slate-200 text-sm font-bold shadow-sm"
                             onClick={() => setStep(1)}
                           >
                             <ArrowLeft className="mr-2 w-4 h-4" /> Back
                           </Button>
                           <Button
-                            className="flex-1 bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white h-11 rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]"
+                            className="w-full sm:flex-1 bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white h-11 rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]"
                             onClick={handleStep2Continue}
                             disabled={isSendingOTP}
                           >
@@ -906,16 +907,16 @@ export function RegisterPage() {
                                 {isSendingOTP ? 'Sending...' : 'Resend Code'}
                               </Button>
                             </p>
-                            <div className="flex gap-3">
+                            <div className="flex flex-col sm:flex-row gap-3">
                               <Button
                                 variant="outline"
-                                className="flex-1 h-11 rounded-xl border-slate-200 text-sm font-bold shadow-sm"
+                                className="w-full sm:flex-1 h-11 rounded-xl border-slate-200 text-sm font-bold shadow-sm"
                                 onClick={() => setStep(2)}
                               >
                                 <ArrowLeft className="mr-2 w-4 h-4" /> Back
                               </Button>
                               <Button
-                                className="flex-1 bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white h-11 rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]"
+                                className="w-full sm:flex-1 bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white h-11 rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]"
                                 onClick={handleVerifyOTP}
                                 disabled={isVerifyingOTP}
                               >
