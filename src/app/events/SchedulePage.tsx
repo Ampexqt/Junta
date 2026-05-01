@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -27,7 +27,8 @@ import {
   CalendarCheck,
   Filter,
   Check,
-  User
+  User,
+  Users
 } from 'lucide-react';
 import {
   Dialog,
@@ -49,8 +50,8 @@ import { API_BASE_URL } from '@/lib/api';
 
 const ROLE_SUBTITLE: Record<string, string> = {
   admin:       'Full system event management.',
-  organizer:   'Manage your hosted events.',
-  participant: 'Find environmental activities.',
+  organizer:   'Explore and manage community events.',
+  participant: 'Find and join environmental activities.',
 };
 
 // ─── Loading skeleton ────────────────────────────────────────────────────────
@@ -106,69 +107,103 @@ export function SchedulePage() {
   
   // ─── Event Item Component (Nested for scope) ───────────────────────────────
   function EventListItem({ event, onClick }: { event: ScheduleEvent; onClick: () => void }) {
-    const isPast = new Date(event.date) < new Date(new Date().setHours(0, 0, 0, 0));
+    const eventDate = new Date(event.date);
     
-    // Find category color
-    const catDef = CALENDAR_DEFINITIONS.find(c => c.name === event.category);
-    const dotColor = catDef?.colors.eventColor || '#cbd5e1';
+    // Find category color - use case-insensitive matching
+    const catDef = CALENDAR_DEFINITIONS.find(c => c.name.toLowerCase() === event.category.toLowerCase());
+    const brandColor = catDef?.colors.eventColor || '#cbd5e1';
 
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        whileHover={{ x: 4 }}
+        whileHover={{ y: -2 }}
         transition={{ duration: 0.2 }}
-        className={cn(isPast && "opacity-60 grayscale-[0.5] hover:grayscale-0 transition-all")}
+        className="w-full h-full"
       >
         <div 
-          className="group flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 hover:border-emerald-200 hover:shadow-sm transition-all cursor-pointer"
-          onClick={() => {
-            if (event.id === 'mock-cleanup-29') {
-              setSelectedEvent(event);
-              setShowModal(true);
-              return;
-            }
-            onClick();
-          }}
+          className="group relative flex flex-col h-full rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300 cursor-pointer p-6"
+          onClick={() => onClick()}
         >
-          {/* Date Box */}
-          <div className="flex flex-col items-center justify-center min-w-[56px] h-[56px] rounded-xl bg-slate-50 border border-slate-100 group-hover:bg-emerald-50 transition-colors">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-              {new Date(event.date).toLocaleDateString('en-US', { month: 'short' })}
-            </span>
-            <span className="text-lg font-black text-slate-700">
-              {new Date(event.date).getDate()}
-            </span>
+          {/* Top Label Bar */}
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: brandColor }} />
+                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: brandColor }}>{event.category}</span>
+              </div>
+              {event.organizationName && (
+                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-4 flex items-center gap-1">
+                  <span>Organization Name:</span>
+                  <span className="text-slate-900 font-black">{event.organizationName}</span>
+                </div>
+              )}
+            </div>
+            <div 
+              className="flex items-center gap-2.5 pr-4 pl-1.5 h-8 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all shadow-sm bg-white"
+              style={{ 
+                borderColor: brandColor,
+                color: '#0f172a' // High contrast slate-900
+              }}
+            >
+               <div 
+                 className="w-6 h-6 rounded-full flex items-center justify-center shadow-sm"
+                 style={{ backgroundColor: brandColor }}
+               >
+                 <CalendarIcon className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+               </div>
+               <span>{eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            </div>
           </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: dotColor }} />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{event.category}</span>
-            </div>
-            <h3 className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
-              {event.title}
-            </h3>
-            <div className="flex items-center gap-3 mt-1">
-              <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
-                <Clock className="w-3 h-3" />
-                {event.startTime}
+          {/* Title - High Contrast */}
+          <h3 className="text-lg font-black text-slate-950 group-hover:text-emerald-700 transition-colors leading-tight mb-5 line-clamp-2">
+            {event.title}
+          </h3>
+
+          {/* Details - Minimalist Rows */}
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center justify-between py-2 border-b border-slate-50">
+              <div className="flex items-center gap-3">
+                <Clock className="w-4 h-4 text-slate-400" />
+                <span className="text-[11px] font-bold text-slate-600">Schedule</span>
               </div>
-              <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium truncate">
-                <MapPin className="w-3 h-3" />
+              <span className="text-[11px] font-black text-slate-900">{event.startTime} — {event.endTime || 'End'}</span>
+            </div>
+
+            <div className="flex items-center justify-between py-2 border-b border-slate-50">
+              <div className="flex items-center gap-3">
+                <MapPin className="w-4 h-4 text-slate-400" />
+                <span className="text-[11px] font-bold text-slate-600">Location</span>
+              </div>
+              <span className="text-[11px] font-black text-slate-900 truncate max-w-[150px] text-right">
                 {event.locationName || event.location}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between py-2 border-b border-slate-50">
+              <div className="flex items-center gap-3">
+                <Users className="w-4 h-4 text-slate-400" />
+                <span className="text-[11px] font-bold text-slate-600">Volunteers</span>
               </div>
+              <span className="text-[11px] font-black text-slate-900">{event.participantsCount || 0} Joined</span>
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            <Badge variant="outline" className={cn(
-              "text-[9px] font-bold uppercase h-5",
-              isPast ? "bg-slate-50 text-slate-400" : "bg-emerald-50 text-emerald-700 border-emerald-100"
-            )}>
-              {isPast ? 'Past' : 'Upcoming'}
-            </Badge>
-            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-600 transition-colors" />
+          {/* Minimalist Footer */}
+          <div className="mt-auto flex items-center justify-between pt-2">
+            <div className="flex items-center gap-1.5">
+              <div className="flex gap-0.5 text-amber-500">
+                {"★★★★★".split("").map((_, i) => (
+                  <span key={i} className="text-xs">★</span>
+                ))}
+              </div>
+              <span className="text-[10px] font-black text-slate-500 mt-0.5">5.0</span>
+            </div>
+            
+            <div className="text-[10px] font-black text-emerald-600 uppercase tracking-widest group-hover:translate-x-1 transition-transform flex items-center gap-1">
+              View Details <ChevronRight className="w-3 h-3" />
+            </div>
           </div>
         </div>
       </motion.div>
@@ -192,7 +227,8 @@ export function SchedulePage() {
 
   const filteredEvents = useMemo(() => {
     const events = rawEvents.filter(e => {
-      const mappedCat = CALENDAR_DEFINITIONS.find(c => c.name === e.category) ? e.category : 'Other';
+      const catMatch = CALENDAR_DEFINITIONS.find(c => c.name.toLowerCase() === e.category.toLowerCase());
+      const mappedCat = catMatch ? catMatch.name : 'Other';
       return selectedCategories.includes(mappedCat);
     });
     
@@ -205,38 +241,56 @@ export function SchedulePage() {
     }
     return events;
   }, [rawEvents, activeView, selectedCategories, now]);
+  
+  // ── Group by Month & Year for List View ──
+  const groupedEvents = useMemo(() => {
+    const groups: Record<string, ScheduleEvent[]> = {};
+    filteredEvents.forEach(e => {
+      const d = new Date(e.date);
+      const key = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(e);
+    });
+    return groups;
+  }, [filteredEvents]);
 
   // Calendar filtered events
   const filteredCalendarEvents = useMemo(() => {
     return calendarEvents.filter(e => {
-      const rawCat = e.meta?.category as string;
-      // If the category isn't directly in our list, it falls under "Other"
-      const mappedCat = CALENDAR_DEFINITIONS.find(c => c.name === rawCat) ? rawCat : 'Other';
+      const rawCat = (e.meta?.category as string) || '';
+      // Case-insensitive mapping to official category names
+      const catMatch = CALENDAR_DEFINITIONS.find(c => c.name.toLowerCase() === rawCat.toLowerCase());
+      const mappedCat = catMatch ? catMatch.name : 'Other';
       return selectedCategories.includes(mappedCat);
     });
   }, [calendarEvents, selectedCategories]);
 
-  // ── Calendar Instance ──
+  // ── Calendar Instance (Completely Stable) ──
   const eventsPlugin = useMemo(() => createEventsPlugin(), []);
+  const initialDate = useMemo(() => new Date(), []);
+  
+  const views = useMemo(() => [
+    createDayView({ timeFormat: '12h', scrollToCurrentTime: true }),
+    createWeekView({ timeFormat: '12h', scrollToCurrentTime: true }),
+    createMonthView(),
+    createYearView({ mode: 'grid', showTimedEventsInYearView: true }),
+  ], []);
+
+  // Use a ref for the click handler to avoid re-creating the config when rawEvents change
+  const rawEventsRef = useRef(rawEvents);
+  useEffect(() => { rawEventsRef.current = rawEvents; }, [rawEvents]);
 
   const calendar = useCalendarApp({
-    views: [
-      createDayView({ timeFormat: '12h', scrollToCurrentTime: true }),
-      createWeekView({ timeFormat: '12h', scrollToCurrentTime: true }),
-      createMonthView(),
-      createYearView({ mode: 'grid', showTimedEventsInYearView: true }),
-    ],
+    views,
     defaultView: ViewType.MONTH,
     plugins: [eventsPlugin],
-    events: filteredCalendarEvents,
+    events: [], // Start empty, sync via useEffect
     calendars: CALENDAR_DEFINITIONS,
-    initialDate: new Date(),
+    initialDate,
     callbacks: {
-      onEventClick: (event) => {
-        const firestoreId = (event as { meta?: { firestoreId?: string } }).meta?.firestoreId;
-        
-        // Find the full event object from rawEvents
-        const fullEvent = rawEvents.find(e => e.id === firestoreId);
+      onEventClick: (event: any) => {
+        const firestoreId = event.meta?.firestoreId;
+        const fullEvent = rawEventsRef.current.find(e => e.id === firestoreId);
         
         if (fullEvent) {
           setSelectedEvent(fullEvent);
@@ -248,15 +302,23 @@ export function SchedulePage() {
     },
   });
 
-  // ── Sync Events to Calendar Instance ──
+  // ── Sync Events to Calendar Instance (Controlled) ──
+  // Use a ref to track the last synced events to avoid redundant updates
+  const lastSyncedRef = useRef<string>('');
+
   useEffect(() => {
     if (!calendar) return;
     
-    // Clear old events and set new ones safely
+    const eventsJson = JSON.stringify(filteredCalendarEvents);
+    if (lastSyncedRef.current === eventsJson) return;
+    
+    // Clear and set
     calendar.applyEventsChanges({
       delete: calendar.events.map(e => e.id),
       add: filteredCalendarEvents
     });
+    
+    lastSyncedRef.current = eventsJson;
   }, [calendar, filteredCalendarEvents]);
 
   if (isLoading) return <ScheduleSkeleton />;
@@ -334,8 +396,18 @@ export function SchedulePage() {
                     onChange={() => toggleCategory(cat.name)}
                     className="peer sr-only"
                   />
-                  <div className="w-5 h-5 rounded-md border-2 border-slate-400 peer-checked:border-emerald-600 peer-checked:bg-emerald-600 transition-all flex items-center justify-center bg-white shadow-sm group-hover:border-slate-600">
-                    <Check className="w-3 h-3 text-white scale-0 peer-checked:scale-100 transition-transform" strokeWidth={4} />
+                  <div 
+                    className={cn(
+                      "w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center bg-white shadow-sm",
+                      selectedCategories.includes(cat.name) ? "border-transparent" : "border-slate-400 group-hover:border-slate-600"
+                    )}
+                    style={selectedCategories.includes(cat.name) ? { backgroundColor: cat.colors.eventColor } : {}}
+                  >
+                    <Check 
+                      className="w-3 h-3 text-white transition-transform" 
+                      style={{ transform: selectedCategories.includes(cat.name) ? 'scale(1)' : 'scale(0)' }} 
+                      strokeWidth={4} 
+                    />
                   </div>
                 </div>
               </label>
@@ -403,29 +475,48 @@ export function SchedulePage() {
               transition={{ duration: 0.15 }}
               className="flex-1"
             >
-              {filteredEvents.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
-                  {filteredEvents.map((event) => (
-                    <EventListItem 
-                      key={event.id} 
-                      event={event} 
-                      onClick={() => navigate(`/app/events/${event.id}`)} 
-                    />
+              {Object.keys(groupedEvents).length > 0 ? (
+                <div className="space-y-12">
+                  {Object.entries(groupedEvents).map(([monthYear, events]) => (
+                    <div key={monthYear} className="space-y-5">
+                      <div className="flex items-center gap-4 px-1">
+                        <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">
+                          {monthYear}
+                        </h2>
+                        <div className="h-[1px] w-full bg-slate-100" />
+                      </div>
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-7">
+                        {events.map((event) => (
+                          <EventListItem 
+                            key={event.id} 
+                            event={event} 
+                            onClick={() => {
+                              if (event.id === 'mock-cleanup-29') {
+                                setSelectedEvent(event);
+                                setShowModal(true);
+                              } else {
+                                navigate(`/app/events/${event.id}`);
+                              }
+                            }} 
+                          />
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center py-8">
-                  <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-200 mb-3 border border-slate-100/50">
-                    <CalendarIcon className="w-5 h-5" />
+                <div className="h-full flex flex-col items-center justify-center text-center py-20">
+                  <div className="w-16 h-16 rounded-[24px] bg-slate-50 flex items-center justify-center text-slate-200 mb-4 border border-slate-100/50 shadow-sm">
+                    <CalendarIcon className="w-7 h-7" />
                   </div>
-                  <h3 className="text-base font-bold text-slate-900">No events found</h3>
-                  <p className="text-slate-400 mt-1 max-w-[200px] text-[11px] font-medium leading-relaxed">
-                    Adjust filters or switch views to find scheduled activities.
+                  <h3 className="text-lg font-black text-slate-900">No events discovered</h3>
+                  <p className="text-slate-400 mt-1.5 max-w-[240px] text-xs font-medium leading-relaxed">
+                    Adjust your category filters or switch views to explore community activities.
                   </p>
                   <Button 
                     variant="outline" 
                     size="sm"
-                    className="mt-4 rounded-lg font-bold text-[10px] h-8 px-4"
+                    className="mt-6 rounded-xl font-bold text-[11px] h-10 px-6 border-slate-200 hover:bg-slate-50 uppercase tracking-widest"
                     onClick={() => setSelectedCategories(CALENDAR_DEFINITIONS.map(c => c.name))}
                   >
                     Reset Filters
@@ -531,11 +622,53 @@ export function SchedulePage() {
                   </div>
                </div>
                
-               <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100/50">
-                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed italic">
-                    "This is a scheduled environmental activity. Official registration and participation details will be enabled soon."
-                  </p>
-               </div>
+               {/* Mission Outcome for Organizers (Past Events) */}
+               {selectedEvent && new Date(selectedEvent.date) < new Date(new Date().setHours(0,0,0,0)) ? (
+                 <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Mission Feedback</h4>
+                      <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 border-emerald-100">Private to Organizer</Badge>
+                    </div>
+                    
+                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                      {[
+                        { name: "Sarah Jenkins", rating: 5, comment: "Amazing coordination! The team was very helpful and we cleared so much more than expected.", avatar: "https://i.pravatar.cc/150?u=sarah" },
+                        { name: "Michael Chen", rating: 4, comment: "Well organized, but we could use more recycling bins at the site next time.", avatar: "https://i.pravatar.cc/150?u=michael" },
+                        { name: "Jhon Harold", rating: 5, comment: "I really liked the energy! Looking forward to the next one.", avatar: "https://i.pravatar.cc/150?u=jhon" }
+                      ].map((p, idx) => (
+                        <details key={idx} className="group border border-slate-100 rounded-xl overflow-hidden bg-white hover:border-slate-200 transition-colors">
+                          <summary className="flex items-center justify-between p-3 cursor-pointer list-none">
+                            <div className="flex items-center gap-3">
+                              <div className="w-6 h-6 rounded-full overflow-hidden border border-slate-100">
+                                <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+                              </div>
+                              <span className="text-[11px] font-bold text-slate-700">{p.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                               <div className="flex gap-0.5 text-amber-400">
+                                 {Array.from({ length: p.rating }).map((_, i) => (
+                                   <span key={i} className="text-[10px]">★</span>
+                                 ))}
+                               </div>
+                               <ChevronRight className="w-3 h-3 text-slate-300 group-open:rotate-90 transition-transform" />
+                            </div>
+                          </summary>
+                          <div className="px-3 pb-3 pt-0">
+                             <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-100/50">
+                                <p className="text-[10px] text-slate-500 leading-relaxed italic">"{p.comment}"</p>
+                             </div>
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                 </div>
+               ) : (
+                 <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100/50">
+                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed italic">
+                      "This is a scheduled environmental activity. Official registration and participation details will be enabled soon."
+                    </p>
+                 </div>
+               )}
             </div>
 
             <div className="pt-2 flex gap-3">
