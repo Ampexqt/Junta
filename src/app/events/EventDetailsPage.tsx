@@ -344,7 +344,7 @@ export function EventDetailsPage() {
                   <Button disabled className="w-full h-14 rounded-2xl text-sm font-black uppercase tracking-widest shadow-none bg-amber-50 text-amber-600 border border-amber-200 opacity-100 cursor-not-allowed">
                     🟢 Event In Progress
                   </Button>
-                ) : (liveStatus === 'completed' && event?.date && new Date(event.date) < new Date(new Date().setHours(0, 0, 0, 0))) ? (
+                ) : (event?.date && new Date(event.date) < new Date(new Date().setHours(0, 0, 0, 0))) ? (
                   <Button disabled className="w-full h-14 rounded-2xl text-sm font-black uppercase tracking-widest shadow-none bg-slate-100 text-slate-400 opacity-100 cursor-not-allowed">
                     🏁 Event Has Ended
                   </Button>
