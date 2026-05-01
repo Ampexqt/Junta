@@ -290,7 +290,7 @@ export function EventApprovalsPage() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <Avatar className="w-7 h-7">
-                                  <AvatarImage src={e.organizationLogo || e.organizerPhotoURL} className="object-cover" />
+                                  <AvatarImage src={e.organizerPhotoURL} className="object-cover" />
                                   <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
                                     {(e.organizerName || 'A').split(' ').map(n => n[0]).join('')}
                                   </AvatarFallback>

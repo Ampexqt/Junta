@@ -14,7 +14,7 @@ export async function uploadBase64Image(base64: string, folder: string): Promise
 
     try {
         const bucket = storage.bucket();
-        const matches = base64.match(/^data:image\/([A-Za-z-+\/]+);base64,(.+)$/);
+        const matches = base64.match(/^data:image\/([A-Za-z-+/]+);base64,(.+)$/);
         
         if (!matches || matches.length !== 3) {
             throw new Error('Invalid base64 format');

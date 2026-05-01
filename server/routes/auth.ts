@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { auth, db } from '../config/firebase-admin';
 import { resend } from '../config/resend';
 import { authenticateUser, AuthRequest, isAdmin } from '../middleware/auth';
@@ -8,8 +8,8 @@ import { logAdminAction } from '../services/adminLogs';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcryptjs';
-import { Request, Response } from 'express';
 import { uploadBase64Image } from '../services/upload';
+import { grantXP, XP } from '../services/gamification';
 
 const router = Router();
 
@@ -254,6 +254,10 @@ router.post('/register', async (req, res) => {
             organizerBadges: [],
         });
 
+        // Grant 5 XP for registration
+        if (!isExistingAuthUser) {
+            await grantXP(userRecord.uid, XP.REGISTER, 'Account created');
+        }
 
         console.log(`Successfully registered/synced profile for: ${email} (${userRecord.uid})`);
 
@@ -316,7 +320,10 @@ router.post('/google-sync', async (req, res) => {
         if (!userDoc.exists) {
             return res.status(404).json({ error: 'User profile not found. Please complete registration.' });
         }
-        const userData = userDoc.data()!;
+        const userData = userDoc.data();
+        if (!userData) {
+            return res.status(404).json({ error: 'User profile data is empty.' });
+        }
 
         // Issue a standard Junta JWT
         const token = jwt.sign(
@@ -733,7 +740,7 @@ router.post('/verify-reset-code', async (req, res) => {
 
 /**
  * 9. Submit Identity Verification (KYC)
- * Calls Face++ for automated analysis and marks user as pending.
+ * Multi-step pipeline: Upload → OCR ID Check → Face Detect → Face Compare.
  */
 router.post('/submit-verification', authenticateUser, async (req: AuthRequest, res) => {
     const uid = req.user?.uid;
@@ -759,23 +766,89 @@ router.post('/submit-verification', authenticateUser, async (req: AuthRequest, r
             finalSelfieUrl = await uploadBase64Image(selfieUrl, 'kyc/selfies');
         }
 
-        // 2. Automated Face Comparison
-        let verificationResult: { confidence: number; threshold: number } | null = null;
-        try {
-            verificationResult = await FaceVerificationService.compareFaces(finalIdUrl, finalSelfieUrl);
-        } catch (apiError) {
-            console.warn('[KYC] Face++ API error or missing keys. Proceeding with manual review only.');
+        // 2. Multi-step Face++ pipeline
+        let verificationScore = 0;
+        let verificationThreshold = 80;
+        let ocrData: { isIdCard: boolean; name: string | null; idNumber: string | null } | null = null;
+        let kycApiStatus: 'success' | 'no_face_detected' | 'multiple_faces' | 'low_quality' | 'id_invalid' | 'api_error' | 'api_keys_missing' = 'success';
+        let kycErrorLogs: string | null = null;
+
+        const hasFacePlusKeys = !!(process.env.FACEPLUSPLUS_API_KEY && process.env.FACEPLUSPLUS_API_SECRET);
+
+        if (!hasFacePlusKeys) {
+            console.warn('[KYC] Face++ API keys missing. Skipping automated analysis.');
+            kycApiStatus = 'api_keys_missing';
+            kycErrorLogs = 'Face++ API keys not configured. Manual review required.';
+        } else {
+            try {
+                // Step A: OCR - Validate ID document
+                console.log('[KYC] Step A: Running OCR on ID document...');
+                try {
+                    ocrData = await FaceVerificationService.extractIdInfo(finalIdUrl);
+                    if (!ocrData.isIdCard) {
+                        console.warn('[KYC] OCR: No valid ID card detected in image.');
+                        kycApiStatus = 'id_invalid';
+                        kycErrorLogs = 'The uploaded front image was not recognized as a valid ID card.';
+                    } else {
+                        console.log(`[KYC] OCR: ID detected. Name: ${ocrData.name || 'N/A'}, ID#: ${ocrData.idNumber || 'N/A'}`);
+                    }
+                } catch (ocrError: unknown) {
+                    const err = ocrError as { message: string };
+                    // OCR is non-blocking — some valid IDs may not be parsed perfectly.
+                    // Log the error but allow the process to continue.
+                    console.warn(`[KYC] OCR error (non-blocking): ${err.message}`);
+                    kycErrorLogs = `OCR: ${err.message}`;
+                }
+
+                // Step B: Detect face in selfie (pre-flight check for comparison)
+                console.log('[KYC] Step B: Detecting face in selfie...');
+                const detection = await FaceVerificationService.detectFace(finalSelfieUrl);
+
+                if (detection.faceCount === 0) {
+                    console.warn('[KYC] No face detected in selfie.');
+                    kycApiStatus = 'no_face_detected';
+                    kycErrorLogs = (kycErrorLogs ? kycErrorLogs + ' | ' : '') + 'No face detected in the selfie image. Please retake your selfie.';
+                } else if (detection.faceCount > 1) {
+                    console.warn(`[KYC] Multiple faces detected in selfie: ${detection.faceCount}`);
+                    kycApiStatus = 'multiple_faces';
+                    kycErrorLogs = (kycErrorLogs ? kycErrorLogs + ' | ' : '') + `Multiple faces (${detection.faceCount}) detected. Only one face should be visible.`;
+                } else if (detection.quality < 10) {
+                    console.warn(`[KYC] Poor image quality: ${detection.quality}`);
+                    kycApiStatus = 'low_quality';
+                    kycErrorLogs = (kycErrorLogs ? kycErrorLogs + ' | ' : '') + `Selfie quality score is too low (${Math.round(detection.quality)}). Please ensure good lighting.`;
+                } else if (detection.faceToken) {
+                    // Step C: Compare selfie face_token against the ID image
+                    console.log('[KYC] Step C: Comparing selfie to ID...');
+                    const comparisonResult = await FaceVerificationService.compareFaces(detection.faceToken, finalIdUrl);
+                    verificationScore = comparisonResult.confidence;
+                    verificationThreshold = comparisonResult.threshold;
+                    console.log(`[KYC] Comparison complete. Score: ${verificationScore.toFixed(1)}% (Threshold: ${verificationThreshold}%)`);
+                    kycApiStatus = 'success';
+                }
+            } catch (apiError: unknown) {
+                const err = apiError as { message: string };
+                console.error('[KYC] Face++ API pipeline error:', err.message);
+                kycApiStatus = 'api_error';
+                kycErrorLogs = (kycErrorLogs ? kycErrorLogs + ' | ' : '') + `API Error: ${err.message}`;
+            }
         }
 
-        // 3. Update Firestore
+        // 3. Save structured results to Firestore
         const userRef = db.collection('users').doc(uid);
         const updatePayload: Record<string, unknown> = {
             kycStatus: 'pending',
             validIdUrl: finalIdUrl,
             validIdBackUrl: validIdBackUrl || '',
             selfieUrl: finalSelfieUrl,
-            verificationScore: verificationResult?.confidence || 0,
-            verificationThreshold: verificationResult?.threshold || 80,
+            verificationScore,
+            verificationThreshold,
+            kycApiStatus,
+            kycErrorLogs,
+            ocrData: ocrData ? {
+                isIdCard: ocrData.isIdCard,
+                name: ocrData.name || null,
+                idNumber: ocrData.idNumber || null,
+            } : null,
             kycSubmittedAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -791,10 +864,14 @@ router.post('/submit-verification', authenticateUser, async (req: AuthRequest, r
             relatedId: uid,
         }).catch(console.error);
 
+        console.log(`[KYC] Submission complete for ${uid}. Status: ${kycApiStatus}, Score: ${verificationScore.toFixed(1)}%`);
+
         res.json({ 
             success: true, 
             message: 'Verification submitted successfully. Automated analysis complete.',
-            automatedResult: verificationResult 
+            kycApiStatus,
+            verificationScore,
+            kycErrorLogs
         });
     } catch (error) {
         console.error('Error in submit-verification:', error);
@@ -860,6 +937,10 @@ router.post('/admin/verify-user', authenticateUser, isAdmin, async (req, res) =>
             link: '/app/settings',
             relatedId: uid,
         }).catch(console.error);
+
+        if (status === 'verified') {
+            await grantXP(uid, XP.KYC_VERIFIED, 'KYC approved');
+        }
 
         const authReq = req as AuthRequest;
         const userDoc = await userRef.get();

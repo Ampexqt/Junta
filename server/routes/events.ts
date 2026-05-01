@@ -1,11 +1,12 @@
 import { Router } from 'express';
+/* eslint-env node */
 import admin from 'firebase-admin';
 import { db } from '../config/firebase-admin';
 import * as jwt from 'jsonwebtoken';
 import { authenticateUser, AuthRequest } from '../middleware/auth';
 import { createNotification, notifyAllAdmins } from '../services/notifications';
 import { logAdminAction } from '../services/adminLogs';
-import { grantParticipantXP, processEventCompletionGamification } from '../services/gamification';
+import { grantXP, grantOP, XP, OP, processEventCompletionGamification } from '../services/gamification';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.post('/', authenticateUser, async (req, res) => {
         const userData = userDoc.data();
         const organizationName = userData?.organizationName || userData?.orgName || '';
         const organizationLogo = userData?.organizationLogo || userData?.photoURL || '';
+        const organizerPhotoURL = userData?.photoURL || '';
 
         // Add metadata
         const newEvent = {
@@ -38,6 +40,7 @@ router.post('/', authenticateUser, async (req, res) => {
             organizerName: authReq.user?.name || 'Anonymous Organizer', // Store name for easy display
             organizationName,
             organizationLogo,
+            organizerPhotoURL,
             status: 'pending',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -310,6 +313,10 @@ router.patch('/:id/status', authenticateUser, async (req, res) => {
                     targetId: id,
                     targetName: eventData2.title || 'Unknown Event'
                 }).catch(console.error);
+
+                if (isApproved) {
+                    await grantOP(eventData2.organizerId, OP.EVENT_APPROVED, 'Event approved by admin', id);
+                }
             }
         }
 
@@ -450,7 +457,7 @@ router.post('/:id/join', authenticateUser, async (req, res) => {
         });
 
         // Grant 10 XP for joining an event
-        await grantParticipantXP(userId, 10, 'Joined event ' + id);
+        await grantXP(userId, XP.JOIN_EVENT, 'Joined event ' + id, id);
 
         // Notify the organizer that someone joined
         if (eventData?.organizerId) {
@@ -580,6 +587,11 @@ router.patch('/:id/mark-ongoing', authenticateUser, async (req, res) => {
         });
 
         await batch.commit();
+
+        // Grant XP for attending
+        for (const pDoc of participationsSnap.docs) {
+            await grantXP(pDoc.data().userId, XP.ATTEND_EVENT, 'Attended event ' + id, id);
+        }
 
         // Notify participants
         const allParts = await db.collection('participations').where('eventId', '==', id).get();
@@ -770,7 +782,10 @@ router.post('/:id/participants/:userId/rate', authenticateUser, async (req, res)
             relatedId: id,
         }).catch(console.error);
 
-        res.json({ message: 'Rating submitted successfully', rating, averageRating: avg });
+        // Grant XP to participant based on rating
+        await grantXP(participantId, rating * XP.RECEIVE_RATING_PER_STAR, `Received a ${rating}-star rating`, id);
+
+        res.json({ message: 'Rating submitted successfully', rating, averageRating: userAvg });
     } catch (error) {
         console.error('Error submitting rating:', error);
         res.status(500).json({ error: 'Failed to submit rating' });
@@ -828,7 +843,7 @@ router.post('/:id/rate-event', authenticateUser, async (req, res) => {
         });
 
         // Grant 15 XP for leaving a rating
-        await grantParticipantXP(userId, 15, `Rated event ${id}`);
+        await grantXP(userId, XP.RATE_EVENT, `Rated event ${id}`, id);
 
         res.json({ message: 'Event rated successfully. You earned 15 XP!' });
     } catch (error) {

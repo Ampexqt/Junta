@@ -199,36 +199,37 @@ function HeroSection() {
   };
 
   return (
-    <section className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-background pt-28 md:pt-36 lg:pt-40 pb-20">
+    <section className="relative w-full flex items-center justify-center overflow-hidden bg-background pt-24 md:pt-28 lg:pt-32 pb-16 md:pb-20">
       {/* Background Soft Glow */}
       <div className="absolute top-0 left-1/4 -z-0 h-[400px] w-[600px] rounded-full bg-white/40 blur-[120px] pointer-events-none" />
 
-      <div className="container relative z-10 max-w-[1400px] mx-auto px-6 md:px-12 lg:px-24">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 xl:gap-20 items-center">
+      <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 md:px-12 lg:px-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 xl:gap-20 items-center">
           
           {/* Left Column - Content */}
           <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="flex flex-col items-start text-left"
+            className="flex flex-col items-start text-left min-w-0"
           >
             {/* Badge */}
             <motion.div 
               variants={itemVariants}
-              className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/10 bg-white/60 backdrop-blur-sm px-4 py-2 text-[10px] font-bold tracking-[0.15em] text-primary shadow-sm uppercase"
+              className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/10 bg-white/60 backdrop-blur-sm px-4 py-2 text-[10px] font-bold tracking-[0.15em] text-primary shadow-sm uppercase"
             >
-              <Leaf className="h-3.5 w-3.5" />
+              <Leaf className="h-3.5 w-3.5 shrink-0" />
               <span>Zamboanga City's Environmental Platform</span>
             </motion.div>
 
             {/* Heading */}
             <motion.h1 
               variants={itemVariants}
-              className="mb-6 max-w-2xl font-heading text-4xl font-bold leading-[1.1] tracking-tight text-[#1A1A1A] sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl"
+              className="mb-6 w-full font-heading font-bold leading-[1.1] tracking-tight text-[#1A1A1A] text-4xl sm:text-5xl lg:text-[2.75rem] xl:text-5xl 2xl:text-6xl"
             >
-              Join Environmental <br className="hidden sm:block" />
-              Activities in <span className="relative inline-block whitespace-nowrap">
+              Join Environmental{' '}
+              <span className="block sm:inline">Activities in</span>{' '}
+              <span className="relative inline-block">
                 Your Community
                 {/* SVG Underline Curve */}
                 <svg className="absolute -bottom-2 left-0 w-full h-3 text-primary/20 pointer-events-none" viewBox="0 0 300 12" fill="none" preserveAspectRatio="none">
@@ -240,7 +241,7 @@ function HeroSection() {
             {/* Subtitle */}
             <motion.p 
               variants={itemVariants}
-              className="mb-10 max-w-lg text-base font-medium leading-relaxed text-[#4A5A52] md:text-lg lg:text-xl"
+              className="mb-8 max-w-lg text-base font-medium leading-relaxed text-[#4A5A52] md:text-lg"
             >
               Discover, join, and organize local initiatives to protect and preserve Zamboanga City's natural beauty. Together, we can make a difference.
             </motion.p>
@@ -248,12 +249,12 @@ function HeroSection() {
             {/* CTA Buttons */}
             <motion.div 
               variants={itemVariants}
-              className="flex flex-col w-full sm:w-auto gap-4 sm:flex-row sm:gap-6"
+              className="flex flex-col w-full sm:w-auto gap-3 sm:flex-row sm:gap-4"
             >
               <Button
                 size="lg"
                 onClick={() => document.getElementById('events')?.scrollIntoView({ behavior: 'smooth' })}
-                className="h-14 w-full sm:min-w-[180px] rounded-full bg-primary px-10 text-base font-bold text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary-hover hover:-translate-y-0.5"
+                className="h-12 sm:h-14 w-full sm:w-auto sm:min-w-[160px] rounded-full bg-primary px-8 text-base font-bold text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary-hover hover:-translate-y-0.5"
               >
                 Browse Events
               </Button>
@@ -261,7 +262,7 @@ function HeroSection() {
                 variant="outline"
                 size="lg"
                 onClick={() => navigate('/register')}
-                className="h-14 w-full sm:min-w-[180px] rounded-full border-2 border-primary/20 bg-white px-10 text-base font-bold text-primary transition-all hover:border-primary/40"
+                className="h-12 sm:h-14 w-full sm:w-auto sm:min-w-[160px] rounded-full border-2 border-primary/20 bg-white px-8 text-base font-bold text-primary transition-all hover:border-primary/40"
               >
                 Create an Event
               </Button>
@@ -273,13 +274,13 @@ function HeroSection() {
             initial={{ opacity: 0, x: 40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 1.2, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="relative"
+            className="relative hidden sm:block"
           >
             {/* Decorative Background Shapes */}
             <div className="absolute -bottom-6 -left-6 -z-10 h-24 w-24 rounded-2xl bg-primary/5" />
             <div className="absolute -top-4 -right-4 -z-10 h-16 w-16 rounded-full bg-primary/5" />
 
-            <div className="relative aspect-[4/3] lg:aspect-[3/4] xl:aspect-square overflow-hidden rounded-[2rem] border border-white/50 bg-white p-2 md:p-3 shadow-2xl shadow-primary/10">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] border border-white/50 bg-white p-2 md:p-3 shadow-2xl shadow-primary/10">
               <div className="h-full w-full overflow-hidden rounded-2xl bg-background-alt relative">
                 {/* Gradient Overlays */}
                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-primary/10 pointer-events-none z-10" />

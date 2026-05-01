@@ -15,23 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Camera,
-  Shield,
-  Trash2,
-  Mail,
-  Loader2,
-  User,
-  Fingerprint,
-  KeyRound,
-  FileText,
-  Sun,
-  Glasses,
-  Focus,
-  ChevronRight,
-  UserPlus,
-  Lock
-} from 'lucide-react';
+import { Camera, FileText, Loader2, Shield, User, Lock, UserPlus, Mail, Fingerprint, KeyRound, Trash2, Sun, Focus, Glasses, ScanFace, Cpu, Ban, Maximize, X } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -337,44 +321,78 @@ export function SettingsPage() {
   };
 
   const handleKYCSubmit = async () => {
-    if (!pendingValidIdUrl || !pendingValidIdBackUrl || !pendingSelfieUrl) {
-      sileo.error({ title: 'Missing Documents', description: 'Please upload Front and Back of ID, and a Selfie.' });
+    if (!pendingValidIdUrl || !pendingSelfieUrl) {
+      sileo.error({ title: 'Missing Documents', description: 'Please upload the Front of your ID and take a Selfie.' });
       return;
     }
+
+    // Pre-flight: enforce max 2MB per image (Face++ limit)
+    const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+    const getBase64Size = (base64: string) => {
+      const base64Data = base64.split(',')[1] || base64;
+      return Math.ceil((base64Data.length * 3) / 4);
+    };
+
+    if (pendingValidIdUrl.startsWith('data:image') && getBase64Size(pendingValidIdUrl) > MAX_SIZE_BYTES) {
+      sileo.error({ title: 'ID Front Too Large', description: 'The ID front image must be under 2MB. Please retake or compress it.' });
+      return;
+    }
+    if (pendingValidIdBackUrl && pendingValidIdBackUrl.startsWith('data:image') && getBase64Size(pendingValidIdBackUrl) > MAX_SIZE_BYTES) {
+      sileo.error({ title: 'ID Back Too Large', description: 'The ID back image must be under 2MB. Please retake or compress it.' });
+      return;
+    }
+    if (pendingSelfieUrl.startsWith('data:image') && getBase64Size(pendingSelfieUrl) > MAX_SIZE_BYTES) {
+      sileo.error({ title: 'Selfie Too Large', description: 'The selfie image must be under 2MB. Please retake it.' });
+      return;
+    }
+
     setIsSubmittingKYC(true);
     try {
       const token = localStorage.getItem('token');
-      const submitData = {
-        validIdUrl: pendingValidIdUrl,
-        validIdBackUrl: pendingValidIdBackUrl,
-        selfieUrl: pendingSelfieUrl
-      };
-      
       const response = await fetch(`${API_BASE_URL}/auth/submit-verification`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(submitData)
+        body: JSON.stringify({
+          validIdUrl: pendingValidIdUrl,
+          validIdBackUrl: pendingValidIdBackUrl,
+          selfieUrl: pendingSelfieUrl
+        })
       });
 
-      if (!response.ok) throw new Error('Failed to submit verification');
-      
       const result = await response.json();
-      
+
+      if (!response.ok) {
+        sileo.error({ title: 'Submit Failed', description: result.error || 'Could not submit verification documents.' });
+        return;
+      }
+
+      // Show contextual feedback based on pipeline result
+      const pipelineStatusMessages: Record<string, string> = {
+        success: `Analysis complete — ${Math.round(result.verificationScore || 0)}% biometric match. Pending admin review.`,
+        no_face_detected: 'Submitted. Note: No face was detected in your selfie. An admin will review manually.',
+        multiple_faces: 'Submitted. Note: Multiple faces were detected in your selfie. An admin will review manually.',
+        low_quality: 'Submitted. Note: Your selfie quality was low. Consider resubmitting with better lighting.',
+        id_invalid: 'Submitted. Note: Your ID could not be verified automatically. An admin will review manually.',
+        api_error: 'Submitted. Automated analysis encountered an error — an admin will review manually.',
+        api_keys_missing: 'Submitted. Automated analysis is not configured — an admin will review manually.',
+      };
+
+      const desc = pipelineStatusMessages[result.kycApiStatus] || 'Your identity documents are now pending review.';
+
       sileo.success({ 
-        title: 'Verification Submitted', 
-        description: result.automatedResult 
-          ? `Analysis complete (${Math.round(result.automatedResult.confidence)}% match). Pending admin review.`
-          : 'Your identity documents are now pending review.' 
+        title: 'Verification Submitted ✓', 
+        description: desc
       });
-    } catch (error) {
-      sileo.error({ title: 'Submit Failed', description: 'Could not submit verification documents.' });
+    } catch {
+      sileo.error({ title: 'Submit Failed', description: 'A network error occurred. Please try again.' });
     } finally {
       setIsSubmittingKYC(false);
     }
   };
+
 
   const handlePasswordReset = async () => {
     if (!profile?.email) return;
@@ -827,64 +845,83 @@ export function SettingsPage() {
                             onClick={closeWebcam}
                             className="w-10 h-10 rounded-2xl bg-slate-100/50 hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all"
                           >
-                            <Trash2 className="w-4 h-4 rotate-45" />
+                            <X className="w-4 h-4" />
                           </Button>
                         </div>
                       {webcamStep === 'intro' ? (
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 pt-24 space-y-8 bg-gradient-to-b from-white to-slate-50">
-                          <div className="relative">
-                            <div className="absolute inset-0 bg-emerald-500/10 blur-3xl rounded-full" />
-                          <div className="relative w-20 h-20 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-xl">
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 pt-24 space-y-6 bg-slate-50/30">
+                          <div className="relative mb-2">
+                            <div className="absolute inset-0 bg-primary/10 blur-2xl rounded-full" />
+                            <div className="relative w-20 h-20 rounded-2xl bg-white border border-slate-200/60 shadow-lg shadow-slate-200/50 flex items-center justify-center">
                               {captureTarget.startsWith('id') ? (
-                                <FileText className="w-10 h-10 text-emerald-600" />
+                                <FileText className="w-10 h-10 text-slate-800" />
                               ) : (
-                                <Shield className="w-10 h-10 text-emerald-600" />
+                                <ScanFace className="w-10 h-10 text-primary" strokeWidth={1.5} />
                               )}
                             </div>
                           </div>
 
-                          <div className="space-y-2 text-center max-w-[280px]">
-                            <p className="text-slate-600 text-xs font-bold leading-relaxed">
+                          <div className="space-y-1.5 text-center max-w-[280px]">
+                            <h4 className="text-sm font-black text-slate-900">
+                                {captureTarget.startsWith('id') ? 'Document Scan' : 'Biometric Scan'}
+                            </h4>
+                            <p className="text-slate-500 text-xs font-medium leading-relaxed">
                               {captureTarget.startsWith('id') 
-                                ? 'Position your ID card within the frame and ensure all details are visible.' 
-                                : 'Look directly at the camera and keep a neutral expression.'}
+                                ? 'Position your ID card within the frame and ensure all details are clearly visible.' 
+                                : 'Position your face within the frame. Ensure good lighting and a neutral expression.'}
                             </p>
                           </div>
                           
                           <div className="grid grid-cols-2 gap-3 w-full">
                             {captureTarget.startsWith('id') ? (
                               <>
-                                <div className="flex flex-col items-center gap-3 p-4 rounded-3xl bg-white border border-slate-100 transition-all hover:border-emerald-500/30 hover:bg-emerald-50/30 group">
-                                  <Focus className="w-5 h-5 text-emerald-600 group-hover:scale-110 transition-transform" />
-                                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 group-hover:text-emerald-700">Readable Text</span>
+                                <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200/60 shadow-sm transition-all hover:border-primary/30 group">
+                                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">
+                                    <Focus className="w-4 h-4 text-slate-600 group-hover:text-primary transition-colors" />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-slate-700">Clear Text</span>
                                 </div>
-                                <div className="flex flex-col items-center gap-3 p-4 rounded-3xl bg-white border border-slate-100 transition-all hover:border-emerald-500/30 hover:bg-emerald-50/30 group">
-                                  <Sun className="w-5 h-5 text-emerald-600 group-hover:scale-110 transition-transform" />
-                                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 group-hover:text-emerald-700">No Glare</span>
+                                <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200/60 shadow-sm transition-all hover:border-primary/30 group">
+                                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">
+                                    <Sun className="w-4 h-4 text-slate-600 group-hover:text-primary transition-colors" />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-slate-700">No Glare</span>
                                 </div>
                               </>
                             ) : (
                               <>
-                                <div className="flex flex-col items-center gap-3 p-4 rounded-3xl bg-white border border-slate-100 transition-all hover:border-rose-500/30 hover:bg-rose-50/30 group">
-                                  <User className="w-5 h-5 text-rose-600 group-hover:scale-110 transition-transform" />
-                                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 group-hover:text-rose-700">No Hats</span>
+                                <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200/60 shadow-sm transition-all hover:border-primary/30 group">
+                                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center relative overflow-hidden">
+                                    <Ban className="w-8 h-8 text-slate-200 absolute opacity-50" strokeWidth={1} />
+                                    <User className="w-4 h-4 text-slate-600 group-hover:text-primary transition-colors z-10" />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-slate-700">No Hats</span>
                                 </div>
-                                <div className="flex flex-col items-center gap-3 p-4 rounded-3xl bg-white border border-slate-100 transition-all hover:border-rose-500/30 hover:bg-rose-50/30 group">
-                                  <Glasses className="w-5 h-5 text-rose-600 group-hover:scale-110 transition-transform" />
-                                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 group-hover:text-rose-700">No Glasses</span>
+                                <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200/60 shadow-sm transition-all hover:border-primary/30 group">
+                                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center relative overflow-hidden">
+                                    <Ban className="w-8 h-8 text-slate-200 absolute opacity-50" strokeWidth={1} />
+                                    <Glasses className="w-4 h-4 text-slate-600 group-hover:text-primary transition-colors z-10" />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-slate-700">No Glasses</span>
                                 </div>
                               </>
                             )}
                           </div>
 
-                          <div className="w-full pt-4">
+                          <div className="w-full pt-2">
                             <Button 
                               onClick={launchCamera} 
-                              className="w-full h-14 rounded-[1.25rem] bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                              className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase text-xs tracking-widest shadow-md transition-all active:scale-95 group"
                             >
                               Start Scanning
-                              <ChevronRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
                             </Button>
+                            
+                            {!captureTarget.startsWith('id') && (
+                              <div className="mt-4 flex items-center justify-center gap-1.5 opacity-60">
+                                <Cpu className="w-3.5 h-3.5 text-slate-500" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Powered by Face++</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ) : (
@@ -897,7 +934,7 @@ export function SettingsPage() {
                           />
                           
                           {/* Professional Vignette Overlay */}
-                          <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center pt-16">
+                          <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center pt-12">
                             {/* Darkened mask outside the guide */}
                             <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                               <defs>
@@ -910,39 +947,55 @@ export function SettingsPage() {
                                   )}
                                 </mask>
                               </defs>
-                              <rect x="0" y="0" width="100" height="100" fill="rgba(0,0,0,0.7)" mask="url(#verificationMask)" />
+                              <rect x="0" y="0" width="100" height="100" fill="rgba(0,0,0,0.85)" mask="url(#verificationMask)" />
                             </svg>
                             
                             {/* Actual Guide Border */}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none pt-12">
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none pt-10">
                               {captureTarget.startsWith('id') ? (
-                                <div className="w-[85%] aspect-[1.6/1] border-[3px] border-emerald-500 rounded-2xl relative overflow-hidden shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                                  <div className="absolute inset-x-0 top-0 h-1 bg-emerald-500/20" />
+                                <div className="w-[85%] aspect-[1.6/1] border-2 border-white/50 rounded-2xl relative overflow-hidden">
+                                  {/* Corner Accents */}
+                                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-2xl" />
+                                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-2xl" />
+                                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-2xl" />
+                                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-2xl" />
                                   
                                   <AnimatePresence mode="wait">
                                     <motion.div 
                                       key={captureTarget}
-                                      initial={{ x: '100%' }}
-                                      animate={{ x: '-100%' }}
-                                      transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                                      className="absolute inset-y-0 w-1/2 bg-emerald-500/10 skew-x-[-20deg] blur-xl"
+                                      initial={{ y: '-100%' }}
+                                      animate={{ y: '200%' }}
+                                      transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                                      className="absolute inset-x-0 h-32 bg-gradient-to-b from-transparent via-primary/20 to-transparent"
                                     />
                                   </AnimatePresence>
                                 </div>
                               ) : (
-                                <div className="w-[70%] aspect-[0.85] border-[3px] border-emerald-500 rounded-[100%] relative shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                                <div className="w-[70%] aspect-[0.85] relative">
+                                  {/* Face++ Tech Accents */}
+                                  <div className="absolute -top-4 -left-4 w-10 h-10 border-t-4 border-l-4 border-primary rounded-tl-[40px]" />
+                                  <div className="absolute -top-4 -right-4 w-10 h-10 border-t-4 border-r-4 border-primary rounded-tr-[40px]" />
+                                  <div className="absolute -bottom-4 -left-4 w-10 h-10 border-b-4 border-l-4 border-primary rounded-bl-[40px]" />
+                                  <div className="absolute -bottom-4 -right-4 w-10 h-10 border-b-4 border-r-4 border-primary rounded-br-[40px]" />
+                                  
+                                  <div className="absolute inset-0 border border-white/20 rounded-[100%]" />
+                                  <Maximize className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full text-primary/10 stroke-[0.5]" />
+
                                   {/* Live Scanning Bar */}
                                   <motion.div 
-                                    animate={{ top: ['5%', '95%', '5%'] }}
-                                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                                    className="absolute left-4 right-4 h-[1px] bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]"
+                                    animate={{ top: ['0%', '100%', '0%'] }}
+                                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                                    className="absolute left-0 right-0 h-10 bg-gradient-to-b from-transparent to-primary/40 border-b-2 border-primary"
                                   />
+                                  
+                                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/40 px-3 py-1 rounded-full backdrop-blur-md border border-white/10 flex items-center gap-1.5">
+                                    <ScanFace className="w-3 h-3 text-primary" />
+                                    <span className="text-[8px] font-black text-white tracking-widest">FACE++ ANALYSIS</span>
+                                  </div>
                                 </div>
                               )}
                             </div>
                           </div>
-
-                          {/* Top Controls - Removed because it is now in the Header */}
 
                           {/* Controls Bar - Light Mode */}
                           <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-white/95 via-white/80 to-transparent flex flex-col items-center justify-center gap-4 pb-4">
@@ -956,20 +1009,23 @@ export function SettingsPage() {
                               </Button>
                               
                             <button 
-                                onClick={capturePhoto}
-                                disabled={isUploadingId || isUploadingIdBack || isUploadingSelfie}
-                                className="w-16 h-16 rounded-full border-4 border-slate-200 flex items-center justify-center group transition-all active:scale-95 hover:scale-105 shadow-xl relative disabled:opacity-50 bg-white"
-                              >
-                                {isUploadingId || isUploadingIdBack || isUploadingSelfie ? (
-                                  <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-                                ) : (
-                                  <div className="w-12 h-12 rounded-full bg-slate-900 group-hover:scale-90 transition-transform" />
-                                )}
-                              </button>
-                            </div>
-                            <p className="text-slate-500 text-[8px] font-black uppercase tracking-[0.2em] bg-slate-100/80 px-3 py-1 rounded-full backdrop-blur-sm border border-slate-200">
-                              Neutral Expression • Front View
-                            </p>
+                                  onClick={capturePhoto}
+                                  disabled={isUploadingId || isUploadingIdBack || isUploadingSelfie}
+                                  className="w-16 h-16 rounded-full border-[3px] border-white/60 flex items-center justify-center group transition-all active:scale-95 hover:scale-105 relative disabled:opacity-50 bg-black/20 backdrop-blur-sm"
+                                >
+                                  {isUploadingId || isUploadingIdBack || isUploadingSelfie ? (
+                                    <Loader2 className="w-8 h-8 text-white animate-spin" />
+                                  ) : (
+                                    <div className="w-[52px] h-[52px] rounded-full bg-white group-hover:scale-90 transition-transform" />
+                                  )}
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-2 mt-2">
+                                <ScanFace className="w-3.5 h-3.5 text-slate-400" />
+                                <p className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] bg-white/10 px-3 py-1 rounded-full backdrop-blur-md border border-white/10">
+                                  {captureTarget.startsWith('id') ? 'Clear Lighting • Within Frame' : 'Neutral Expression • Front View'}
+                                </p>
+                              </div>    
                           </div>
 
                           {/* Capture Flash Effect */}
