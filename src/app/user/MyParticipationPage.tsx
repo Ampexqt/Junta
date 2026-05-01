@@ -30,6 +30,7 @@ import { useMyParticipations, type ParticipationRecord } from '@/hooks/useMyPart
 import { format } from 'date-fns';
 import { sileo } from 'sileo';
 import { RateEventModal } from '@/features/events/components/RateEventModal';
+import { cn } from '@/lib/utils';
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   Upcoming:  { label: 'Upcoming',   className: 'bg-blue-50 text-blue-700' },
@@ -184,8 +185,16 @@ export function MyParticipationPage() {
                 ) : (
                   filtered[activeTab].map((p) => {
                     const cfg = statusConfig[p.status] || statusConfig.Upcoming;
+                    const isCompleted = p.status === 'Completed';
                     return (
-                      <TableRow key={p.id} className="cursor-pointer group" onClick={() => navigate(`/app/events/${p.eventId}`)}>
+                      <TableRow 
+                        key={p.id} 
+                        className={cn(
+                          "cursor-pointer group",
+                          isCompleted && "opacity-75 hover:opacity-100 grayscale-[0.3] hover:grayscale-0 transition-all"
+                        )} 
+                        onClick={() => navigate(`/app/events/${p.eventId}`)}
+                      >
                         <TableCell>
                           <p className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors truncate">{p.title}</p>
                           <p className="text-[11px] text-slate-400 font-medium mt-0.5">{p.organizationName || p.organizerName}</p>
