@@ -282,12 +282,15 @@ export function useScheduleEvents(): UseScheduleEventsReturn {
           if (role !== 'admin') {
             const isMyEvent = data.organizerId === uid;  // created by me
             const isJoined  = joinedEventIds.has(doc.id); // joined as participant
+            const isPublic  = data.visibility === 'public';
             
             // Only show events that are approved, published, or completed
-            const isValidStatus = ['approved', 'published', 'completed'].includes((data.status || 'published').toLowerCase());
+            const isValidStatus = ['approved', 'published', 'completed', 'ongoing'].includes((data.status || 'published').toLowerCase());
             
             if (!isValidStatus) return; // Hide rejected and pending events from the calendar
-            if (!isMyEvent && !isJoined) return;
+            
+            // Show if it's my event, I joined it, OR it's a public event
+            if (!isMyEvent && !isJoined && !isPublic) return;
           }
 
           const scheduleEvent = mapDocToScheduleEvent(doc.id, data);
