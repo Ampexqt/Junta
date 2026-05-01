@@ -118,6 +118,7 @@ export function SchedulePage() {
         animate={{ opacity: 1, y: 0 }}
         whileHover={{ x: 4 }}
         transition={{ duration: 0.2 }}
+        className={cn(isPast && "opacity-60 grayscale-[0.5] hover:grayscale-0 transition-all")}
       >
         <div 
           className="group flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 hover:border-emerald-200 hover:shadow-sm transition-all cursor-pointer"
