@@ -240,6 +240,11 @@
   display: none !important;
 }
 
+/* Hide Mapbox Logo (Note: This is technically a TOS violation for most plans) */
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+
 /* --- CUSTOM UTILITIES --- */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
