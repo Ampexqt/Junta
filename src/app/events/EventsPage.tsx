@@ -38,6 +38,7 @@ interface Event {
   participants: number;
   category: string;
   image?: string;
+  status: string;
 }
 
 export function EventsPage() {
@@ -52,7 +53,7 @@ export function EventsPage() {
     const q = query(
       collection(db, 'events'),
       where('visibility', '==', 'public'),
-      where('status', '==', 'published')
+      where('status', 'in', ['published', 'ongoing', 'completed'])
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -74,6 +75,7 @@ export function EventsPage() {
           participants: data.participantsCount || 0,
           category: data.category || 'Other',
           image: data.coverImage,
+          status: data.status || 'published',
         };
       });
       setEvents(fetched);
