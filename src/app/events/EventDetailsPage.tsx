@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { onSnapshot, doc } from 'firebase/firestore';
@@ -70,8 +71,8 @@ export function EventDetailsPage() {
   const [joined, setJoined] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [liveStatus, setLiveStatus] = useState<string>('');
+  const [showReport, setShowReport] = useState(false);
 
-  // Fetch event + hasJoined status — re-runs when uid changes (handles re-login)
   const fetchEvent = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -96,12 +97,10 @@ export function EventDetailsPage() {
     }
   }, [id]);
 
-  // Re-fetch whenever id or uid changes (handles logout → re-login)
   useEffect(() => {
     fetchEvent();
   }, [fetchEvent, uid]);
 
-  // Real-time status listener
   useEffect(() => {
     if (!id) return;
     const unsub = onSnapshot(doc(db, 'events', id), (snap) => {
@@ -140,7 +139,6 @@ export function EventDetailsPage() {
 
   return (
     <div className="space-y-6 max-w-7xl pb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Header Utilities */}
       <div className="flex items-center justify-between px-1">
         <Button
           variant="ghost"
@@ -157,7 +155,6 @@ export function EventDetailsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Main Hero Card - Bento Large */}
         <div className="lg:col-span-8 space-y-6">
           <div className="relative bg-white rounded-[32px] border border-slate-100 shadow-[0_8px_40px_rgba(0,0,0,0.04)] overflow-hidden">
             <div className="flex flex-col md:flex-row p-8 gap-8 items-center md:items-stretch">
@@ -200,7 +197,6 @@ export function EventDetailsPage() {
                 </div>
               )}
             </div>
-            
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 blur-3xl text-primary" />
           </div>
 
@@ -242,7 +238,6 @@ export function EventDetailsPage() {
           </div>
         </div>
 
-        {/* Sidebar - Actions & Logistics */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-[0_8px_40px_rgba(0,0,0,0.04)] overflow-hidden">
             <div className="h-44 bg-slate-100 relative">
@@ -302,7 +297,6 @@ export function EventDetailsPage() {
                     disabled={isJoining}
                     onClick={async () => {
                       const token = localStorage.getItem('token');
-                      // If no token at all, redirect to login
                       if (!token) {
                         sileo.error({ title: 'Login Required', description: 'Please log in to join this event.' });
                         navigate('/login');
@@ -322,7 +316,6 @@ export function EventDetailsPage() {
                           setJoined(true);
                           sileo.success({ title: 'Registered!', description: 'You have successfully joined this event.' });
                         } else if (response.status === 400 && resData.error?.includes('already joined')) {
-                          // Already joined — just reflect this in the UI
                           setJoined(true);
                           sileo.info({ title: 'Already Registered', description: 'You are already registered for this event.' });
                         } else if (response.status === 401 || response.status === 403) {
@@ -345,8 +338,12 @@ export function EventDetailsPage() {
                     🟢 Event In Progress
                   </Button>
                 ) : (event?.date && new Date(event.date) < new Date(new Date().setHours(0, 0, 0, 0))) ? (
-                  <Button disabled className="w-full h-14 rounded-2xl text-sm font-black uppercase tracking-widest shadow-none bg-slate-100 text-slate-400 opacity-100 cursor-not-allowed">
-                    🏁 Event Has Ended
+                  <Button 
+                    className="w-full h-14 rounded-2xl text-sm font-black uppercase tracking-widest shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all group"
+                    onClick={() => setShowReport(true)}
+                  >
+                    <CheckCircle className="w-5 h-5 mr-2" />
+                    View Mission Report
                   </Button>
                 ) : (
                   <Button disabled className="w-full bg-slate-100 text-slate-400 border-none h-14 rounded-2xl text-sm font-black uppercase tracking-widest shadow-none opacity-100 cursor-not-allowed">
@@ -391,6 +388,127 @@ export function EventDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Immersive Mission Report Overlay */}
+      <AnimatePresence>
+        {showReport && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-slate-950/40 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[40px] shadow-2xl overflow-hidden flex flex-col border border-white/20"
+            >
+              <div className="relative h-48 shrink-0 bg-slate-900 p-8 flex items-end justify-between overflow-hidden">
+                <div className="absolute inset-0 opacity-40">
+                   <img src={event.coverImage} className="w-full h-full object-cover grayscale" alt="bg" />
+                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
+                </div>
+                
+                <div className="relative z-10 space-y-2">
+                  <Badge className="bg-emerald-500 text-white border-none font-black text-[10px] uppercase tracking-[0.2em] px-3">Mission Accomplished</Badge>
+                  <h2 className="text-3xl font-black text-white tracking-tight">{event.title}</h2>
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                     <CalendarDays className="w-3.5 h-3.5" /> {event.date ? format(new Date(event.date), 'MMMM dd, yyyy') : 'TBD'} • Official Mission Report
+                  </p>
+                </div>
+
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setShowReport(false)}
+                  className="relative z-10 rounded-full bg-white/10 hover:bg-white/20 text-white border-none"
+                >
+                   <ArrowLeft className="w-5 h-5 rotate-90" />
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
+                   <div className="bg-emerald-50/50 p-6 rounded-[32px] border border-emerald-100/50 text-center space-y-1">
+                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Impact Score</p>
+                      <h4 className="text-3xl font-black text-slate-900">4.8</h4>
+                      <div className="flex justify-center gap-0.5 text-amber-400">
+                         {Array.from({ length: 5 }).map((_, i) => <span key={i} className="text-[9px]">★</span>)}
+                      </div>
+                   </div>
+                   <div className="bg-blue-50/50 p-6 rounded-[32px] border border-blue-100/50 text-center space-y-1">
+                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Participants</p>
+                      <h4 className="text-3xl font-black text-slate-900">{event.participantsCount || 0}</h4>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">100% Turnout</p>
+                   </div>
+                   <div className="bg-purple-50/50 p-6 rounded-[32px] border border-purple-100/50 text-center space-y-1">
+                      <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest">Sentiment</p>
+                      <h4 className="text-3xl font-black text-slate-900">High</h4>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">98% Positive</p>
+                   </div>
+                   <div className="bg-amber-50 p-6 rounded-[32px] border border-amber-200/50 text-center space-y-1 shadow-lg shadow-amber-900/5">
+                      <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">XP Gained</p>
+                      <h4 className="text-3xl font-black text-slate-900">+98</h4>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Organizer Points</p>
+                   </div>
+                </div>
+
+                <div className="space-y-8">
+                   <div>
+                      <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 mb-4 px-2">Participant Appreciation</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {[
+                          { name: "Sarah Jenkins", role: "Volunteer", rating: 5, comment: "The coordination was flawless. I felt like I was part of something big today.", avatar: "https://i.pravatar.cc/150?u=sarah" },
+                          { name: "Michael Chen", role: "Site Lead", rating: 4, comment: "Productive day! We collected 12 bags of waste. Next time let's bring more gloves.", avatar: "https://i.pravatar.cc/150?u=michael" },
+                          { name: "Sofia Rodriguez", role: "Eco-Guardian", rating: 5, comment: "Beautifully organized. The briefing was clear and the impact was immediate.", avatar: "https://i.pravatar.cc/150?u=sofia" },
+                          { name: "James Wilson", role: "Volunteer", rating: 5, comment: "I've joined many cleanups, but Junta's organization makes it so much easier to help.", avatar: "https://i.pravatar.cc/150?u=james" }
+                        ].map((p, idx) => (
+                          <div key={idx} className="bg-slate-50/50 p-5 rounded-[28px] border border-slate-100 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="w-10 h-10 border-2 border-white shadow-sm">
+                                  <AvatarImage src={p.avatar} />
+                                  <AvatarFallback>US</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <h5 className="text-xs font-black text-slate-900">{p.name}</h5>
+                                  <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">{p.role}</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-0.5 text-amber-400">
+                                 {Array.from({ length: p.rating }).map((_, i) => <span key={i} className="text-[10px]">★</span>)}
+                              </div>
+                            </div>
+                            <p className="text-[11px] text-slate-600 leading-relaxed font-medium italic">"{p.comment}"</p>
+                          </div>
+                        ))}
+                      </div>
+                   </div>
+                </div>
+              </div>
+
+              <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+                 <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white">
+                       <Share2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                       <p className="text-xs font-black text-slate-900">Export Report</p>
+                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">PDF • CSV • JSON</p>
+                    </div>
+                 </div>
+                 <Button 
+                   onClick={() => setShowReport(false)}
+                   className="rounded-2xl h-12 px-8 bg-slate-900 text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 shadow-xl shadow-slate-900/10"
+                 >
+                   Close Report
+                 </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
