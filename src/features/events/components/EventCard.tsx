@@ -15,6 +15,7 @@ interface EventCardProps {
         participants?: number
         category: string
         image?: string
+        status?: string
     }
     view?: "grid" | "list"
     index?: number
@@ -47,6 +48,7 @@ const categoryIcons: Record<string, LucideIcon> = {
 export function EventCard({ event, view = "grid", index = 0 }: EventCardProps) {
     const navigate = useNavigate()
     const IconObj = categoryIcons[event.category] || Calendar;
+    const isCompleted = event?.status === 'completed';
 
     if (view === "list") {
         return (
@@ -54,6 +56,7 @@ export function EventCard({ event, view = "grid", index = 0 }: EventCardProps) {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.03 }}
+                className={cn(isCompleted && "opacity-75 grayscale-[0.3] hover:grayscale-0 transition-all")}
             >
                 <Card
                     className="group rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-900/5 cursor-pointer overflow-hidden"
@@ -86,6 +89,14 @@ export function EventCard({ event, view = "grid", index = 0 }: EventCardProps) {
                                 >
                                     {event.category}
                                 </Badge>
+                                {isCompleted && (
+                                    <Badge
+                                        variant="outline"
+                                        className="text-[9px] border-slate-200 bg-slate-50 text-slate-500 flex-shrink-0 font-black uppercase tracking-widest px-2 py-0.5"
+                                    >
+                                        Completed
+                                    </Badge>
+                                )}
                             </div>
                             
                             <div className="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs font-medium text-slate-500">
@@ -120,11 +131,13 @@ export function EventCard({ event, view = "grid", index = 0 }: EventCardProps) {
         )
     }
 
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
+            className={cn(isCompleted && "opacity-75 grayscale-[0.3] hover:grayscale-0 transition-all")}
         >
             <Card
                 className="group h-full flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-900/5 cursor-pointer"
@@ -159,6 +172,14 @@ export function EventCard({ event, view = "grid", index = 0 }: EventCardProps) {
                         >
                             {event.category}
                         </Badge>
+                        {isCompleted && (
+                            <Badge 
+                                variant="outline" 
+                                className="absolute right-3 top-3 border-none px-2.5 py-1 text-[10px] font-black uppercase tracking-widest shadow-sm backdrop-blur-md bg-slate-900/80 text-white"
+                            >
+                                Completed
+                            </Badge>
+                        )}
                     </div>
                 </div>
 
