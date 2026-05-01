@@ -282,6 +282,11 @@ export function useScheduleEvents(): UseScheduleEventsReturn {
           if (role !== 'admin') {
             const isMyEvent = data.organizerId === uid;  // created by me
             const isJoined  = joinedEventIds.has(doc.id); // joined as participant
+            
+            // Only show events that are approved, published, or completed
+            const isValidStatus = ['approved', 'published', 'completed'].includes((data.status || 'published').toLowerCase());
+            
+            if (!isValidStatus) return; // Hide rejected and pending events from the calendar
             if (!isMyEvent && !isJoined) return;
           }
 

@@ -54,8 +54,8 @@ export function RateEventModal({ eventId, eventName, isOpen, onClose, onSuccess 
 
       onSuccess?.();
       onClose();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setIsSubmitting(false);
     }
