@@ -25,13 +25,14 @@ import { ViewEventRatingsModal } from '../../features/events/components/ViewEven
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '@/lib/api';
 import { sileo } from 'sileo';
+import { formatDate } from '@/lib/utils';
 
 interface EventItem {
   id: string;
   name?: string;
   title?: string;
   date: string;
-  location: string;
+  locationName: string;
   participantsCount?: number;
   status: string;
 }
@@ -124,8 +125,8 @@ export function OrganizerMyEventsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="font-heading text-lg">My Events</CardTitle>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-0 text-xs">
-              {activeEvents.length} active
+            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 font-medium px-3 py-1 rounded-full text-xs">
+              {activeEvents.length} Active {activeEvents.length === 1 ? 'Event' : 'Events'}
             </Badge>
           </div>
         </CardHeader>
@@ -166,13 +167,13 @@ export function OrganizerMyEventsPage() {
                   <TableRow key={e.id} className="cursor-pointer" onClick={() => navigate(`/app/events/${e.id}`)}>
                     <TableCell>
                       <p className="font-medium text-sm">{e.name || e.title}</p>
-                      <p className="text-xs text-muted-foreground sm:hidden">{e.date}</p>
+                      <p className="text-xs text-muted-foreground sm:hidden">{formatDate(e.date)}</p>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
-                      <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{e.date}</span>
+                      <span className="flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5 text-muted-foreground/70" />{formatDate(e.date)}</span>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{e.location}</span>
+                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{e.locationName || 'Location TBD'}</span>
                     </TableCell>
                     <TableCell>
                       <span className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -180,7 +181,7 @@ export function OrganizerMyEventsPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`border-0 text-[9px] font-black uppercase tracking-tighter ${
+                      <Badge variant="outline" className={`border-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
                         e.status === 'published' ? 'bg-emerald-50 text-emerald-700' :
                         e.status === 'ongoing'   ? 'bg-amber-50 text-amber-700' :
                         e.status === 'completed' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-500'
