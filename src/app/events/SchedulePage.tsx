@@ -10,6 +10,7 @@ import {
   createYearView,
   createEventsPlugin,
   ViewType,
+  Event as DayflowEvent,
 } from '@dayflow/react';
 
 import { Button } from '@/components/ui/button';
@@ -288,7 +289,7 @@ export function SchedulePage() {
     calendars: CALENDAR_DEFINITIONS,
     initialDate,
     callbacks: {
-      onEventClick: (event: any) => {
+      onEventClick: (event: DayflowEvent) => {
         const firestoreId = event.meta?.firestoreId;
         const fullEvent = rawEventsRef.current.find(e => e.id === firestoreId);
         
