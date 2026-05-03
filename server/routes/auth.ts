@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { auth, db } from '../config/firebase-admin';
-import { resend } from '../config/resend';
+import { sendOTPEmail, sendResetEmail, sendLoginLinkEmail } from '../config/mailer';
 import { authenticateUser, AuthRequest, isAdmin } from '../middleware/auth';
 import { FaceVerificationService } from '../services/face-verification';
 import { createNotification, notifyAllAdmins } from '../services/notifications';
@@ -9,7 +9,7 @@ import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcryptjs';
 import { uploadBase64Image } from '../services/upload';
-import { grantXP, XP } from '../services/gamification';
+import { grantXP, grantOP, XP, OP } from '../services/gamification';
 
 const router = Router();
 
@@ -40,65 +40,31 @@ router.post('/send-otp', async (req, res) => {
             createdAt: new Date(),
         });
 
-        // Always log OTP to terminal — useful during development when Resend restricts recipients
-        console.log('------------------------------------------');
-        console.log(`[AUTH] Verification Code for ${email}: ${otp}`);
-        console.log('------------------------------------------');
-        // 3. Attempt to send email via Resend
-        let sendError: unknown = null;
-        const isProd = process.env.NODE_ENV === 'production';
-        const customFrom = process.env.RESEND_FROM_EMAIL;
-        const fromEmail = customFrom || 'Junta <onboarding@resend.dev>';
+        await sendOTPEmail(email, otp);
 
-        try {
-            const { error } = await resend.emails.send({
-                from: fromEmail,
-                to: email,
-                subject: `Your Junta Verification Code: ${otp}`,
-                html: `
-                    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 12px;">
-                        <h2 style="color: #064e3b; margin-bottom: 8px;">Junta Verification Code</h2>
-                        <p style="color: #374151; margin-bottom: 24px;">Use the code below to complete your registration. It expires in <strong>10 minutes</strong>.</p>
-                        <div style="background: #fff; border: 2px solid #d1fae5; border-radius: 12px; padding: 24px; text-align: center;">
-                            <span style="font-size: 40px; font-weight: 700; letter-spacing: 12px; color: #064e3b;">${otp}</span>
-                        </div>
-                        <p style="color: #9ca3af; font-size: 13px; margin-top: 24px;">If you did not request this, please ignore this email.</p>
-                    </div>
-                `,
-            });
-            sendError = error;
-        } catch (e) {
-            sendError = e;
-        }
- 
-        if (sendError) {
-             const errorMessage = sendError instanceof Error ? sendError.message : JSON.stringify(sendError);
-             console.warn(`[AUTH] Email delivery failed for ${email}:`, errorMessage);
-
-             // Fallback Logic:
-             // If we are using a custom domain in PROD, we should report the error strictly.
-             if (isProd && customFrom) {
-                 return res.status(500).json({ 
-                     error: 'Professional email delivery failed. Please check your domain at resend.com/domains.',
-                     details: errorMessage
-                 });
-             } 
-             
-             // Otherwise (Dev mode or using Onboarding), succeed with a bypass
-             console.log('[AUTH] [FALLBACK] Email failed but allowing bypass (Dev mode or no custom domain).');
-             return res.json({
-                 message: 'Verification code generated. If you did not receive an email, use the code: ' + otp,
-                 devMode: true,
-                 otp: !isProd ? otp : undefined // Only send OTP in response if NOT in production
-             });
-        }
-
+        console.log(`[AUTH] OTP sent successfully to ${email}`);
         res.json({ message: 'OTP sent successfully!' });
-    } catch (error) {
-        console.error('Error in send-otp:', error);
-        res.status(500).json({ error: 'Failed to send verification code' });
+    } catch (error: unknown) {
+        console.error('Error in send-otp:');
+        const err = error as { status?: number, text?: string };
+        if (err.status && err.text) {
+            console.error('EmailJS Error:', err.status, err.text);
+        } else {
+            console.error(error);
+        }
+        
+        // Clean up stored OTP since we couldn't deliver it
+        await db.collection('otps').doc(email).delete().catch((e) => { console.error('Failed to clean up OTP doc', e); });
+
+        // If credentials are missing, give a clear hint
+        if (!process.env.EMAILJS_SERVICE_ID) {
+            return res.status(500).json({ error: 'Server configuration error: Please restart the backend server so it can read the new .env keys.' });
+        }
+
+        res.status(500).json({ error: 'Failed to send verification code to your email. Please try again later.' });
     }
 });
+
 
 
 /**
@@ -254,9 +220,13 @@ router.post('/register', async (req, res) => {
             organizerBadges: [],
         });
 
-        // Grant 5 XP for registration
+        // Grant registration rewards based on role
         if (!isExistingAuthUser) {
-            await grantXP(userRecord.uid, XP.REGISTER, 'Account created');
+            if (role === 'organizer') {
+                await grantOP(userRecord.uid, OP.REGISTER, 'Account created');
+            } else {
+                await grantXP(userRecord.uid, XP.REGISTER, 'Account created');
+            }
         }
 
         console.log(`Successfully registered/synced profile for: ${email} (${userRecord.uid})`);
@@ -458,20 +428,7 @@ router.post('/send-login-link', async (req, res) => {
 
         const link = await auth.generateSignInWithEmailLink(email, actionCodeSettings);
 
-        await resend.emails.send({
-            from: 'Junta <noreply@resend.dev>',
-            to: email,
-            subject: 'Login to Junta',
-            html: `
-                <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                    <h2>Welcome to Junta</h2>
-                    <p>Click the button below to sign in to your account.</p>
-                    <a href="${link}" style="display: inline-block; padding: 12px 24px; background-color: #064e3b; color: #fff; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                        Sign In to Junta
-                    </a>
-                </div>
-            `,
-        });
+        await sendLoginLinkEmail(email, link);
 
         res.json({ message: 'Login link sent successfully!' });
     } catch (error) {
@@ -592,8 +549,6 @@ router.post('/forgot-password', async (req, res) => {
         // Check if user exists first
         const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
         if (userSnapshot.empty) {
-            // Security best practice: don't reveal if email exists or not, 
-            // but for this app's context, a clear error might be better.
             return res.status(404).json({ error: 'No account found with this email' });
         }
 
@@ -608,38 +563,17 @@ router.post('/forgot-password', async (req, res) => {
             createdAt: new Date(),
         });
 
-        console.log(`[AUTH] Password Reset Code for ${email}: ${otp}`);
-
-        const isProd = process.env.NODE_ENV === 'production';
-        const customFrom = process.env.RESEND_FROM_EMAIL;
-        const fromEmail = customFrom || 'Junta <onboarding@resend.dev>';
-
         try {
-            await resend.emails.send({
-                from: fromEmail,
-                to: email,
-                subject: `Reset Your Junta Password`,
-                html: `
-                    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 12px;">
-                        <h2 style="color: #064e3b; margin-bottom: 8px;">Reset Your Password</h2>
-                        <p style="color: #374151; margin-bottom: 24px;">Use the code below to reset your password. It expires in 10 minutes.</p>
-                        <div style="background: #fff; border: 2px solid #d1fae5; border-radius: 12px; padding: 24px; text-align: center;">
-                            <span style="font-size: 40px; font-weight: 700; letter-spacing: 12px; color: #064e3b;">${otp}</span>
-                        </div>
-                    </div>
-                `,
-            });
+            await sendResetEmail(email, otp);
         } catch (e) {
-            console.error('Email send failed:', e);
-            if (!isProd) {
-                return res.json({ 
-                    message: 'Reset code generated (Dev Mode)', 
-                    otp,
-                    devMode: true 
-                });
-            }
+            console.error('[AUTH] Password reset email exception:', e);
+            await db.collection('otps').doc(email).delete();
+            return res.status(500).json({
+                error: 'Failed to send reset code. Please try again later.',
+            });
         }
 
+        console.log(`[AUTH] Password reset code sent to ${email}`);
         res.json({ message: 'Reset code sent to your email' });
     } catch (error) {
         console.error('Error in forgot-password:', error);
