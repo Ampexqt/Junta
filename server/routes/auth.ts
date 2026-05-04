@@ -228,13 +228,13 @@ router.post('/register', async (req, res) => {
         // 2. Store Profile details in Firestore
         const userProfile = {
             uid: userRecord.uid,
-            email,
+            email: email.toLowerCase().trim(),
             password: hashedPassword,
-            firstName,
-            lastName,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
             suffix: suffix || '',
-            displayName: `${firstName} ${lastName}${suffix ? ' ' + suffix : ''}`,
-            phone,
+            displayName: `${firstName} ${lastName}${suffix ? ' ' + suffix : ''}`.trim(),
+            phone: phone || '',
             role: role || 'participant',
             barangay: barangay || '',
             orgName: orgName || '',
@@ -309,9 +309,10 @@ router.post('/register', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error in register:', error);
+        console.error('[AUTH:Register] Fatal Error:', error);
         
-        const err = error as { code?: string; message: string };
+        const err = error as { code?: string; message: string; stack?: string };
+        
         // Handle common Firebase Auth errors
         if (err.code === 'auth/email-already-exists') {
             return res.status(400).json({ error: 'This email is already registered.' });
@@ -319,8 +320,15 @@ router.post('/register', async (req, res) => {
         if (err.code === 'auth/invalid-phone-number') {
             return res.status(400).json({ error: 'The phone number format is invalid.' });
         }
+        if (err.code === 'auth/weak-password') {
+            return res.status(400).json({ error: 'The password is too weak.' });
+        }
 
-        res.status(500).json({ error: err.message || 'Failed to complete registration' });
+        // Return the specific error message if it exists, otherwise a generic one
+        res.status(500).json({ 
+            error: err.message || 'Failed to complete registration',
+            details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        });
     }
 });
 
@@ -537,8 +545,9 @@ router.post('/sync-profile', authenticateUser, async (req: Request, res: Respons
  * 6. Update Profile / KYC (Protected)
  * Updates arbitrary profile fields like phone, firstName, KYC URLs, etc.
  */
-router.put('/update-profile', authenticateUser, async (req: AuthRequest, res: Response) => {
-    const uid = req.user?.uid;
+router.put('/update-profile', authenticateUser, async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
+    const uid = authReq.user?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
@@ -730,8 +739,9 @@ router.post('/verify-reset-code', async (req, res) => {
  * 9. Submit Identity Verification (KYC)
  * Multi-step pipeline: Upload → OCR ID Check → Face Detect → Face Compare.
  */
-router.post('/submit-verification', authenticateUser, async (req: AuthRequest, res) => {
-    const uid = req.user?.uid;
+router.post('/submit-verification', authenticateUser, async (req: Request, res) => {
+    const authReq = req as AuthRequest;
+    const uid = authReq.user?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
     const { validIdUrl, validIdBackUrl, selfieUrl } = req.body;

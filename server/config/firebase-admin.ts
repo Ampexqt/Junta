@@ -14,8 +14,10 @@ if (!admin.apps.length) {
     try {
         let initialized = false;
         if (fs.existsSync(serviceAccountPath) && fs.statSync(serviceAccountPath).size > 0) {
+            const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
             admin.initializeApp({
-                credential: admin.credential.cert(serviceAccountPath)
+                credential: admin.credential.cert(serviceAccount),
+                storageBucket: serviceAccount.project_id ? `${serviceAccount.project_id}.appspot.com` : undefined
             });
             console.log('Firebase Admin initialized with local service account file.');
             initialized = true;
@@ -25,7 +27,8 @@ if (!admin.apps.length) {
                     projectId: process.env.FIREBASE_PROJECT_ID,
                     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
                     privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-                })
+                }),
+                storageBucket: `${process.env.FIREBASE_PROJECT_ID}.appspot.com`
             });
             console.log('Firebase Admin initialized with environment variables.');
             initialized = true;

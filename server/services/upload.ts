@@ -1,8 +1,7 @@
-import { storage } from '../config/firebase-admin';
-import * as crypto from 'crypto';
+import { cloudinary } from '../config/cloudinary';
 
 /**
- * Uploads a base64 string to Firebase Storage and returns the public URL.
+ * Uploads a base64 string to Cloudinary and returns the secure URL.
  * @param base64 String containing data:image/...;base64,...
  * @param folder The folder to store the file in (e.g. 'kyc')
  * @returns Public URL of the uploaded file
@@ -13,30 +12,21 @@ export async function uploadBase64Image(base64: string, folder: string): Promise
     }
 
     try {
-        const bucket = storage.bucket();
-        const matches = base64.match(/^data:image\/([A-Za-z-+/]+);base64,(.+)$/);
+        console.log(`[Upload] Uploading base64 image to Cloudinary folder: ${folder}...`);
         
-        if (!matches || matches.length !== 3) {
-            throw new Error('Invalid base64 format');
-        }
-
-        const extension = matches[1];
-        const buffer = Buffer.from(matches[2], 'base64');
-        const filename = `${folder}/${crypto.randomUUID()}.${extension}`;
-        const file = bucket.file(filename);
-
-        await file.save(buffer, {
-            metadata: {
-                contentType: `image/${extension}`,
-            },
-            public: true
+        // Cloudinary handles base64 strings directly
+        const result = await cloudinary.uploader.upload(base64, {
+            folder: `junta/${folder}`,
+            resource_type: 'auto',
+            transformation: [
+                { quality: 'auto', fetch_format: 'auto' }
+            ]
         });
 
-        // Construct public URL
-        // Note: Depending on bucket configuration, you might need getSignedUrl or a public template
-        return `https://storage.googleapis.com/${bucket.name}/${filename}`;
+        console.log(`[Upload] Upload successful: ${result.secure_url}`);
+        return result.secure_url;
     } catch (error) {
-        console.error('Upload failed:', error);
-        throw new Error('Failed to upload image');
+        console.error('[Upload] Cloudinary upload failed:', error);
+        throw new Error('Failed to upload image to cloud storage');
     }
 }
