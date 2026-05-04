@@ -29,6 +29,12 @@ router.post('/', authenticateUser, async (req, res) => {
         // Fetch user's organization name to attach to the event
         const userDoc = await db.collection('users').doc(organizerId).get();
         const userData = userDoc.data();
+
+        // KYC Verification Check for Organizer
+        if (userData?.kycStatus !== 'verified') {
+            return res.status(403).json({ error: 'You must complete KYC verification before creating an event.' });
+        }
+
         const organizationName = userData?.organizationName || userData?.orgName || '';
         const organizationLogo = userData?.organizationLogo || userData?.photoURL || '';
         const organizerPhotoURL = userData?.photoURL || '';
@@ -426,6 +432,12 @@ router.post('/:id/join', authenticateUser, async (req, res) => {
         const eventData = eventDoc.data();
         if (eventData?.status !== 'published' && eventData?.status !== 'approved') {
             return res.status(400).json({ error: 'Registration is not open for this event' });
+        }
+
+        // KYC Verification Check for Participant
+        const userDoc = await db.collection('users').doc(userId).get();
+        if (userDoc.data()?.kycStatus !== 'verified') {
+            return res.status(403).json({ error: 'You must complete KYC verification before joining an event.' });
         }
 
         // Check if already joined
