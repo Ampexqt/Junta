@@ -114,10 +114,12 @@ export function RegisterPage() {
     }
   }, [googleData]);
   const [idUploaded, setIdUploaded] = useState(false);
+  const [idBackUploaded, setIdBackUploaded] = useState(false);
   const [selfieUploaded, setSelfieUploaded] = useState(false);
-  const [kycMode, setKycMode] = useState<'none' | 'id' | 'selfie'>('none');
+  const [kycMode, setKycMode] = useState<'none' | 'id' | 'id-back' | 'selfie'>('none');
   const [openBarangay, setOpenBarangay] = useState(false);
   const [idPreview, setIdPreview] = useState<string | null>(null);
+  const [idBackPreview, setIdBackPreview] = useState<string | null>(null);
   const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
   const [kycStage, setKycStage] = useState<'selection' | 'instruction' | 'capture'>('selection');
   const [isSendingOTP, setIsSendingOTP] = useState(false);
@@ -164,6 +166,7 @@ export function RegisterPage() {
           ...formData,
           role: selectedRole,
           idImage: idPreview,
+          idBackImage: idBackPreview,
           selfieImage: selfiePreview
         }),
       });
@@ -437,6 +440,7 @@ export function RegisterPage() {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         if (kycMode === 'id') setIdPreview(dataUrl);
+        else if (kycMode === 'id-back') setIdBackPreview(dataUrl);
         else setSelfiePreview(dataUrl);
         stopCamera();
       }
@@ -446,10 +450,20 @@ export function RegisterPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Max 2MB check
+      if (file.size > 2 * 1024 * 1024) {
+        sileo.error({
+          title: 'File Too Large',
+          description: 'Please upload an image smaller than 2MB for better processing.'
+        });
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const result = event.target?.result as string;
         if (kycMode === 'id') setIdPreview(result);
+        else if (kycMode === 'id-back') setIdBackPreview(result);
         else setSelfiePreview(result);
       };
       reader.readAsDataURL(file);
@@ -457,7 +471,7 @@ export function RegisterPage() {
   };
 
   useEffect(() => {
-    const currentPreview = kycMode === 'id' ? idPreview : selfiePreview;
+    const currentPreview = kycMode === 'id' ? idPreview : kycMode === 'id-back' ? idBackPreview : selfiePreview;
     
     // Only start camera when in capture stage and no preview exists
     if (kycMode !== 'none' && kycStage === 'capture' && !currentPreview) {
@@ -467,7 +481,7 @@ export function RegisterPage() {
     }
     
     return () => stopCamera();
-  }, [kycMode, kycStage, idPreview, selfiePreview, startCamera, stopCamera]);
+  }, [kycMode, kycStage, idPreview, idBackPreview, selfiePreview, startCamera, stopCamera]);
 
 
   return (
@@ -957,22 +971,42 @@ export function RegisterPage() {
                               {idPreview ? (
                                 <div className="relative w-full h-full flex flex-col items-center animate-in zoom-in-95">
                                   <img src={idPreview} alt="ID Preview" className="w-20 h-14 object-cover rounded-lg border-2 border-emerald-500/20 mb-2 shadow-sm" />
-                                  <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">ID Captured</p>
+                                  <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Front Captured</p>
                                 </div>
                               ) : (
                                 <>
                                   <div className={`w-10 h-10 rounded-xl border flex items-center justify-center mb-3 transition-all ${idUploaded ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-slate-50 border-slate-200 group-hover:border-emerald-300 group-hover:bg-emerald-50 text-slate-400 group-hover:text-emerald-600'}`}>
                                     <Upload className="w-5 h-5" />
                                   </div>
-                                  <p className="text-sm font-bold text-slate-900">Upload ID</p>
-                                  <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">Valid government ID</p>
+                                  <p className="text-sm font-bold text-slate-900">ID Front</p>
+                                  <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">Front of ID</p>
+                                </>
+                              )}
+                            </div>
+
+                            <div
+                              onClick={() => { setKycMode('id-back'); setKycStage('instruction'); }}
+                              className={`border border-dashed rounded-xl p-5 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[130px] ${idBackUploaded ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-emerald-500/40 hover:bg-emerald-50/30'}`}
+                            >
+                              {idBackPreview ? (
+                                <div className="relative w-full h-full flex flex-col items-center animate-in zoom-in-95">
+                                  <img src={idBackPreview} alt="ID Back Preview" className="w-20 h-14 object-cover rounded-lg border-2 border-emerald-500/20 mb-2 shadow-sm" />
+                                  <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Back Captured</p>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center mb-3 transition-all ${idBackUploaded ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-slate-50 border-slate-200 group-hover:border-emerald-300 group-hover:bg-emerald-50 text-slate-400 group-hover:text-emerald-600'}`}>
+                                    <Upload className="w-5 h-5" />
+                                  </div>
+                                  <p className="text-sm font-bold text-slate-900">ID Back</p>
+                                  <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">Reverse side</p>
                                 </>
                               )}
                             </div>
 
                             <div
                               onClick={() => { setKycMode('selfie'); setKycStage('instruction'); }}
-                              className={`border border-dashed rounded-xl p-5 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[130px] ${selfieUploaded ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-emerald-500/40 hover:bg-emerald-50/30'}`}
+                              className={`border border-dashed rounded-xl p-5 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[130px] sm:col-span-2 md:col-span-1 ${selfieUploaded ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-emerald-500/40 hover:bg-emerald-50/30'}`}
                             >
                               {selfiePreview ? (
                                 <div className="relative w-full h-full flex flex-col items-center animate-in zoom-in-95">
@@ -985,7 +1019,7 @@ export function RegisterPage() {
                                     <Camera className="w-5 h-5" />
                                   </div>
                                   <p className="text-sm font-bold text-slate-900">Take Selfie</p>
-                                  <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">Face recognition</p>
+                                  <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">Biometric check</p>
                                 </>
                               )}
                             </div>
@@ -1000,7 +1034,7 @@ export function RegisterPage() {
                                <div className="space-y-1">
                                   <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">Step 1 of 2</p>
                                   <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-                                    {kycMode === 'id' ? 'Identity Front' : 'Face Scan'}
+                                    {kycMode === 'id' ? 'Identity Front' : kycMode === 'id-back' ? 'Identity Back' : 'Face Scan'}
                                   </h3>
                                </div>
                                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300">
@@ -1011,7 +1045,7 @@ export function RegisterPage() {
                             <div className="flex flex-col items-center justify-center py-4">
                                <div className="w-24 h-24 rounded-3xl bg-emerald-50 flex items-center justify-center shadow-inner relative overflow-hidden">
                                   <div className="absolute inset-0 bg-gradient-to-tr from-emerald-100/50 to-transparent" />
-                                  {kycMode === 'id' ? (
+                                  {kycMode === 'id' || kycMode === 'id-back' ? (
                                     <Building2 className="w-10 h-10 text-emerald-600 relative z-10" />
                                   ) : (
                                     <User className="w-10 h-10 text-emerald-600 relative z-10" />
@@ -1037,13 +1071,13 @@ export function RegisterPage() {
                                </div>
                             </div>
 
-                            <Button
-                              onClick={() => setKycStage('capture')}
-                              className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-emerald-200 transition-all active:scale-95"
-                            >
-                              Start {kycMode === 'id' ? 'Scanning' : 'Verification'}
-                              <ArrowRight className="ml-2 w-4 h-4" />
-                            </Button>
+                               <Button
+                                onClick={() => setKycStage('capture')}
+                                className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-emerald-200 transition-all active:scale-95"
+                              >
+                                Start {kycMode === 'id' || kycMode === 'id-back' ? 'Scanning' : 'Verification'}
+                                <ArrowRight className="ml-2 w-4 h-4" />
+                              </Button>
                           </motion.div>
                         ) : (
                           <motion.div
@@ -1055,10 +1089,10 @@ export function RegisterPage() {
                             <div className="relative bg-slate-950" style={{ aspectRatio: '4/3' }}>
 
                               {/* ID alignment guide */}
-                              {!idPreview && kycMode === 'id' && (
+                              {!((kycMode === 'id' && idPreview) || (kycMode === 'id-back' && idBackPreview)) && (kycMode === 'id' || kycMode === 'id-back') && (
                                 <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
                                   <div className="w-[85%] h-[65%] border-2 border-dashed border-emerald-500/60 rounded-xl flex items-center justify-center">
-                                    <Badge variant="default" className="bg-emerald-600 text-white text-[10px] uppercase tracking-widest px-3 py-1 shadow-lg">Align ID Here</Badge>
+                                    <Badge variant="default" className="bg-emerald-600 text-white text-[10px] uppercase tracking-widest px-3 py-1 shadow-lg">Align {kycMode === 'id' ? 'Front' : 'Back'} Here</Badge>
                                   </div>
                                 </div>
                               )}
@@ -1079,9 +1113,9 @@ export function RegisterPage() {
                               )}
 
                               {/* Video or captured image */}
-                              {(kycMode === 'id' && idPreview) || (kycMode === 'selfie' && selfiePreview) ? (
+                              {(kycMode === 'id' && idPreview) || (kycMode === 'id-back' && idBackPreview) || (kycMode === 'selfie' && selfiePreview) ? (
                                 <img
-                                  src={(kycMode === 'id' ? idPreview : selfiePreview) || ''}
+                                  src={(kycMode === 'id' ? idPreview : kycMode === 'id-back' ? idBackPreview : selfiePreview) || ''}
                                   className="w-full h-full object-cover"
                                   alt="Preview"
                                 />
@@ -1108,7 +1142,7 @@ export function RegisterPage() {
 
                             {/* ── Button row — completely separate from video ── */}
                             <div className="bg-slate-900 flex items-center justify-center gap-3 px-4 py-3">
-                              {!((kycMode === 'id' && idPreview) || (kycMode === 'selfie' && selfiePreview)) ? (
+                              {!((kycMode === 'id' && idPreview) || (kycMode === 'id-back' && idBackPreview) || (kycMode === 'selfie' && selfiePreview)) ? (
                                 <>
                                   <Button
                                     size="sm"
@@ -1132,6 +1166,7 @@ export function RegisterPage() {
                                     variant="outline"
                                     onClick={() => {
                                       if (kycMode === 'id') setIdPreview(null);
+                                      else if (kycMode === 'id-back') setIdBackPreview(null);
                                       else setSelfiePreview(null);
                                       startCamera();
                                     }}
@@ -1143,6 +1178,7 @@ export function RegisterPage() {
                                     size="sm"
                                     onClick={() => {
                                       if (kycMode === 'id') setIdUploaded(true);
+                                      else if (kycMode === 'id-back') setIdBackUploaded(true);
                                       else setSelfieUploaded(true);
                                       setKycMode('none');
                                       setKycStage('selection');
