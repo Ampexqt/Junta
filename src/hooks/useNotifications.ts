@@ -123,10 +123,37 @@ export function useNotifications({ maxItems = 50 }: UseNotificationsOptions = {}
       const batch = writeBatch(db);
       unreadSnap.docs.forEach((d) => batch.update(d.ref, { read: true }));
       await batch.commit();
-    } catch (e) {
-      console.error('[useNotifications] markAllAsRead error:', e);
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
     }
-  }, [uid]);
+  }, [notifications, uid]);
 
-  return { notifications, loading, unreadCount, markAsRead, markAllAsRead };
+  /** Delete all read notifications from Firestore */
+  const clearAllRead = useCallback(async () => {
+    if (!uid) return;
+    try {
+      const batch = writeBatch(db);
+      const readNotifications = notifications.filter(n => n.read);
+      
+      if (readNotifications.length === 0) return;
+      
+      readNotifications.forEach(n => {
+        const docRef = doc(db, 'notifications', uid, 'items', n.id);
+        batch.delete(docRef);
+      });
+      
+      await batch.commit();
+    } catch (error) {
+      console.error('Failed to clear read notifications:', error);
+    }
+  }, [notifications, uid]);
+
+  return {
+    notifications,
+    loading,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    clearAllRead
+  };
 }
