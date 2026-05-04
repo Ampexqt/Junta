@@ -102,7 +102,7 @@ export function UserVerificationPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<VerificationRecord | null>(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingAction, setProcessingAction] = useState<'verified' | 'rejected' | null>(null);
   const [rejectNotes, setRejectNotes] = useState('');
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
@@ -133,7 +133,7 @@ export function UserVerificationPage() {
   };
 
   const processVerification = async (uid: string, status: 'verified' | 'rejected') => {
-    setIsProcessing(true);
+    setProcessingAction(status);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/auth/admin/verify-user`, {
@@ -143,14 +143,14 @@ export function UserVerificationPage() {
       });
       if (!response.ok) throw new Error('Action failed');
       sileo.success({ 
-        title: `User ${status === 'verified' ? 'Approved' : 'Rejected'}`, 
+        title: `User ${status === 'verified' ? 'Approved ✅' : 'Rejected ❌'}`, 
         description: `The identity verification has been processed.` 
       });
       setIsReviewOpen(false);
     } catch {
       sileo.error({ title: 'Action Failed', description: 'Could not update verification status.' });
     } finally {
-      setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
@@ -430,17 +430,17 @@ export function UserVerificationPage() {
             <Button
               variant="outline"
               onClick={() => selectedUser && processVerification(selectedUser.uid, 'rejected')}
-              disabled={isProcessing || !rejectNotes.trim()}
+              disabled={!!processingAction || !rejectNotes.trim()}
               className="h-10 px-6 rounded-xl border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 font-black uppercase text-[11px] tracking-widest transition-all disabled:opacity-40"
             >
-              {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reject'}
+              {processingAction === 'rejected' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reject'}
             </Button>
             <Button
               onClick={() => selectedUser && processVerification(selectedUser.uid, 'verified')}
-              disabled={isProcessing}
+              disabled={!!processingAction}
               className="h-10 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[11px] tracking-widest shadow-md shadow-emerald-600/20 transition-all"
             >
-              {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve Identity'}
+              {processingAction === 'verified' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve Identity'}
             </Button>
           </div>
         </DialogContent>
