@@ -181,16 +181,17 @@ router.post('/register', async (req, res) => {
         let verificationThreshold = 80;
         let kycApiStatus = 'success';
         let kycErrorLogs: string | null = null;
+        let ocrData = null;
 
         if (idImage && selfieImage) {
             try {
-                // Upload images
+                // Upload images (Align with submit-verification behavior)
                 idUrl = await uploadBase64Image(idImage, 'kyc/ids');
                 if (idBackImage) idBackUrl = await uploadBase64Image(idBackImage, 'kyc/ids');
                 selfieUrl = await uploadBase64Image(selfieImage, 'kyc/selfies');
                 kycStatus = 'pending';
 
-                // Automated Analysis (Face++ Pipeline) - Same logic as SettingsPage but during registration
+                // Automated Analysis (Face++ Pipeline)
                 const hasFacePlusKeys = !!(process.env.FACEPLUSPLUS_API_KEY && process.env.FACEPLUSPLUS_API_SECRET);
                 if (hasFacePlusKeys) {
                     try {
@@ -208,7 +209,6 @@ router.post('/register', async (req, res) => {
                             verificationScore = comparisonResult.confidence;
                             verificationThreshold = comparisonResult.threshold;
                             kycApiStatus = 'success';
-                            console.log(`[AUTH:KYC] Biometric score: ${verificationScore}%`);
                         }
                     } catch (apiErr) {
                         console.error('[AUTH:KYC] Face++ API Error:', apiErr);
@@ -220,15 +220,16 @@ router.post('/register', async (req, res) => {
                 }
             } catch (uploadError) {
                 console.error('[AUTH] KYC Image upload failed during registration:', uploadError);
+                // Unlike before, we don't swallow this if images were provided but failed to upload
+                throw new Error('Failed to upload identity documents. Please try again.');
             }
         }
 
         // 2. Store Profile details in Firestore
-        // Note: For Google users, userRecord.uid will be their existing Google UID
-        await db.collection('users').doc(userRecord.uid).set({
+        const userProfile = {
             uid: userRecord.uid,
             email,
-            password: hashedPassword, // Storing hashed password for custom login
+            password: hashedPassword,
             firstName,
             lastName,
             suffix: suffix || '',
@@ -247,6 +248,7 @@ router.post('/register', async (req, res) => {
             verificationThreshold,
             kycApiStatus,
             kycErrorLogs,
+            ocrData,
             kycSubmittedAt: kycStatus === 'pending' ? new Date().toISOString() : null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -259,7 +261,18 @@ router.post('/register', async (req, res) => {
             organizerPoints: 0,
             organizerTier: 1,
             organizerBadges: [],
-        });
+        };
+
+        await db.collection('users').doc(userRecord.uid).set(userProfile);
+
+        // Notify admins if KYC was submitted
+        if (kycStatus === 'pending') {
+            notifyAllAdmins({
+                type: 'kyc_submitted',
+                title: '🪪 New Registration KYC',
+                message: `User ${firstName} ${lastName} has registered and submitted identity verification for review.`,
+            }).catch(err => console.error('Failed to send admin KYC notification:', err));
+        }
 
         // Grant registration rewards based on role
         if (!isExistingAuthUser) {
