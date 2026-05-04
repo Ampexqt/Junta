@@ -26,6 +26,8 @@ export type NotificationType =
   | 'kyc_rejected'
   | 'organizer_approved'
   | 'organizer_rejected'
+  | 'xp_earned'
+  | 'op_earned'
   | 'system';
 
 export interface AppNotification {
