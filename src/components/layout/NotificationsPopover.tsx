@@ -1,4 +1,5 @@
-import { Bell, CalendarDays, CheckCircle, Info, Settings, ArrowRight, LucideIcon } from 'lucide-react';
+import { Bell, CalendarDays, CheckCircle, Info, ArrowRight, Star, Shield, Zap, LucideIcon } from 'lucide-react';
+
 import {
   Popover,
   PopoverContent,
@@ -14,11 +15,21 @@ import { formatDistanceToNow } from 'date-fns';
 
 
 const iconMap: Record<string, LucideIcon> = {
-  event: CalendarDays,
+  event_created: CalendarDays,
+  event_approved: CheckCircle,
+  event_rejected: Info,
+  event_joined: CalendarDays,
+  event_started: Zap,
+  event_completed: CheckCircle,
+  rating_received: Star,
+  kyc_submitted: Shield,
+  kyc_verified: CheckCircle,
+  kyc_rejected: Info,
+  organizer_approved: CheckCircle,
+  organizer_rejected: Info,
+  xp_earned: Star,
+  op_earned: Shield,
   system: Info,
-  reminder: Bell,
-  verification: CheckCircle,
-  settings: Settings,
 };
 
 const colorMap: Record<string, { color: string; bg: string }> = {
@@ -26,11 +37,16 @@ const colorMap: Record<string, { color: string; bg: string }> = {
   event_approved: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
   event_rejected: { color: 'text-rose-600', bg: 'bg-rose-50' },
   event_joined: { color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  event_started: { color: 'text-teal-600', bg: 'bg-teal-50' },
+  event_completed: { color: 'text-green-600', bg: 'bg-green-50' },
+  rating_received: { color: 'text-yellow-600', bg: 'bg-yellow-50' },
   kyc_submitted: { color: 'text-amber-600', bg: 'bg-amber-50' },
   kyc_verified: { color: 'text-green-600', bg: 'bg-green-50' },
   kyc_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
   organizer_approved: { color: 'text-teal-600', bg: 'bg-teal-50' },
   organizer_rejected: { color: 'text-orange-600', bg: 'bg-orange-50' },
+  xp_earned: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  op_earned: { color: 'text-blue-600', bg: 'bg-blue-50' },
   system: { color: 'text-purple-600', bg: 'bg-purple-50' },
   default: { color: 'text-primary', bg: 'bg-primary/10' }
 };
