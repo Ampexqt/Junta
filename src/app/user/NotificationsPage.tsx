@@ -11,6 +11,8 @@ import {
   Users,
   Check,
   Shield,
+  Star,
+  Zap,
   LucideIcon
 } from 'lucide-react';
 import { useNotifications, AppNotification } from '@/hooks/useNotifications';
@@ -21,11 +23,16 @@ const iconMap: Record<string, LucideIcon> = {
   event_approved: CheckCircle,
   event_rejected: Info,
   event_joined: Users,
+  event_started: Zap,
+  event_completed: CheckCircle,
+  rating_received: Star,
   kyc_submitted: Info,
   kyc_verified: CheckCircle,
   kyc_rejected: Info,
   organizer_approved: Shield,
   organizer_rejected: Info,
+  xp_earned: Star,
+  op_earned: Shield,
   system: Bell,
 };
 
@@ -33,12 +40,17 @@ const colorMap: Record<string, { color: string; bg: string }> = {
   event_created: { color: 'text-blue-600', bg: 'bg-blue-50' },
   event_approved: { color: 'text-green-600', bg: 'bg-green-50' },
   event_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
-  event_joined: { color: 'text-blue-600', bg: 'bg-blue-50' },
+  event_joined: { color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  event_started: { color: 'text-teal-600', bg: 'bg-teal-50' },
+  event_completed: { color: 'text-green-600', bg: 'bg-green-50' },
+  rating_received: { color: 'text-yellow-600', bg: 'bg-yellow-50' },
   kyc_submitted: { color: 'text-amber-600', bg: 'bg-amber-50' },
   kyc_verified: { color: 'text-green-600', bg: 'bg-green-50' },
   kyc_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
   organizer_approved: { color: 'text-green-600', bg: 'bg-green-50' },
   organizer_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
+  xp_earned: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  op_earned: { color: 'text-blue-600', bg: 'bg-blue-50' },
   system: { color: 'text-purple-600', bg: 'bg-purple-50' },
   default: { color: 'text-primary', bg: 'bg-primary/10' }
 };
@@ -150,8 +162,9 @@ export function NotificationsPage() {
               )}
             </TabsTrigger>
             <TabsTrigger value="events" className="rounded-lg px-4">Events</TabsTrigger>
+            <TabsTrigger value="rewards" className="rounded-lg px-4">Rewards 🌟</TabsTrigger>
             <TabsTrigger value="system" className="rounded-lg px-4">System</TabsTrigger>
-            <TabsTrigger value="reminders" className="rounded-lg px-4">Reminders</TabsTrigger>
+            <TabsTrigger value="kyc" className="rounded-lg px-4">KYC & Org</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="all" className="mt-4">
@@ -160,10 +173,13 @@ export function NotificationsPage() {
         <TabsContent value="events" className="mt-4">
           {renderList(notifications.filter((n) => n.type.includes('event')))}
         </TabsContent>
-        <TabsContent value="system" className="mt-4">
-          {renderList(notifications.filter((n) => !n.type.includes('event') && !n.type.includes('organizer') && !n.type.includes('kyc')))}
+        <TabsContent value="rewards" className="mt-4">
+          {renderList(notifications.filter((n) => n.type === 'xp_earned' || n.type === 'op_earned'))}
         </TabsContent>
-        <TabsContent value="reminders" className="mt-4">
+        <TabsContent value="system" className="mt-4">
+          {renderList(notifications.filter((n) => n.type === 'system' || n.type === 'rating_received'))}
+        </TabsContent>
+        <TabsContent value="kyc" className="mt-4">
           {renderList(notifications.filter((n) => n.type.includes('organizer') || n.type.includes('kyc')))}
         </TabsContent>
       </Tabs>
