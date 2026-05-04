@@ -61,7 +61,10 @@ export function AdminUsersPage() {
         let formattedJoined = 'Unknown';
         if (data.createdAt) {
           try {
-            formattedJoined = format(data.createdAt.toDate(), 'MMM dd, yyyy');
+            const dateObj = typeof data.createdAt.toDate === 'function' 
+              ? data.createdAt.toDate() 
+              : new Date(data.createdAt);
+            formattedJoined = format(dateObj, 'MMM dd, yyyy');
           } catch (e) { /* fallback */ }
         }
 
