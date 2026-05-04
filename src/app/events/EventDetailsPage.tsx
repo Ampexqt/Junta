@@ -318,9 +318,11 @@ export function EventDetailsPage() {
                         } else if (response.status === 400 && resData.error?.includes('already joined')) {
                           setJoined(true);
                           sileo.info({ title: 'Already Registered', description: 'You are already registered for this event.' });
-                        } else if (response.status === 401 || response.status === 403) {
+                        } else if (response.status === 401) {
                           sileo.error({ title: 'Session Expired', description: 'Your session has expired. Please log in again.' });
                           navigate('/login');
+                        } else if (response.status === 403) {
+                          sileo.error({ title: 'Action Denied', description: resData.error || 'You do not have permission to do this.' });
                         } else {
                           throw new Error(resData.error || 'Join failed');
                         }
