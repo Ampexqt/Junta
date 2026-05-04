@@ -83,11 +83,19 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
                 } as UserProfile;
                 const fullName = `${profileData.firstName} ${profileData.lastName}`;
                 
+                // Always set the full live profile in memory
                 setProfile(profileData);
                 setRoleState(profileData.role || 'participant');
                 setUserNameState(fullName);
                 
-                localStorage.setItem(KEYS.PROFILE, JSON.stringify(profileData));
+                // Cache to localStorage — but EXCLUDE gamification fields
+                // XP/level/badges/streak change frequently server-side and must
+                // always come from the live Firestore snapshot to stay accurate.
+                const { xp, level, badges, streak, organizerPoints, organizerTier, organizerBadges, ...cacheableData } = profileData;
+                // Suppress unused variable warnings — these are intentionally excluded
+                void xp; void level; void badges; void streak;
+                void organizerPoints; void organizerTier; void organizerBadges;
+                localStorage.setItem(KEYS.PROFILE, JSON.stringify(cacheableData));
                 localStorage.setItem(KEYS.ROLE, profileData.role);
                 localStorage.setItem(KEYS.NAME, fullName);
             }
