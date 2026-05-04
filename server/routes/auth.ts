@@ -920,7 +920,17 @@ router.post('/admin/verify-user', authenticateUser, isAdmin, async (req, res) =>
         }).catch(console.error);
 
         if (status === 'verified') {
+            // All users earn XP for getting verified
             await grantXP(uid, XP.KYC_VERIFIED, 'KYC approved');
+
+            // Read the user doc to check role (needed for OP grant)
+            const userSnap = await userRef.get();
+            const userRole = userSnap.data()?.role;
+
+            // Organizers also earn OP for completing verification
+            if (userRole === 'organizer') {
+                await grantOP(uid, OP.KYC_VERIFIED, 'KYC approved');
+            }
         }
 
         const authReq = req as AuthRequest;
