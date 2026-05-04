@@ -60,7 +60,8 @@ export const OP = {
   RATING_BONUS_PERFECT: 100,// avg = 5.0
   RATED_ALL_PARTICIPANTS: 20, 
   FIRST_EVENT_BONUS: 50,    
-  REGISTER: 10, // Organizers get 10 OP for registering
+  REGISTER: 10,             // Organizers get 10 OP for registering
+  KYC_VERIFIED: 30,         // Organizers get 30 OP when KYC is approved
 };
 
 export async function notifyXPGrant(userId: string, amount: number, reason: string, newTotal: number) {
