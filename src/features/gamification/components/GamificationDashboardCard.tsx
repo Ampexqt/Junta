@@ -225,6 +225,7 @@ export function GamificationDashboardCard() {
         const op = profile.organizerPoints || 0;
         const tier = profile.organizerTier || 1;
         const badges = profile.organizerBadges || [];
+        const xp = profile.xp || 0; // Organizers also earn XP
 
         const TIERS = [
             { tier: 1, opRequired: 0,    label: 'Bronze Partner', icon: Star, color: 'text-orange-600', bg: 'bg-orange-100' },
@@ -249,7 +250,7 @@ export function GamificationDashboardCard() {
         return (
             <Card className="rounded-2xl shadow-sm border overflow-hidden bg-gradient-to-br from-white to-blue-50/30">
                 <CardContent className="p-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                         <div className="flex items-center gap-4">
                             <div className={`w-14 h-14 rounded-full ${currentTierData.bg} flex items-center justify-center border-4 border-white shadow-sm relative`}>
                                 <currentTierData.icon className={`w-7 h-7 ${currentTierData.color}`} />
@@ -259,9 +260,7 @@ export function GamificationDashboardCard() {
                             </div>
                             <div>
                                 <h3 className="text-lg font-bold text-slate-900 tracking-tight">{currentTierName}</h3>
-                                <p className="text-sm font-medium text-slate-500">
-                                    {op} Organizer Points (OP)
-                                </p>
+                                <p className="text-sm font-medium text-slate-500">Organizer Profile</p>
                             </div>
                         </div>
                         {badges.length > 0 && (
@@ -283,9 +282,31 @@ export function GamificationDashboardCard() {
                         )}
                     </div>
 
+                    {/* Dual Stats: XP + OP */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                                <Zap className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Total XP</p>
+                                <p className="text-lg font-black text-slate-900 leading-none">{xp}</p>
+                            </div>
+                        </div>
+                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+                                <Shield className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Organizer OP</p>
+                                <p className="text-lg font-black text-slate-900 leading-none">{op}</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="space-y-2">
                         <div className="flex justify-between items-center text-xs font-bold text-slate-500 mb-1">
-                            <span className="uppercase tracking-wider">Tier Progress</span>
+                            <span className="uppercase tracking-wider">Tier Progress (OP)</span>
                             <div className="flex items-center gap-2">
                                 <span>
                                     {nextTierData
