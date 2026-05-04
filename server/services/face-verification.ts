@@ -29,6 +29,37 @@ export class FaceVerificationService {
     }
 
     /**
+     * Check if an error is a rate limit error from Face++
+     */
+    private static isRateLimitError(error: unknown): boolean {
+        const err = error as { response?: { data?: { error_message?: string } }; message?: string };
+        const errorMessage = err?.response?.data?.error_message || err?.message || '';
+        return errorMessage.includes('CONCURRENCY_LIMIT_EXCEEDED');
+    }
+
+    /**
+     * Retry wrapper with exponential backoff for Face++ API calls
+     * Retries up to maxRetries times when rate limited
+     */
+    private static async withRetry<T>(fn: () => Promise<T>, maxRetries = 3, baseDelayMs = 2000): Promise<T> {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                return await fn();
+            } catch (error) {
+                const isLast = attempt === maxRetries;
+                if (this.isRateLimitError(error) && !isLast) {
+                    const delay = baseDelayMs * attempt; // 2s, 4s, 6s
+                    console.warn(`[FaceVerification] Rate limit hit. Retry ${attempt}/${maxRetries} after ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } else {
+                    throw error;
+                }
+            }
+        }
+        throw new Error('Max retries exceeded for Face++ API');
+    }
+
+    /**
      * Detect faces in an image and return face qualities/tokens
      * Used as a pre-flight check to ensure a valid selfie before comparison.
      * @param imageUrl Publicly accessible URL of the image
@@ -37,28 +68,29 @@ export class FaceVerificationService {
         this.ensureKeys();
 
         try {
-            const params = new URLSearchParams();
-            params.append('api_key', this.API_KEY as string);
-            params.append('api_secret', this.API_SECRET as string);
-            params.append('image_url', imageUrl);
-            params.append('return_attributes', 'facequality');
+            return await this.withRetry(async () => {
+                const params = new URLSearchParams();
+                params.append('api_key', this.API_KEY as string);
+                params.append('api_secret', this.API_SECRET as string);
+                params.append('image_url', imageUrl);
+                params.append('return_attributes', 'facequality');
 
-            const response = await axios.post(`${this.BASE_URL}/detect`, params);
-            
-            const faces = response.data?.faces || [];
-            if (faces.length === 0) {
-                return { faceCount: 0, faceToken: null, quality: 0 };
-            }
+                const response = await axios.post(`${this.BASE_URL}/detect`, params);
+                
+                const faces = response.data?.faces || [];
+                if (faces.length === 0) {
+                    return { faceCount: 0, faceToken: null, quality: 0 };
+                }
 
-            // We only want the first prominent face
-            const mainFace = faces[0];
-            const qualityScore = mainFace.attributes?.facequality?.value || 0;
+                const mainFace = faces[0];
+                const qualityScore = mainFace.attributes?.facequality?.value || 0;
 
-            return {
-                faceCount: faces.length,
-                faceToken: mainFace.face_token,
-                quality: qualityScore
-            };
+                return {
+                    faceCount: faces.length,
+                    faceToken: mainFace.face_token,
+                    quality: qualityScore
+                };
+            });
         } catch (error: unknown) {
             const err = error as { response?: { data?: unknown }; message?: string };
             console.error('[FaceVerification:Detect] Error:', err?.response?.data || err.message);
@@ -74,24 +106,25 @@ export class FaceVerificationService {
         this.ensureKeys();
 
         try {
-            const params = new URLSearchParams();
-            params.append('api_key', this.API_KEY as string);
-            params.append('api_secret', this.API_SECRET as string);
-            params.append('face_token1', faceToken1);
-            params.append('image_url2', image2Url);
+            return await this.withRetry(async () => {
+                const params = new URLSearchParams();
+                params.append('api_key', this.API_KEY as string);
+                params.append('api_secret', this.API_SECRET as string);
+                params.append('face_token1', faceToken1);
+                params.append('image_url2', image2Url);
 
-            const response = await axios.post(`${this.BASE_URL}/compare`, params);
-            
-            if (response.data && response.data.confidence !== undefined) {
-                // threshold for 1e-5 error rate is usually around 80.7
-                const threshold = response.data.thresholds?.['1e-5'] || 80;
-                return { 
-                    confidence: response.data.confidence, 
-                    threshold 
-                };
-            }
+                const response = await axios.post(`${this.BASE_URL}/compare`, params);
+                
+                if (response.data && response.data.confidence !== undefined) {
+                    const threshold = response.data.thresholds?.['1e-5'] || 80;
+                    return { 
+                        confidence: response.data.confidence, 
+                        threshold 
+                    };
+                }
 
-            throw new Error('Invalid response from Face++');
+                throw new Error('Invalid response from Face++');
+            });
         } catch (error: unknown) {
             const err = error as { response?: { data?: unknown }; message?: string };
             console.error('[FaceVerification:Compare] Error:', err?.response?.data || err.message);
