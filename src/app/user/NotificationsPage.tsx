@@ -13,10 +13,12 @@ import {
   Shield,
   Star,
   Zap,
+  Trash2,
   LucideIcon
 } from 'lucide-react';
 import { useNotifications, AppNotification } from '@/hooks/useNotifications';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from 'date-fns';
+import { sileo } from 'sileo';
 
 const iconMap: Record<string, LucideIcon> = {
   event_created: CalendarDays,
@@ -38,151 +40,200 @@ const iconMap: Record<string, LucideIcon> = {
 
 const colorMap: Record<string, { color: string; bg: string }> = {
   event_created: { color: 'text-blue-600', bg: 'bg-blue-50' },
-  event_approved: { color: 'text-green-600', bg: 'bg-green-50' },
-  event_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
+  event_approved: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  event_rejected: { color: 'text-rose-600', bg: 'bg-rose-50' },
   event_joined: { color: 'text-indigo-600', bg: 'bg-indigo-50' },
   event_started: { color: 'text-teal-600', bg: 'bg-teal-50' },
-  event_completed: { color: 'text-green-600', bg: 'bg-green-50' },
+  event_completed: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
   rating_received: { color: 'text-yellow-600', bg: 'bg-yellow-50' },
   kyc_submitted: { color: 'text-amber-600', bg: 'bg-amber-50' },
-  kyc_verified: { color: 'text-green-600', bg: 'bg-green-50' },
-  kyc_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
-  organizer_approved: { color: 'text-green-600', bg: 'bg-green-50' },
-  organizer_rejected: { color: 'text-red-600', bg: 'bg-red-50' },
+  kyc_verified: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  kyc_rejected: { color: 'text-rose-600', bg: 'bg-rose-50' },
+  organizer_approved: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  organizer_rejected: { color: 'text-rose-600', bg: 'bg-rose-50' },
   xp_earned: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
   op_earned: { color: 'text-blue-600', bg: 'bg-blue-50' },
   system: { color: 'text-purple-600', bg: 'bg-purple-50' },
-  default: { color: 'text-primary', bg: 'bg-primary/10' }
+  default: { color: 'text-slate-600', bg: 'bg-slate-100' }
 };
 
 export function NotificationsPage() {
-  const { notifications, loading: isLoading, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, loading: isLoading, unreadCount, markAsRead, markAllAsRead, clearAllRead } = useNotifications();
 
-  const markAllRead = () => {
-    markAllAsRead();
+  const handleMarkAllRead = () => markAllAsRead();
+  const handleClearAll = async () => {
+    await clearAllRead();
+    sileo.success('Notifications cleared');
   };
 
-  const renderList = (items: AppNotification[]) => (
-    <div className="space-y-2">
-      {items.length > 0 ? (
-        items.map((n, i) => (
-          <motion.div
-            key={n.id}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.03 }}
-          >
-            <Card
-              className={`rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md overflow-hidden ${
-                !n.read 
-                  ? 'bg-primary/[0.02] border-primary/15 shadow-primary/5' 
-                  : 'hover:bg-muted/30'
-              }`}
-              onClick={() => {
-                if (!n.read) markAsRead(n.id);
-              }}
-            >
-              {!n.read && (
-                <div className="h-0.5 w-full bg-gradient-to-r from-primary/60 to-primary/20" />
-              )}
-              <CardContent className="py-4 flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colorMap[n.type]?.bg || colorMap.default.bg}`}>
-                  {(() => {
-                     const Icon = iconMap[n.type] || Bell;
-                     return <Icon className={`w-5 h-5 ${colorMap[n.type]?.color || colorMap.default.color}`} />
-                  })()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className={`text-sm ${!n.read ? 'font-semibold' : 'font-medium'} text-foreground truncate`}>
-                      {n.title}
-                    </p>
-                    {!n.read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                    {n.message}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-1.5">
-                    {n.createdAt ? formatDistanceToNow(n.createdAt, { addSuffix: true }) : 'Just now'}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))
-      ) : (
-        <Card className="rounded-2xl border-dashed border-2 shadow-none bg-transparent">
-          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-              <Bell className="w-8 h-8 text-muted-foreground/40" />
+  const groupNotifications = (items: AppNotification[]) => {
+    const groups: Record<string, AppNotification[]> = {
+      'Today': [],
+      'Yesterday': [],
+      'This Week': [],
+      'Older': []
+    };
+
+    items.forEach(n => {
+      const date = n.createdAt;
+      if (isToday(date)) groups['Today'].push(n);
+      else if (isYesterday(date)) groups['Yesterday'].push(n);
+      else if (isThisWeek(date)) groups['This Week'].push(n);
+      else groups['Older'].push(n);
+    });
+
+    return groups;
+  };
+
+  const renderNotificationItem = (n: AppNotification) => {
+    const Icon = iconMap[n.type] || Bell;
+    const colors = colorMap[n.type] || colorMap.default;
+    
+    return (
+      <div 
+        key={n.id}
+        onClick={() => { if (!n.read) markAsRead(n.id); }}
+        className={`group relative flex items-start gap-4 p-4 sm:px-6 transition-all cursor-pointer ${
+          !n.read ? 'bg-blue-50/30' : 'hover:bg-slate-50'
+        }`}
+      >
+        {!n.read && (
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r-full" />
+        )}
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${colors.bg}`}>
+          <Icon className={`w-5 h-5 ${colors.color}`} />
+        </div>
+        <div className="flex-1 min-w-0 pt-0.5">
+          <div className="flex items-start justify-between gap-2">
+            <p className={`text-sm ${!n.read ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
+              {n.title}
+            </p>
+            <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap flex-shrink-0">
+              {formatDistanceToNow(n.createdAt, { addSuffix: true })}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-[95%]">
+            {n.message}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  const renderList = (items: AppNotification[]) => {
+    if (items.length === 0) {
+      return (
+        <Card className="rounded-2xl border-dashed border-2 shadow-sm bg-slate-50/50 mt-4">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-16 h-16 rounded-full bg-white border shadow-sm flex items-center justify-center mb-4 grayscale opacity-60">
+              <Bell className="w-8 h-8 text-slate-400" />
             </div>
-            <h3 className="font-heading font-medium text-lg text-foreground mb-1">
-              {isLoading ? 'Loading...' : 'No notifications'}
+            <h3 className="font-heading font-bold text-lg text-slate-800 mb-1">
+              {isLoading ? 'Loading...' : 'You\'re all caught up!'}
             </h3>
-            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+            <p className="text-sm text-slate-500 max-w-sm mx-auto text-balance">
               {isLoading 
                 ? 'Please wait while we fetch your notifications.' 
-                : 'You currently have no notifications in this category. We\'ll let you know when something comes up.'}
+                : 'No new notifications to show in this category. Take a break!'}
             </p>
           </CardContent>
         </Card>
-      )}
-    </div>
-  );
+      );
+    }
+
+    const grouped = groupNotifications(items);
+
+    return (
+      <div className="space-y-6 mt-4">
+        {Object.entries(grouped).map(([label, groupItems]) => {
+          if (groupItems.length === 0) return null;
+          return (
+            <div key={label} className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-2">
+                {label}
+              </h4>
+              <Card className="rounded-2xl shadow-sm border overflow-hidden bg-white">
+                <div className="divide-y divide-slate-100">
+                  {groupItems.map(renderNotificationItem)}
+                </div>
+              </Card>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto w-full pb-10">
-      <div className="flex items-center justify-between">
+    <div className="max-w-3xl mx-auto w-full pb-16 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="font-heading font-semibold text-2xl text-foreground">
+          <h1 className="font-heading font-black text-3xl text-slate-900 tracking-tight">
             Notifications
           </h1>
-          <p className="text-muted-foreground mt-1">
-            {unreadCount > 0 ?
-              `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}.` :
-              'All caught up!'}
+          <p className="text-slate-500 font-medium text-sm mt-1">
+            {unreadCount > 0 ? (
+              <span>You have <strong className="text-blue-600">{unreadCount} unread</strong> notification{unreadCount > 1 ? 's' : ''}.</span>
+            ) : 'All caught up!'}
           </p>
         </div>
-        {unreadCount > 0 && (
-          <Button variant="outline" size="sm" onClick={markAllRead} className="hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all">
-            <Check className="w-4 h-4 mr-1.5" /> Mark all read
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <Button variant="outline" size="sm" onClick={handleMarkAllRead} className="h-9 font-semibold text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:text-blue-700">
+              <Check className="w-4 h-4 mr-1.5" /> Mark read
+            </Button>
+          )}
+          {notifications.some(n => n.read) && (
+            <Button variant="ghost" size="sm" onClick={handleClearAll} className="h-9 font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50">
+              <Trash2 className="w-4 h-4 mr-1.5" /> Clear read
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue="all" className="w-full">
-        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md pb-2 -mx-2 px-2 pt-2">
-          <TabsList className="bg-muted/50 border p-1 rounded-xl w-full justify-start overflow-x-auto hide-scrollbar">
-            <TabsTrigger value="all" className="rounded-lg px-4">
-              All{' '}
-              {unreadCount > 0 && (
-                <Badge className="ml-2 bg-primary/10 text-primary hover:bg-primary/20 border-0 text-[10px] px-1.5 h-4">
-                  {unreadCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="events" className="rounded-lg px-4">Events</TabsTrigger>
-            <TabsTrigger value="rewards" className="rounded-lg px-4">Rewards 🌟</TabsTrigger>
-            <TabsTrigger value="system" className="rounded-lg px-4">System</TabsTrigger>
-            <TabsTrigger value="kyc" className="rounded-lg px-4">KYC & Org</TabsTrigger>
-          </TabsList>
-        </div>
-        <TabsContent value="all" className="mt-4">
-          {renderList(notifications)}
-        </TabsContent>
-        <TabsContent value="events" className="mt-4">
-          {renderList(notifications.filter((n) => n.type.includes('event')))}
-        </TabsContent>
-        <TabsContent value="rewards" className="mt-4">
-          {renderList(notifications.filter((n) => n.type === 'xp_earned' || n.type === 'op_earned'))}
-        </TabsContent>
-        <TabsContent value="system" className="mt-4">
-          {renderList(notifications.filter((n) => n.type === 'system' || n.type === 'rating_received'))}
-        </TabsContent>
-        <TabsContent value="kyc" className="mt-4">
-          {renderList(notifications.filter((n) => n.type.includes('organizer') || n.type.includes('kyc')))}
-        </TabsContent>
+        <TabsList className="w-full justify-start h-auto p-1 bg-slate-100/80 rounded-xl overflow-x-auto hide-scrollbar flex-nowrap">
+          <TabsTrigger value="all" className="rounded-lg px-5 py-2 text-sm font-bold data-[state=active]:shadow-sm flex-shrink-0">
+            All
+            {unreadCount > 0 && (
+              <Badge className="ml-2 bg-blue-500 text-white hover:bg-blue-600 border-0 text-[10px] px-1.5 h-4">
+                {unreadCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="events" className="rounded-lg px-5 py-2 text-sm font-bold data-[state=active]:shadow-sm flex-shrink-0">
+            Events
+          </TabsTrigger>
+          <TabsTrigger value="rewards" className="rounded-lg px-5 py-2 text-sm font-bold data-[state=active]:shadow-sm flex-shrink-0">
+            Rewards 🌟
+          </TabsTrigger>
+          <TabsTrigger value="kyc" className="rounded-lg px-5 py-2 text-sm font-bold data-[state=active]:shadow-sm flex-shrink-0">
+            KYC & Org
+          </TabsTrigger>
+          <TabsTrigger value="system" className="rounded-lg px-5 py-2 text-sm font-bold data-[state=active]:shadow-sm flex-shrink-0">
+            System
+          </TabsTrigger>
+        </TabsList>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+          <TabsContent value="all" className="focus-visible:outline-none">
+            {renderList(notifications)}
+          </TabsContent>
+          <TabsContent value="events" className="focus-visible:outline-none">
+            {renderList(notifications.filter((n) => n.type.includes('event')))}
+          </TabsContent>
+          <TabsContent value="rewards" className="focus-visible:outline-none">
+            {renderList(notifications.filter((n) => n.type === 'xp_earned' || n.type === 'op_earned'))}
+          </TabsContent>
+          <TabsContent value="kyc" className="focus-visible:outline-none">
+            {renderList(notifications.filter((n) => n.type.includes('organizer') || n.type.includes('kyc')))}
+          </TabsContent>
+          <TabsContent value="system" className="focus-visible:outline-none">
+            {renderList(notifications.filter((n) => n.type === 'system' || n.type === 'rating_received'))}
+          </TabsContent>
+        </motion.div>
       </Tabs>
     </div>
   );
 }
+
