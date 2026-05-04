@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Bell, CalendarDays, CheckCircle, Info, ArrowRight, Star, Shield, Zap, LucideIcon } from 'lucide-react';
 
 import {
@@ -11,8 +12,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from 'react-router-dom';
 import { useNotifications, AppNotification } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
-
-
 
 const iconMap: Record<string, LucideIcon> = {
   event_created: CalendarDays,
@@ -54,18 +53,20 @@ const colorMap: Record<string, { color: string; bg: string }> = {
 export function NotificationsPopover() {
   const { notifications, unreadCount, markAsRead } = useNotifications({ maxItems: 10 });
   const navigate = useNavigate();
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleNotificationClick = (n: AppNotification) => {
     if (!n.read) {
       markAsRead(n.id);
     }
+    setIsOpen(false);
     if (n.link) {
       navigate(n.link);
     }
   };
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
