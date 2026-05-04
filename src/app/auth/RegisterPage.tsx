@@ -31,15 +31,22 @@ import {
   Lock,
   EyeOff,
   Eye,
-  Info,
-  Upload,
-  Camera,
-  Building2,
   RefreshCw,
+  ChevronDown,
+  FileText,
+  Focus,
+  Sun,
+  ScanFace,
+  Camera,
+  Upload,
+  Image as ImageIcon,
   X,
   Check,
-  Image as ImageIcon,
-  ChevronDown
+  Building2,
+  Info,
+  Ban,
+  Cpu,
+  Glasses
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -64,7 +71,6 @@ import { useAuth } from '../../features/auth/AuthContext';
 import type { UserRole } from '../../features/auth/AuthContext';
 import { API_BASE_URL } from '@/lib/api';
 import { AuthNavigation } from '@/components/auth/AuthNavigation';
-import { Badge } from '@/components/ui/badge';
 import loginImg from '@/assets/Junta-Login-Register.png';
 
 export function RegisterPage() {
@@ -75,9 +81,24 @@ export function RegisterPage() {
 
   const [step, setStep] = useState(1);
   const [otp, setOtp] = useState('');
+  const [idPreview, setIdPreview] = useState<string | null>(null);
+  const [idBackPreview, setIdBackPreview] = useState<string | null>(null);
+  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
+  const [kycStage, setKycStage] = useState<'selection' | 'capture'>('selection');
+  const [webcamStep, setWebcamStep] = useState<'intro' | 'camera'>('intro');
+  const [captureTarget, setCaptureTarget] = useState<'id-front' | 'id-back' | 'selfie'>('id-front');
   const [showPassword, setShowPassword] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [isSendingOTP, setIsSendingOTP] = useState(false);
+  const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole>('participant');
+  const [openBarangay, setOpenBarangay] = useState(false);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Logic to parse Google Name
   const getInitialNames = () => {
@@ -113,29 +134,12 @@ export function RegisterPage() {
       });
     }
   }, [googleData]);
-  const [idUploaded, setIdUploaded] = useState(false);
-  const [idBackUploaded, setIdBackUploaded] = useState(false);
-  const [selfieUploaded, setSelfieUploaded] = useState(false);
-  const [kycMode, setKycMode] = useState<'none' | 'id' | 'id-back' | 'selfie'>('none');
-  const [openBarangay, setOpenBarangay] = useState(false);
-  const [idPreview, setIdPreview] = useState<string | null>(null);
-  const [idBackPreview, setIdBackPreview] = useState<string | null>(null);
-  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
-  const [kycStage, setKycStage] = useState<'selection' | 'instruction' | 'capture'>('selection');
-  const [isSendingOTP, setIsSendingOTP] = useState(false);
-  const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
-  const [isCompleting, setIsCompleting] = useState(false);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   const stepTitles = [
     'Choose Your Role',
     'Basic Information',
-    'OTP Verification',
-    'Identity Verification'
+    'Email Verification',
+    'Identity Check'
   ];
 
   const progress = (step / 4) * 100;
@@ -159,6 +163,29 @@ export function RegisterPage() {
 
     setIsCompleting(true);
     try {
+      // Pre-flight: enforce max 2MB per image (Face++ limit)
+      const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+      const getBase64Size = (base64: string) => {
+        const base64Data = base64.split(',')[1] || base64;
+        return Math.ceil((base64Data.length * 3) / 4);
+      };
+
+      if (idPreview && getBase64Size(idPreview) > MAX_SIZE_BYTES) {
+        sileo.error({ title: 'ID Front Too Large', description: 'The image must be under 2MB. Please retake it.' });
+        setIsCompleting(false);
+        return;
+      }
+      if (idBackPreview && getBase64Size(idBackPreview) > MAX_SIZE_BYTES) {
+        sileo.error({ title: 'ID Back Too Large', description: 'The image must be under 2MB. Please retake it.' });
+        setIsCompleting(false);
+        return;
+      }
+      if (selfiePreview && getBase64Size(selfiePreview) > MAX_SIZE_BYTES) {
+        sileo.error({ title: 'Selfie Too Large', description: 'The image must be under 2MB. Please retake it.' });
+        setIsCompleting(false);
+        return;
+      }
+
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -191,10 +218,22 @@ export function RegisterPage() {
       setRole(selectedRole);
       setUserName(fullName);
 
+      const pipelineStatusMessages: Record<string, string> = {
+        success: `Identity analysis complete — ${Math.round(data.verificationScore || 0)}% match.`,
+        no_face_detected: 'Note: No face detected in selfie. Manual review required.',
+        multiple_faces: 'Note: Multiple faces detected. Manual review required.',
+        low_quality: 'Note: Selfie quality was low. Manual review required.',
+        id_invalid: 'Note: ID could not be verified automatically. Manual review required.',
+        api_error: 'Automated analysis error — manual review required.',
+        api_keys_missing: 'Automated analysis unavailable — manual review required.',
+      };
+
+      const kycDesc = data.kycApiStatus ? pipelineStatusMessages[data.kycApiStatus] : 'Your account has been created successfully.';
+
       sileo.success({
         title: 'Welcome to Junta!',
-        description: 'Your account has been created successfully.',
-        duration: 2000
+        description: kycDesc,
+        duration: 4000
       });
 
 
@@ -397,91 +436,100 @@ export function RegisterPage() {
 
   const startCamera = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const isId = captureTarget.startsWith('id');
+      const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: kycMode === 'selfie' ? 'user' : 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+          facingMode: isId ? 'environment' : 'user', 
+          width: { ideal: 1280 }, 
+          height: { ideal: 720 } 
+        } 
       });
-      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
-        // Force play just in case
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().catch(e => console.error("Video play failed:", e));
-        };
       }
     } catch (err) {
-      console.error('Camera access denied:', err);
-      sileo.error({
-        title: 'Camera Access Error',
-        description: 'Please enable camera permissions to continue verification.'
-      });
+      console.error('Webcam error:', err);
+      sileo.error({ title: 'Camera Error', description: 'Could not access your camera. Please check permissions.' });
     }
-  }, [kycMode]);
+  }, [captureTarget]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
   const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        if (kycMode === 'id') setIdPreview(dataUrl);
-        else if (kycMode === 'id-back') setIdBackPreview(dataUrl);
-        else setSelfiePreview(dataUrl);
-        stopCamera();
-      }
+    const video = videoRef.current;
+    if (!video || !video.srcObject) return;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    
+    if (captureTarget === 'id-front') {
+      setIdPreview(dataUrl);
+      sileo.success({ title: 'Front Captured', description: 'Now scan the back of your ID.' });
+      setCaptureTarget('id-back');
+      setWebcamStep('intro');
+      stopCamera();
+    } else if (captureTarget === 'id-back') {
+      setIdBackPreview(dataUrl);
+      sileo.success({ title: 'Back Captured', description: 'ID scanning complete.' });
+      setKycStage('selection');
+      stopCamera();
+    } else {
+      setSelfiePreview(dataUrl);
+      sileo.success({ title: 'Selfie Captured', description: 'Biometric verified.' });
+      setKycStage('selection');
+      stopCamera();
     }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Max 2MB check
-      if (file.size > 2 * 1024 * 1024) {
-        sileo.error({
-          title: 'File Too Large',
-          description: 'Please upload an image smaller than 2MB for better processing.'
-        });
-        return;
-      }
+    if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (kycMode === 'id') setIdPreview(result);
-        else if (kycMode === 'id-back') setIdBackPreview(result);
-        else setSelfiePreview(result);
-      };
-      reader.readAsDataURL(file);
+    if (file.size > 2 * 1024 * 1024) {
+      sileo.error({ title: 'File Too Large', description: 'Please upload an image smaller than 2MB.' });
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (captureTarget === 'id-front') {
+        setIdPreview(result);
+        setCaptureTarget('id-back');
+        setWebcamStep('intro');
+      } else if (captureTarget === 'id-back') {
+        setIdBackPreview(result);
+        setKycStage('selection');
+      } else {
+        setSelfiePreview(result);
+        setKycStage('selection');
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => {
-    const currentPreview = kycMode === 'id' ? idPreview : kycMode === 'id-back' ? idBackPreview : selfiePreview;
-    
-    // Only start camera when in capture stage and no preview exists
-    if (kycMode !== 'none' && kycStage === 'capture' && !currentPreview) {
+    if (kycStage === 'capture' && webcamStep === 'camera') {
       startCamera();
     } else {
       stopCamera();
     }
-    
     return () => stopCamera();
-  }, [kycMode, kycStage, idPreview, idBackPreview, selfiePreview, startCamera, stopCamera]);
+  }, [kycStage, webcamStep, startCamera, stopCamera]);
+
 
 
   return (
@@ -526,7 +574,6 @@ export function RegisterPage() {
                     {step === 1 && 'How would you like to use Junta?'}
                     {step === 2 && 'Create your Junta account'}
                     {step === 3 && 'Enter the 6-digit code sent to your email'}
-                    {step === 4 && 'Upload your documents for verification'}
                   </CardDescription>
                 </CardHeader>
 
@@ -963,255 +1010,77 @@ export function RegisterPage() {
                         className="space-y-4"
                       >
                         {kycStage === 'selection' ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div
-                              onClick={() => { setKycMode('id'); setKycStage('instruction'); }}
-                              className={`border border-dashed rounded-xl p-5 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[130px] ${idUploaded ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-emerald-500/40 hover:bg-emerald-50/30'}`}
-                            >
-                              {idPreview ? (
-                                <div className="relative w-full h-full flex flex-col items-center animate-in zoom-in-95">
-                                  <img src={idPreview} alt="ID Preview" className="w-20 h-14 object-cover rounded-lg border-2 border-emerald-500/20 mb-2 shadow-sm" />
-                                  <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Front Captured</p>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center mb-3 transition-all ${idUploaded ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-slate-50 border-slate-200 group-hover:border-emerald-300 group-hover:bg-emerald-50 text-slate-400 group-hover:text-emerald-600'}`}>
-                                    <Upload className="w-5 h-5" />
-                                  </div>
-                                  <p className="text-sm font-bold text-slate-900">ID Front</p>
-                                  <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">Front of ID</p>
-                                </>
-                              )}
-                            </div>
-
-                            <div
-                              onClick={() => { setKycMode('id-back'); setKycStage('instruction'); }}
-                              className={`border border-dashed rounded-xl p-5 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[130px] ${idBackUploaded ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-emerald-500/40 hover:bg-emerald-50/30'}`}
-                            >
-                              {idBackPreview ? (
-                                <div className="relative w-full h-full flex flex-col items-center animate-in zoom-in-95">
-                                  <img src={idBackPreview} alt="ID Back Preview" className="w-20 h-14 object-cover rounded-lg border-2 border-emerald-500/20 mb-2 shadow-sm" />
-                                  <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Back Captured</p>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center mb-3 transition-all ${idBackUploaded ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-slate-50 border-slate-200 group-hover:border-emerald-300 group-hover:bg-emerald-50 text-slate-400 group-hover:text-emerald-600'}`}>
-                                    <Upload className="w-5 h-5" />
-                                  </div>
-                                  <p className="text-sm font-bold text-slate-900">ID Back</p>
-                                  <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">Reverse side</p>
-                                </>
-                              )}
-                            </div>
-
-                            <div
-                              onClick={() => { setKycMode('selfie'); setKycStage('instruction'); }}
-                              className={`border border-dashed rounded-xl p-5 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[130px] sm:col-span-2 md:col-span-1 ${selfieUploaded ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-emerald-500/40 hover:bg-emerald-50/30'}`}
-                            >
-                              {selfiePreview ? (
-                                <div className="relative w-full h-full flex flex-col items-center animate-in zoom-in-95">
-                                  <img src={selfiePreview} alt="Selfie Preview" className="w-14 h-14 rounded-full object-cover border-2 border-emerald-500 mb-2 shadow-md" />
-                                  <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Selfie Taken</p>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center mb-3 transition-all ${selfieUploaded ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-slate-50 border-slate-200 group-hover:border-emerald-300 group-hover:bg-emerald-50 text-slate-400 group-hover:text-emerald-600'}`}>
-                                    <Camera className="w-5 h-5" />
-                                  </div>
-                                  <p className="text-sm font-bold text-slate-900">Take Selfie</p>
-                                  <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">Biometric check</p>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        ) : kycStage === 'instruction' ? (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xl space-y-8"
-                          >
-                            <div className="flex items-center justify-between">
-                               <div className="space-y-1">
-                                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">Step 1 of 2</p>
-                                  <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-                                    {kycMode === 'id' ? 'Identity Front' : kycMode === 'id-back' ? 'Identity Back' : 'Face Scan'}
-                                  </h3>
-                               </div>
-                               <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300">
-                                  <RefreshCw className="w-5 h-5" />
-                               </div>
-                            </div>
-
-                            <div className="flex flex-col items-center justify-center py-4">
-                               <div className="w-24 h-24 rounded-3xl bg-emerald-50 flex items-center justify-center shadow-inner relative overflow-hidden">
-                                  <div className="absolute inset-0 bg-gradient-to-tr from-emerald-100/50 to-transparent" />
-                                  {kycMode === 'id' || kycMode === 'id-back' ? (
-                                    <Building2 className="w-10 h-10 text-emerald-600 relative z-10" />
-                                  ) : (
-                                    <User className="w-10 h-10 text-emerald-600 relative z-10" />
-                                  )}
-                               </div>
-                               <p className="mt-6 text-sm font-bold text-slate-600 text-center max-w-[240px] leading-relaxed">
-                                  Position your {kycMode === 'id' ? 'ID card' : 'face'} within the frame and ensure all details are visible.
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center gap-3">
-                                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
-                                    <CheckCircle className="w-4 h-4 text-emerald-500" />
-                                  </div>
-                                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest text-center">Readable Text</span>
-                               </div>
-                               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center gap-3">
-                                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
-                                    <Info className="w-4 h-4 text-emerald-500" />
-                                  </div>
-                                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest text-center">No Glare</span>
-                               </div>
-                            </div>
-
-                               <Button
-                                onClick={() => setKycStage('capture')}
-                                className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-emerald-200 transition-all active:scale-95"
+                          <div className="space-y-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                              <div
+                                onClick={() => { setCaptureTarget('id-front'); setKycStage('capture'); setWebcamStep('intro'); }}
+                                className={`border border-dashed rounded-xl p-5 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[130px] ${idPreview ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-emerald-500/40 hover:bg-emerald-50/30'}`}
                               >
-                                Start {kycMode === 'id' || kycMode === 'id-back' ? 'Scanning' : 'Verification'}
-                                <ArrowRight className="ml-2 w-4 h-4" />
-                              </Button>
-                          </motion.div>
-                        ) : (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="rounded-2xl overflow-hidden relative shadow-2xl border border-slate-800 flex flex-col"
-                          >
-                            {/* ── Video / Preview area ── */}
-                            <div className="relative bg-slate-950" style={{ aspectRatio: '4/3' }}>
-
-                              {/* ID alignment guide */}
-                              {!((kycMode === 'id' && idPreview) || (kycMode === 'id-back' && idBackPreview)) && (kycMode === 'id' || kycMode === 'id-back') && (
-                                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                                  <div className="w-[85%] h-[65%] border-2 border-dashed border-emerald-500/60 rounded-xl flex items-center justify-center">
-                                    <Badge variant="default" className="bg-emerald-600 text-white text-[10px] uppercase tracking-widest px-3 py-1 shadow-lg">Align {kycMode === 'id' ? 'Front' : 'Back'} Here</Badge>
+                                {idPreview ? (
+                                  <div className="relative w-full h-full flex flex-col items-center animate-in zoom-in-95">
+                                    <img src={idPreview} alt="ID Preview" className="w-20 h-14 object-cover rounded-lg border-2 border-emerald-500/20 mb-2 shadow-sm" />
+                                    <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Front Captured</p>
                                   </div>
-                                </div>
-                              )}
+                                ) : (
+                                  <>
+                                    <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 group-hover:border-emerald-300 group-hover:bg-emerald-50 text-slate-400 group-hover:text-emerald-600 flex items-center justify-center mb-3 transition-all">
+                                      <Upload className="w-5 h-5" />
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-900">ID Front</p>
+                                    <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">Front of ID</p>
+                                  </>
+                                )}
+                              </div>
 
-                              {/* Selfie alignment guide — perfectly centered over video only */}
-                              {!selfiePreview && kycMode === 'selfie' && (
-                                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                                  <div className="relative w-44 h-44 flex items-center justify-center">
-                                    {/* Outer dashed ring */}
-                                    <div className="absolute inset-0 border-[3px] border-dashed border-emerald-500/50 rounded-full" />
-                                    {/* Inner solid ring */}
-                                    <div className="absolute inset-3 border-[2px] border-emerald-500/30 rounded-full" />
-                                    <Badge variant="default" className="bg-slate-800/90 backdrop-blur-sm text-slate-200 text-[10px] uppercase tracking-[0.15em] px-4 py-1.5 z-20">
-                                      Align Face
-                                    </Badge>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Video or captured image */}
-                              {(kycMode === 'id' && idPreview) || (kycMode === 'id-back' && idBackPreview) || (kycMode === 'selfie' && selfiePreview) ? (
-                                <img
-                                  src={(kycMode === 'id' ? idPreview : kycMode === 'id-back' ? idBackPreview : selfiePreview) || ''}
-                                  className="w-full h-full object-cover"
-                                  alt="Preview"
-                                />
-                              ) : (
-                                <video
-                                  ref={videoRef}
-                                  autoPlay
-                                  playsInline
-                                  muted
-                                  className="w-full h-full object-cover"
-                                />
-                              )}
-
-                              {/* Close button */}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => { setKycMode('none'); setKycStage('selection'); stopCamera(); }}
-                                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-md text-white hover:bg-black/70 transition-colors z-20"
+                              <div
+                                onClick={() => { setCaptureTarget('id-back'); setKycStage('capture'); setWebcamStep('intro'); }}
+                                className={`border border-dashed rounded-xl p-5 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[130px] ${idBackPreview ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-emerald-500/40 hover:bg-emerald-50/30'}`}
                               >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-
-                            {/* ── Button row — completely separate from video ── */}
-                            <div className="bg-slate-900 flex items-center justify-center gap-3 px-4 py-3">
-                              {!((kycMode === 'id' && idPreview) || (kycMode === 'id-back' && idBackPreview) || (kycMode === 'selfie' && selfiePreview)) ? (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl backdrop-blur-md transition-all font-semibold"
-                                  >
-                                    <ImageIcon className="w-4 h-4 mr-2" /> Upload ID
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={capturePhoto}
-                                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-900/40 transition-all active:scale-95 font-semibold"
-                                  >
-                                    <Camera className="w-4 h-4 mr-2" /> Capture
-                                  </Button>
-                                </>
-                              ) : (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      if (kycMode === 'id') setIdPreview(null);
-                                      else if (kycMode === 'id-back') setIdBackPreview(null);
-                                      else setSelfiePreview(null);
-                                      startCamera();
-                                    }}
-                                    className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl backdrop-blur-md transition-all font-semibold"
-                                  >
-                                    <RefreshCw className="w-4 h-4 mr-2" /> Retake
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      if (kycMode === 'id') setIdUploaded(true);
-                                      else if (kycMode === 'id-back') setIdBackUploaded(true);
-                                      else setSelfieUploaded(true);
-                                      setKycMode('none');
-                                      setKycStage('selection');
-                                    }}
-                                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-900/40 transition-all font-semibold"
-                                  >
-                                    <Check className="w-4 h-4 mr-2" /> Confirm
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-
-                            <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
-                            <canvas ref={canvasRef} className="hidden" />
-                          </motion.div>
-                        )}
-
-                        {(idUploaded || selfieUploaded) && kycStage === 'selection' && (
-                          <div className="flex items-center gap-2 px-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider animate-in fade-in slide-in-from-left-2 duration-500">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 shadow-sm shadow-emerald-200" />
-                            <p>Admin will review your identity once submitted.</p>
-                          </div>
-                        )}
-
-                        {kycStage === 'selection' && (
-                          <>
-                            <div className="grid grid-cols-1 gap-3">
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <CheckCircle className="w-3 h-3 text-slate-400" />
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Valid IDs Accepted</span>
+                                {idBackPreview ? (
+                                  <div className="relative w-full h-full flex flex-col items-center animate-in zoom-in-95">
+                                    <img src={idBackPreview} alt="ID Back Preview" className="w-20 h-14 object-cover rounded-lg border-2 border-emerald-500/20 mb-2 shadow-sm" />
+                                    <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Back Captured</p>
                                   </div>
-                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                                ) : (
+                                  <>
+                                    <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 group-hover:border-emerald-300 group-hover:bg-emerald-50 text-slate-400 group-hover:text-emerald-600 flex items-center justify-center mb-3 transition-all">
+                                      <Upload className="w-5 h-5" />
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-900">ID Back</p>
+                                    <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">Reverse side</p>
+                                  </>
+                                )}
+                              </div>
+
+                              <div
+                                onClick={() => { setCaptureTarget('selfie'); setKycStage('capture'); setWebcamStep('intro'); }}
+                                className={`border border-dashed rounded-xl p-5 text-center transition-all cursor-pointer group flex flex-col items-center justify-center min-h-[130px] sm:col-span-2 md:col-span-1 ${selfiePreview ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-emerald-500/40 hover:bg-emerald-50/30'}`}
+                              >
+                                {selfiePreview ? (
+                                  <div className="relative w-full h-full flex flex-col items-center animate-in zoom-in-95">
+                                    <img src={selfiePreview} alt="Selfie Preview" className="w-14 h-14 rounded-full object-cover border-2 border-emerald-500 mb-2 shadow-md" />
+                                    <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Selfie Taken</p>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 group-hover:border-emerald-300 group-hover:bg-emerald-50 text-slate-400 group-hover:text-emerald-600 flex items-center justify-center mb-3 transition-all">
+                                      <Camera className="w-5 h-5" />
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-900">Take Selfie</p>
+                                    <p className="text-[10px] text-slate-500 font-medium mt-1 leading-tight">Biometric check</p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="bg-slate-50/80 rounded-2xl p-5 border border-slate-100">
+                                  <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center">
+                                      <FileText className="w-4 h-4 text-emerald-600" />
+                                    </div>
+                                    <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Valid IDs Accepted</h4>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                     {['PhilID (National ID)', 'Passport', "Driver's License", 'UMID', 'Postal ID', 'PRC ID', 'Voter\'s ID', 'SSS / GSIS'].map(id => (
                                       <div key={id} className="flex items-center gap-1.5 text-[10px] text-slate-600 font-bold">
                                         <div className="w-1 h-1 rounded-full bg-emerald-500" />
@@ -1221,60 +1090,228 @@ export function RegisterPage() {
                                   </div>
                                 </div>
 
-                              <div className="bg-emerald-50/30 border border-emerald-100 rounded-2xl p-4 shadow-sm">
-                                <div className="flex items-start gap-3">
-                                  <Checkbox
-                                    id="privacy"
-                                    checked={agreedPrivacy}
-                                    onCheckedChange={(checked) => setAgreedPrivacy(checked as boolean)}
-                                    className="mt-0.5 size-4 border-emerald-200 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600 shadow-sm"
-                                  />
-                                  <Label htmlFor="privacy" className="text-[11px] text-slate-600 font-bold leading-relaxed cursor-pointer select-none">
-                                    I recognize and agree to the <span className="text-emerald-700 font-extrabold underline decoration-emerald-200 underline-offset-2">Philippine Data Privacy Act of 2012</span>.
-                                  </Label>
+                                <div className="space-y-4">
+                                  <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100/50">
+                                    <Checkbox
+                                      id="privacy"
+                                      checked={agreedPrivacy}
+                                      onCheckedChange={(checked) => setAgreedPrivacy(checked as boolean)}
+                                      className="mt-0.5 size-4 border-emerald-200 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600 shadow-sm"
+                                    />
+                                    <Label htmlFor="privacy" className="text-[11px] text-slate-600 font-bold leading-relaxed cursor-pointer select-none">
+                                      I recognize and agree to the <span className="text-emerald-700 font-extrabold underline decoration-emerald-200 underline-offset-2">Philippine Data Privacy Act of 2012</span>.
+                                    </Label>
+                                  </div>
                                 </div>
+
+                                <div className="flex flex-col gap-3 pt-2">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <Button
+                                      variant="outline"
+                                      className="h-10 rounded-xl border-slate-200 text-sm font-bold shadow-sm hover:bg-slate-50"
+                                      onClick={() => setStep(3)}
+                                    >
+                                      <ArrowLeft className="mr-2 w-4 h-4" /> Back
+                                    </Button>
+                                    <Button
+                                      className="h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold shadow-lg shadow-emerald-200 transition-all disabled:opacity-50"
+                                      onClick={handleComplete}
+                                      disabled={!idPreview || !selfiePreview || !agreedPrivacy || isCompleting}
+                                    >
+                                      {isCompleting ? (
+                                        <>
+                                          <RefreshCw className="mr-2 w-4 h-4 animate-spin" />
+                                          Finishing...
+                                        </>
+                                      ) : (
+                                        'Complete Registration'
+                                      )}
+                                    </Button>
+                                  </div>
+                                  <div className="text-center">
+                                    <button
+                                      onClick={handleComplete}
+                                      disabled={isCompleting}
+                                      className="text-[10px] font-bold text-slate-400 hover:text-emerald-700 uppercase tracking-widest hover:underline"
+                                    >
+                                      Skip for now, I'll verify later
+                                    </button>
+                                  </div>
+                                </div>
+                          </div>
+                        ) : (
+                          <motion.div
+                            key="capture-flow"
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.98 }}
+                            className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-2xl flex flex-col min-h-[500px]"
+                          >
+                            {/* Premium Header */}
+                            <div className="bg-white border-b border-slate-50 p-5 flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em]">
+                                    {captureTarget === 'selfie' ? 'Final Step' : captureTarget === 'id-front' ? 'Step 1 of 3' : 'Step 2 of 3'}
+                                  </span>
+                                </div>
+                                <h3 className="text-slate-900 font-black text-sm uppercase tracking-tight">
+                                  {captureTarget === 'id-front' ? 'Identity Front' : captureTarget === 'id-back' ? 'Identity Back' : 'Face Verification'}
+                                </h3>
                               </div>
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                onClick={() => setKycStage('selection')}
+                                className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-slate-900"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
                             </div>
 
-                              <div className="flex flex-col gap-3 pt-2">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  <Button
-                                    variant="outline"
-                                    className="h-10 rounded-xl border-slate-200 text-sm font-bold shadow-sm hover:bg-slate-50"
-                                    onClick={() => setStep(3)}
-                                  >
-                                    <ArrowLeft className="mr-2 w-4 h-4" /> Back
-                                  </Button>
-                                  <Button
-                                    className="h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold shadow-lg shadow-emerald-200 transition-all disabled:opacity-50"
-                                    onClick={handleComplete}
-                                    disabled={!idUploaded || !selfieUploaded || isCompleting}
-                                  >
-                                    {isCompleting ? (
-                                      <>
-                                        <RefreshCw className="mr-2 w-4 h-4 animate-spin" />
-                                        Finishing...
-                                      </>
-                                    ) : (
-                                      'Complete Registration'
-                                    )}
-                                  </Button>
+                            {webcamStep === 'intro' ? (
+                              <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6">
+                                <div className="relative w-20 h-20 rounded-2xl bg-emerald-50 flex items-center justify-center shadow-inner">
+                                  {captureTarget.startsWith('id') ? (
+                                    <FileText className="w-10 h-10 text-emerald-600" />
+                                  ) : (
+                                    <ScanFace className="w-10 h-10 text-emerald-600" />
+                                  )}
                                 </div>
-                                <div className="text-center">
-                                  <button
-                                    type="button"
-                                    onClick={handleComplete}
-                                    disabled={isCompleting}
-                                    className={cn(
-                                      "text-[10px] font-bold text-slate-400 hover:text-emerald-700 transition-all underline decoration-slate-200 hover:decoration-emerald-500/50",
-                                      isCompleting && "opacity-50 cursor-not-allowed"
-                                    )}
+
+                                <div className="space-y-1.5 text-center max-w-[280px]">
+                                  <h4 className="text-sm font-black text-slate-900 uppercase">
+                                      {captureTarget.startsWith('id') ? 'Document Scan' : 'Biometric Scan'}
+                                  </h4>
+                                  <p className="text-slate-500 text-[11px] font-medium leading-relaxed">
+                                    {captureTarget.startsWith('id') 
+                                      ? 'Position your ID card within the frame and ensure all details are clearly visible.' 
+                                      : 'Position your face within the frame. Ensure good lighting and a neutral expression.'}
+                                  </p>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-3 w-full">
+                                  {captureTarget.startsWith('id') ? (
+                                    <>
+                                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                        <Focus className="w-4 h-4 text-emerald-600" />
+                                        <span className="text-[10px] font-bold text-slate-700">Clear Text</span>
+                                      </div>
+                                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                        <Sun className="w-4 h-4 text-emerald-600" />
+                                        <span className="text-[10px] font-bold text-slate-700">No Glare</span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                        <div className="relative">
+                                          <Ban className="w-4 h-4 text-slate-300 absolute -inset-0.5 opacity-50" />
+                                          <User className="w-4 h-4 text-emerald-600" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-700">No Hats</span>
+                                      </div>
+                                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                        <div className="relative">
+                                          <Ban className="w-4 h-4 text-slate-300 absolute -inset-0.5 opacity-50" />
+                                          <Glasses className="w-4 h-4 text-emerald-600" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-700">No Glasses</span>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+
+                                <div className="w-full space-y-4">
+                                  <Button 
+                                    onClick={() => setWebcamStep('camera')} 
+                                    className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase text-xs tracking-widest shadow-lg shadow-slate-200"
                                   >
-                                    {isCompleting ? 'Creating account...' : "Skip for now. I'll verify later"}
-                                  </button>
+                                    Start Scanning
+                                  </Button>
+                                  
+                                  {captureTarget === 'selfie' && (
+                                    <div className="flex items-center justify-center gap-1.5 opacity-40">
+                                      <Cpu className="w-3 h-3 text-slate-500" />
+                                      <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 text-center">Powered by Face++ biometric analysis</span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                          </>
+                            ) : (
+                              <div className="relative flex-1 bg-black overflow-hidden">
+                                <video 
+                                  ref={videoRef} 
+                                  autoPlay 
+                                  playsInline 
+                                  className={`absolute inset-0 w-full h-full object-cover ${captureTarget === 'selfie' ? 'scale-x-[-1]' : ''}`}
+                                />
+                                
+                                {/* Professional Vignette Overlay */}
+                                <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+                                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                    <defs>
+                                      <mask id="verificationMaskReg">
+                                        <rect x="0" y="0" width="100" height="100" fill="white" />
+                                        {captureTarget.startsWith('id') ? (
+                                          <rect x="7.5" y="27.5" width="85" height="45" rx="4" fill="black" />
+                                        ) : (
+                                          <ellipse cx="50" cy="45" rx="35" ry="42" fill="black" />
+                                        )}
+                                      </mask>
+                                    </defs>
+                                    <rect x="0" y="0" width="100" height="100" fill="rgba(0,0,0,0.8)" mask="url(#verificationMaskReg)" />
+                                  </svg>
+
+                                  {/* Guide Box/Circle (High Vis) */}
+                                  {captureTarget.startsWith('id') ? (
+                                    <div className="w-[85%] aspect-[1.6/1] border-2 border-dashed border-emerald-500/40 rounded-2xl relative">
+                                      <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-emerald-500 rounded-tl-xl" />
+                                      <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-emerald-500 rounded-tr-xl" />
+                                      <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-emerald-500 rounded-bl-xl" />
+                                      <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-emerald-500 rounded-br-xl" />
+                                    </div>
+                                  ) : (
+                                    <div className="w-[70%] aspect-[35/42] border-2 border-dashed border-emerald-500/40 rounded-[50%] relative">
+                                      <div className="absolute inset-0 border border-white/20 rounded-[50%]" />
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Controls */}
+                                <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex items-center justify-center gap-6 pb-6 backdrop-blur-[2px]">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => setWebcamStep('intro')}
+                                    className="w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/20"
+                                  >
+                                    <ArrowLeft className="w-4 h-4" />
+                                  </Button>
+                                  
+                                  <button 
+                                    onClick={capturePhoto}
+                                    className="w-16 h-16 rounded-full border-4 border-white/30 flex items-center justify-center active:scale-95 transition-all"
+                                  >
+                                    <div className="w-12 h-12 rounded-full bg-white" />
+                                  </button>
+
+                                  <div className="w-10" /> {/* Spacer */}
+                                </div>
+
+                                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="absolute bottom-4 right-4 text-[10px] font-bold text-white/60 hover:text-white uppercase tracking-widest"
+                                >
+                                  <ImageIcon className="w-3 h-3 mr-1.5" /> Upload
+                                </Button>
+                              </div>
+                            )}
+                          </motion.div>
                         )}
                       </motion.div>
                     )}
