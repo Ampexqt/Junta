@@ -126,6 +126,7 @@ router.post('/register', async (req, res) => {
         orgName,
         suffix,
         idImage,
+        idBackImage,
         selfieImage
     } = req.body;
 
@@ -173,17 +174,52 @@ router.post('/register', async (req, res) => {
 
         // 1.7 Handle Identity Verification Images (Optional during registration)
         let idUrl = '';
+        let idBackUrl = '';
         let selfieUrl = '';
         let kycStatus = 'none';
+        let verificationScore = 0;
+        let verificationThreshold = 80;
+        let kycApiStatus = 'success';
+        let kycErrorLogs: string | null = null;
 
         if (idImage && selfieImage) {
             try {
+                // Upload images
                 idUrl = await uploadBase64Image(idImage, 'kyc/ids');
+                if (idBackImage) idBackUrl = await uploadBase64Image(idBackImage, 'kyc/ids');
                 selfieUrl = await uploadBase64Image(selfieImage, 'kyc/selfies');
                 kycStatus = 'pending';
+
+                // Automated Analysis (Face++ Pipeline) - Same logic as SettingsPage but during registration
+                const hasFacePlusKeys = !!(process.env.FACEPLUSPLUS_API_KEY && process.env.FACEPLUSPLUS_API_SECRET);
+                if (hasFacePlusKeys) {
+                    try {
+                        console.log(`[AUTH:KYC] Running automated analysis for ${email}...`);
+                        const detection = await FaceVerificationService.detectFace(selfieUrl);
+                        
+                        if (detection.faceCount === 0) {
+                            kycApiStatus = 'no_face_detected';
+                            kycErrorLogs = 'No face detected in selfie.';
+                        } else if (detection.faceCount > 1) {
+                            kycApiStatus = 'multiple_faces';
+                            kycErrorLogs = 'Multiple faces detected in selfie.';
+                        } else if (detection.faceToken) {
+                            const comparisonResult = await FaceVerificationService.compareFaces(detection.faceToken, idUrl);
+                            verificationScore = comparisonResult.confidence;
+                            verificationThreshold = comparisonResult.threshold;
+                            kycApiStatus = 'success';
+                            console.log(`[AUTH:KYC] Biometric score: ${verificationScore}%`);
+                        }
+                    } catch (apiErr) {
+                        console.error('[AUTH:KYC] Face++ API Error:', apiErr);
+                        kycApiStatus = 'api_error';
+                        kycErrorLogs = apiErr instanceof Error ? apiErr.message : 'Unknown API error';
+                    }
+                } else {
+                    kycApiStatus = 'api_keys_missing';
+                }
             } catch (uploadError) {
                 console.error('[AUTH] KYC Image upload failed during registration:', uploadError);
-                // We don't fail the whole registration if upload fails, but we log it
             }
         }
 
@@ -205,7 +241,12 @@ router.post('/register', async (req, res) => {
             kycVerified: false,
             kycStatus: kycStatus,
             validIdUrl: idUrl,
+            validIdBackUrl: idBackUrl,
             selfieUrl: selfieUrl,
+            verificationScore,
+            verificationThreshold,
+            kycApiStatus,
+            kycErrorLogs,
             kycSubmittedAt: kycStatus === 'pending' ? new Date().toISOString() : null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -703,7 +744,7 @@ router.post('/submit-verification', authenticateUser, async (req: AuthRequest, r
         // 2. Multi-step Face++ pipeline
         let verificationScore = 0;
         let verificationThreshold = 80;
-        let ocrData: { isIdCard: boolean; name: string | null; idNumber: string | null } | null = null;
+        const ocrData: { isIdCard: boolean; name: string | null; idNumber: string | null } | null = null;
         let kycApiStatus: 'success' | 'no_face_detected' | 'multiple_faces' | 'low_quality' | 'id_invalid' | 'api_error' | 'api_keys_missing' = 'success';
         let kycErrorLogs: string | null = null;
 
@@ -715,24 +756,10 @@ router.post('/submit-verification', authenticateUser, async (req: AuthRequest, r
             kycErrorLogs = 'Face++ API keys not configured. Manual review required.';
         } else {
             try {
-                // Step A: OCR - Validate ID document
-                console.log('[KYC] Step A: Running OCR on ID document...');
-                try {
-                    ocrData = await FaceVerificationService.extractIdInfo(finalIdUrl);
-                    if (!ocrData.isIdCard) {
-                        console.warn('[KYC] OCR: No valid ID card detected in image.');
-                        kycApiStatus = 'id_invalid';
-                        kycErrorLogs = 'The uploaded front image was not recognized as a valid ID card.';
-                    } else {
-                        console.log(`[KYC] OCR: ID detected. Name: ${ocrData.name || 'N/A'}, ID#: ${ocrData.idNumber || 'N/A'}`);
-                    }
-                } catch (ocrError: unknown) {
-                    const err = ocrError as { message: string };
-                    // OCR is non-blocking — some valid IDs may not be parsed perfectly.
-                    // Log the error but allow the process to continue.
-                    console.warn(`[KYC] OCR error (non-blocking): ${err.message}`);
-                    kycErrorLogs = `OCR: ${err.message}`;
-                }
+                // Step A: OCR - (Skipped - using manual review for ID type/name)
+                // We bypass this to avoid Face++ API_NOT_FOUND errors on non-supported regions
+                console.log('[KYC] Step A: Skipping OCR (Manual Review mode)');
+
 
                 // Step B: Detect face in selfie (pre-flight check for comparison)
                 console.log('[KYC] Step B: Detecting face in selfie...');
@@ -778,11 +805,8 @@ router.post('/submit-verification', authenticateUser, async (req: AuthRequest, r
             verificationThreshold,
             kycApiStatus,
             kycErrorLogs,
-            ocrData: ocrData ? {
-                isIdCard: ocrData.isIdCard,
-                name: ocrData.name || null,
-                idNumber: ocrData.idNumber || null,
-            } : null,
+            ocrData,
+
             kycSubmittedAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
